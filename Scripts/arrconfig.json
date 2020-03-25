@@ -1,0 +1,22 @@
+{
+  "accountSettings": {
+    "arrAccountId": "<fill in the account ID from the Azure Portal>",
+    "arrAccountKey": "<fill in the account key from the Azure Portal>",
+    "region": "<select from available regions: eastus2, westeurope, westus2, southeastasia>"
+  },
+  "renderingSessionSettings": {
+    "vmSize": "<standard or premium>",
+    "maxLeaseTime": "<hh:mm:ss>"
+  },
+  "assetConversionSettings": {
+    "resourceGroup": "<resource group which contains the storage account you created, only needed when uploading or generating SAS>",
+    "storageAccountName": "<name of the storage account you created>",
+    "blobInputContainerName": "<input container inside the storage container>",
+    "blobOutputContainerName": "<output container inside the storage container>",
+    "localAssetDirectoryPath": "<fill in a path to a local directory containing your asset (and files referenced from it like textures)>",
+    "inputFolderPath": "<optional: base folderpath in the input container for asset upload. uses / as dir separator>",
+    "inputAssetPath": "<the path to the asset under inputcontainer/inputfolderpath pointing to the input asset e.g. box.fbx>",
+    "outputFolderPath": "<optional: base folderpath in the output container - the converted asset and log files will be placed here>",
+    "outputAssetFileName": "<optional: filename for the converted asset, this will be placed in the output container under the outputpath>"
+  }
+}

@@ -1,3 +1,14 @@
+# Azure Remote Rendering
+
+Welcome to [Azure Remote Rendering](https://azure.microsoft.com/services/remote-rendering/).
+This service enables you to render highly complex 3D models in real time on devices such as HoloLens 2.
+
+Full documentation for Azure Remote Rendering can be found here:
+https://docs.microsoft.com/azure/remote-rendering
+
+This repository contains the following folders:
+* Unity - This folder contains sample projects for use in the Unity game engine
+* Scripts - This folder contains PowerShell scripts for interacting with the service (e.g. converting assets or launching rendering servers).
 
 # Contributing
 

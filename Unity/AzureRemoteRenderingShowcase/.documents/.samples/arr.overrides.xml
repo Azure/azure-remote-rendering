@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Session>
+        <Location>westus2</Location>
+        <Size>Big</Size>
+        <MaxLeaseTime>600</MaxLeaseTime>
+        <AutoRenewLease>true</AutoRenewLease>
+        <AutoReconnect>true</AutoReconnect>
+        <AutoReconnectRate>10</AutoReconnectRate>
+    </Session>
+    <Account>
+        <AccountName>Test ARR Account</AccountName>
+        <AccountDomain>mixedreality.azure.com</AccountDomain>
+        <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
+        <AccountKey>=</AccountKey>
+      </Account>
+      <Storage>
+        <StorageAccountName>teststorage</StorageAccountName>
+        <StorageAccountKey>==</StorageAccountKey>
+        <StorageModelContainer>test-storage-container</StorageModelContainer>
+      </Storage>
+</Configuration>

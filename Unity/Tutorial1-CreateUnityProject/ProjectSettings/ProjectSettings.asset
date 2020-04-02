@@ -577,11 +577,11 @@ PlayerSettings:
   m_MobileRenderingPath: 1
   metroPackageName: GettingStarted
   metroPackageVersion: 1.0.0.0
-  metroCertificatePath: 
+  metroCertificatePath: Assets\WSATestCertificate.pfx
   metroCertificatePassword: 
-  metroCertificateSubject: 
-  metroCertificateIssuer: 
-  metroCertificateNotAfter: 0000000000000000
+  metroCertificateSubject: DefaultCompany
+  metroCertificateIssuer: DefaultCompany
+  metroCertificateNotAfter: 806db1118726d701
   metroApplicationDescription: Getting Started Tutorial
   wsaImages: {}
   metroTileShortName: 
@@ -615,7 +615,7 @@ PlayerSettings:
       InternetClientServer: True
       Location: False
       LowLevelDevices: False
-      Microphone: True
+      Microphone: False
       MusicLibrary: False
       Objects3D: False
       OfflineMapsManagement: False
@@ -636,7 +636,7 @@ PlayerSettings:
       UserNotificationListener: False
       VideosLibrary: False
       VoipCall: False
-      WebCam: True
+      WebCam: False
   metroTargetDeviceFamilies:
     Desktop: True
     Holographic: True

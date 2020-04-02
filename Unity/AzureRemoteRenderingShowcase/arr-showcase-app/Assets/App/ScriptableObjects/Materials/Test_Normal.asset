@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 835cd86ab31a1ca439ad8a57068f4ee0, type: 3}
+  m_Name: Test_Normal
+  m_EditorClassIdentifier: 
+  Type: 0
+  AlbedoColor: {r: 0.6603774, g: 0.11525454, b: 0.11525454, a: 1}
+  AlbedoTextureUrl: 
+  AlphaClipThreshold: 0.5
+  FadeOut: 1
+  TexCoordOffset: {x: 0, y: 0}
+  TexCoordScale: {x: 1, y: 1}
+  AOMapUrl: 
+  AOScale: 1
+  EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
+  EmissiveMapUrl: 
+  Metalness: 0.366
+  MetalnessMapUrl: 
+  NormalMapUrl: https://ddegpustorage.blob.core.windows.net/assetbundles/textures/checker.dds
+  PbrFlags: 12
+  VertexAlphaMode: 0
+  VertexColorMode: 0
+  Roughness: 0.75
+  RoughnessMapUrl: 
+  ColorFlags: 2
+  ColorTransparencyMode: 0
+  VertexMix: 0

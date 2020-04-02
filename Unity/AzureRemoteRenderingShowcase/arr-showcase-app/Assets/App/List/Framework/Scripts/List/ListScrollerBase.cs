@@ -1,0 +1,100 @@
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System.Threading.Tasks;
+using UnityEngine;
+
+/// <summary>
+/// A list component that can scroll a list container so to reveal more list items.
+/// </summary>
+public abstract class ListScrollerBase : MonoBehaviour
+{
+    /// <summary>
+    /// Get the visible index range.
+    /// </summary>
+    public (int StartIndex, int Count) VisibleRange { get; protected set; }
+
+    /// <summary>
+    /// The total page count.
+    /// </summary>
+    public float PageCount { get; protected set; }
+
+    /// <summary>
+    /// Get the size of a single page increment
+    /// </summary>
+    public float PageSize { get; protected set; }
+
+    /// <summary>
+    /// The total size of the content
+    /// </summary>
+    public float ContentSize { get; protected set; }
+
+    /// <summary>
+    /// The page's movement axis
+    /// </summary>
+    public abstract ListScrollerAxis PageMovementAxis { get; set; }
+
+    /// <summary>
+    /// A value that represents the goal scroll position.
+    /// </summary>
+    public abstract float Goal { get; }
+
+    /// <summary>
+    /// Snap the goal scroll position to a value from 0.0 to 1.0.
+    /// </summary>
+    public abstract Task SnapGoalTo(float progress);
+
+    /// <summary>
+    /// Snap the goal and the current scroll position to a value from 0.0 to 1.0.
+    /// </summary>
+    public abstract void SnapTo(float progress);
+
+    /// <summary>
+    /// Set and update the scroll area size.
+    /// </summary>
+    public virtual void SetScrollSize(Vector2 listSize)
+    {
+    }
+
+    /// <summary>
+    /// Get the axis which movement occurs along.
+    /// </summary>
+    public Vector3 GetMovementAxis()
+    {
+        switch (PageMovementAxis)
+        {
+            case ListScrollerAxis.X:
+                return Vector3.right;
+
+            case ListScrollerAxis.Y:
+                return Vector3.up;
+
+            case ListScrollerAxis.Z:
+                return Vector3.forward;
+
+            default:
+                throw new System.NotSupportedException();
+        }
+    }
+
+    /// <summary>
+    /// Get the axes that movement doesn't occur along.
+    /// </summary>
+    public Vector3 GetNonMovementAxis()
+    {
+        switch (PageMovementAxis)
+        {
+            case ListScrollerAxis.X:
+                return new Vector3(0, 1, 1);
+
+            case ListScrollerAxis.Y:
+                return new Vector3(1, 0, 1);
+
+            case ListScrollerAxis.Z:
+                return new Vector3(1, 1, 0);
+
+            default:
+                throw new System.NotSupportedException();
+        }
+    }
+}

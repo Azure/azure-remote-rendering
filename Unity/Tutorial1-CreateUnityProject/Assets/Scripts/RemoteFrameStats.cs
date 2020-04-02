@@ -11,6 +11,7 @@ public class RemoteFrameStats : MonoBehaviour
 
     ARRServiceStats arrServiceStats = null;
 
+#if UNITY_EDITOR
     private void OnEnable()
     {
         arrServiceStats = new ARRServiceStats();
@@ -31,4 +32,5 @@ public class RemoteFrameStats : MonoBehaviour
             FrameStats.text = arrServiceStats.GetStatsString();
         }
     }
+#endif
 }

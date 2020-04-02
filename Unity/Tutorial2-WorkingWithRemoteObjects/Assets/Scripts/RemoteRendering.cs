@@ -45,10 +45,16 @@ public class RemoteRendering : MonoBehaviour
 
         // lookup the ARRServiceUnity component and subscribe to session events
         arrService = GetComponent<ARRServiceUnity>();
-        arrService.OnSessionStarted += ARRService_OnSessionStarted;
+        arrService.OnSessionErrorEncountered += ARRService_OnSessionErrorEncountered;
         arrService.OnSessionStatusChanged += ARRService_OnSessionStatusChanged;
-        arrService.OnSessionEnded += ARRService_OnSessionEnded;
     }
+
+#if !UNITY_EDITOR
+    private void Start()
+    {
+        StartCoroutine(AutoStartSessionAsync());
+    }
+#endif
 
     private void OnDisable()
     {
@@ -57,9 +63,8 @@ public class RemoteRendering : MonoBehaviour
 
     private void OnDestroy()
     {
-        arrService.OnSessionStarted -= ARRService_OnSessionStarted;
+        arrService.OnSessionErrorEncountered -= ARRService_OnSessionErrorEncountered;
         arrService.OnSessionStatusChanged -= ARRService_OnSessionStatusChanged;
-        arrService.OnSessionEnded -= ARRService_OnSessionEnded;
 
         RemoteManagerStatic.ShutdownRemoteRendering();
     }
@@ -94,41 +99,34 @@ public class RemoteRendering : MonoBehaviour
         arrService.StopSession();
     }
 
-    private async void ARRService_OnSessionStarted(AzureSession session)
+    private void ARRService_OnSessionStatusChanged(ARRServiceUnity caller, AzureSession session)
     {
         LogSessionStatus(session);
 
-        SessionId = session.SessionUUID;
+        var status = caller.LastProperties.Status;
 
-        session.ConnectionStatusChanged += AzureSession_OnConnectionStatusChanged;
-
-        if (arrService.CurrentActiveSession != null)
+        // Capture the session id for the starting/ready session so it can be reused
+        if (status == RenderingSessionStatus.Ready || status == RenderingSessionStatus.Starting)
         {
-            var sessionProperties = await arrService.CurrentActiveSession.GetPropertiesAsync().AsTask();
+            SessionId = session.SessionUUID;
 
-
-            if (sessionProperties.Status != RenderingSessionStatus.Ready &&
-                sessionProperties.Status != RenderingSessionStatus.Starting)
+            // If our session properties are 'Ready' we are ready to start connecting to the runtime of the service.
+            if (status == RenderingSessionStatus.Ready)
             {
-                Debug.LogError($"Existing session has status '{sessionProperties.Status}'");
-                StopSession();
+                session.ConnectionStatusChanged += AzureSession_OnConnectionStatusChanged;
             }
         }
-    }
-
-    private void ARRService_OnSessionEnded(AzureSession session)
-    {
-        LogSessionStatus(session);
-
-        if (session != null)
+        // Our session is stopped, expired, or in an error state.
+        else
         {
+            SessionId = null;
             session.ConnectionStatusChanged -= AzureSession_OnConnectionStatusChanged;
         }
     }
 
-    private void ARRService_OnSessionStatusChanged(AzureSession session)
+    private void ARRService_OnSessionErrorEncountered(ARRServiceUnity caller, SessionGeneralContext context)
     {
-        LogSessionStatus(session);
+        Debug.LogError($"Session error encountered. Context: {context.ErrorMessage}. Request Cv: {context.RequestCorrelationVector}. Response Cv: {context.ResponseCorrelationVector}");
     }
 
     private async void LogSessionStatus(AzureSession session)
@@ -321,6 +319,21 @@ public class RemoteRendering : MonoBehaviour
                 }
             }
         }
+    }
+#else
+    public IEnumerator AutoStartSessionAsync()
+    {
+        CreateSession();
+        while (arrService.CurrentActiveSession == null)
+        {
+            yield return null;
+        }
+        ConnectSession();
+        while (!isConnected)
+        {
+            yield return null;
+        }
+        LoadModel();
     }
 #endif
 }

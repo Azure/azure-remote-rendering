@@ -63,9 +63,7 @@ public class RemoteRendering : MonoBehaviour
     public RemoteFrameStats Stats;
 
     private ARRServiceUnity arrService = null;
-    private Entity modelEntity = null;
     private GameObject modelEntityGO = null;
-    private bool isConnected = false;
 
 #if UNITY_WSA
     private WorldAnchor modelWorldAnchor = null;
@@ -80,9 +78,7 @@ public class RemoteRendering : MonoBehaviour
 
         // lookup the ARRServiceUnity component and subscribe to session events
         arrService = GetComponent<ARRServiceUnity>();
-        arrService.OnSessionStarted += ARRService_OnSessionStarted;
         arrService.OnSessionStatusChanged += ARRService_OnSessionStatusChanged;
-        arrService.OnSessionEnded += ARRService_OnSessionEnded;
 
         if (Stats != null)
         {
@@ -90,21 +86,16 @@ public class RemoteRendering : MonoBehaviour
         }
     }
 
-    private void OnEnable()
+    private void Start()
     {
-        AutoStartSession();
-    }
-
-    private void OnDisable()
-    {
-        DisconnectSession();
+        AutoStartSessionAsync();
     }
 
     private void OnDestroy()
     {
-        arrService.OnSessionStarted -= ARRService_OnSessionStarted;
+        DisconnectSession();
+
         arrService.OnSessionStatusChanged -= ARRService_OnSessionStatusChanged;
-        arrService.OnSessionEnded -= ARRService_OnSessionEnded;
 
         RemoteManagerStatic.ShutdownRemoteRendering();
     }
@@ -127,53 +118,7 @@ public class RemoteRendering : MonoBehaviour
         arrService.Initialize(accountInfo);
     }
 
-    public void CreateSession()
-    {
-        CreateFrontend();
-
-        // StartSession will call ARRService_OnSessionStarted once the session becomes available
-        arrService.StartSession(new RenderingSessionCreationParams(VMSize, MaxLeaseTimeHours, MaxLeaseTimeMinutes));
-    }
-
-    public void StopSession()
-    {
-        arrService.StopSession();
-    }
-
-    private async void ARRService_OnSessionStarted(AzureSession session)
-    {
-        LogSessionStatus(session);
-
-        session.ConnectionStatusChanged += AzureSession_OnConnectionStatusChanged;
-
-        if (arrService.CurrentActiveSession != null)
-        {
-            var sessionProperties = await arrService.CurrentActiveSession.GetPropertiesAsync().AsTask();
-
-            if (sessionProperties.Status != RenderingSessionStatus.Ready &&
-                sessionProperties.Status != RenderingSessionStatus.Starting)
-            {
-                LogMessage($"Existing session has status '{sessionProperties.Status}'", true);
-                StopSession();
-            }
-            else
-            {
-                SessionId = session.SessionUUID;
-            }
-        }
-    }
-
-    private void ARRService_OnSessionEnded(AzureSession session)
-    {
-        LogSessionStatus(session);
-
-        if (session != null)
-        {
-            session.ConnectionStatusChanged -= AzureSession_OnConnectionStatusChanged;
-        }
-    }
-
-    private void ARRService_OnSessionStatusChanged(AzureSession session)
+    private void ARRService_OnSessionStatusChanged(ARRServiceUnity service, AzureSession session)
     {
         LogSessionStatus(session);
     }
@@ -216,33 +161,13 @@ public class RemoteRendering : MonoBehaviour
         }
     }
 
-    public void UseExistingSession()
-    {
-        CreateFrontend();
-
-        // OpenSession will call ARRService_OnSessionStarted once the session becomes available
-        arrService.OpenSession(SessionId);
-    }
-
-    public void ConnectSession()
-    {
-        arrService.CurrentActiveSession?.ConnectToRuntime(new ConnectToRuntimeParams());
-    }
-
     public void DisconnectSession()
     {
-        if (isConnected)
+        if( arrService.CurrentActiveSession?.ConnectionStatus == ConnectionStatus.Connected )
         {
-            arrService.CurrentActiveSession?.DisconnectFromRuntime();
+            DestroyModel();
+            arrService.CurrentActiveSession.DisconnectFromRuntime();
         }
-
-        DestroyModel();
-    }
-
-    private void AzureSession_OnConnectionStatusChanged(ConnectionStatus status, Result result)
-    {
-        LogMessage($"Connection status: '{status}', result: '{result}'", result != Result.Success);
-        isConnected = (status == ConnectionStatus.Connected);
     }
 
     private void LateUpdate()
@@ -252,10 +177,10 @@ public class RemoteRendering : MonoBehaviour
         arrService.CurrentActiveSession?.Actions.Update();
     }
 
-    public async void LoadModel()
+    private async void LoadModel()
     {
         // create a root object to parent a loaded model to
-        modelEntity = arrService.CurrentActiveSession.Actions.CreateEntity();
+        Entity modelEntity = arrService.CurrentActiveSession.Actions.CreateEntity();
 
         // get the game object representation of this entity
         modelEntityGO = modelEntity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
@@ -279,7 +204,7 @@ public class RemoteRendering : MonoBehaviour
         await async.AsTask();
     }
 
-    public void PlaceModel()
+    private void PlaceModel()
     {
 #if UNITY_WSA
         if (modelWorldAnchor != null)
@@ -303,7 +228,7 @@ public class RemoteRendering : MonoBehaviour
 
     public void DestroyModel()
     {
-        if (modelEntity == null)
+        if (modelEntityGO == null)
         {
             return;
         }
@@ -317,70 +242,102 @@ public class RemoteRendering : MonoBehaviour
         }
 #endif
 
-        modelEntity.Destroy();
-        modelEntity = null;
-
         DestroyImmediate(modelEntityGO);
     }
 
     // start a new session or use an existing one, connect to it and then load the model
-    public void AutoStartSession()
+    public async void AutoStartSessionAsync()
     {
-        if (!string.IsNullOrEmpty(SessionId))
+        try
         {
-            UseExistingSession();
-            SessionId = null;
-        }
-        else
-        {
-            CreateSession();
-        }
+            CreateFrontend();
 
-        StartCoroutine(WaitForSessionReady(() =>
-        {
-            // once the session is ready, connect to it
-            ConnectSession();
+            RenderingSessionProperties props = default(RenderingSessionProperties);
+            bool hasSessionId = !string.IsNullOrEmpty(SessionId);
+            string sessionId = SessionId;
 
-            // wait for the Connection to Connect then load the model
-            StartCoroutine(WaitForConnectionChange(() =>
+            if (hasSessionId)
             {
-                LoadModel();
-            }));
-        }));
-    }
-
-    // wait for the session's ready status and then trigger the action callback
-    IEnumerator WaitForSessionReady(Action action)
-    {
-        // wait for Ready status
-        while (true)
-        {
-            if (arrService.CurrentActiveSession != null
-                &&
-                arrService.LastProperties.Status == RenderingSessionStatus.Ready)
-            {
-                break;
+                try
+                {
+                    props = await arrService.OpenSession(SessionId);
+                }
+                catch (RRSessionException sessionException)
+                {
+                    LogMessage($"Error opening session: {sessionException.Context.ErrorMessage}", true);
+                }
+                catch (RRException generalException)
+                {
+                    LogMessage($"General error opening session: {generalException.ErrorCode}", true);
+                }
+                finally
+                {
+                    SessionId = null;
+                }
             }
 
-            yield return null;
+            if (props.Status != RenderingSessionStatus.Ready)
+            {
+                if(hasSessionId)
+                {
+                    LogMessage($"Session ID: {sessionId} is in state: {props.Status}. Starting a new session.");
+                }
+
+                props = await arrService.StartSession(new RenderingSessionCreationParams(VMSize, MaxLeaseTimeHours, MaxLeaseTimeMinutes));
+
+                if (props.Status != RenderingSessionStatus.Ready)
+                {
+                    LogMessage($"Session creation failed. Session status: {props.Status}.", true);
+                    return;
+                }
+            }
+
+            SessionId = arrService.CurrentActiveSession.SessionUUID;
+
+            if (!enabled)
+            {
+                return;
+            }
+        }
+        catch (RRSessionException sessionException)
+        {
+            LogMessage($"Error creating session: {sessionException.Context.ErrorMessage}", true);
+        }
+        catch (RRException generalException)
+        {
+            LogMessage($"General error creating session: {generalException.ErrorCode}", true);
         }
 
-        // trigger callback
-        action();
+        ConnectAndLoadModel();
     }
 
-    // wait for the connected status and then trigger the action callback
-    IEnumerator WaitForConnectionChange(Action action)
+    public async void ConnectAndLoadModel()
     {
-        // trigger callback once the connection status is Connected
-        while (arrService.CurrentActiveSession.ConnectionStatus != ConnectionStatus.Connected)
+        try
         {
-            yield return null;
+            if (arrService.CurrentActiveSession?.ConnectionStatus != ConnectionStatus.Disconnected)
+            {
+                return;
+            }
+
+            Result res = await arrService.CurrentActiveSession.ConnectToRuntime(new ConnectToRuntimeParams()).AsTask();
+
+            if (arrService.CurrentActiveSession.IsConnected)
+            {
+                LoadModel();
+            }
+            else
+            {
+                LogMessage($"Failed to connect to runtime: {res}.", true);
+            }
         }
-
-        yield return new WaitForSeconds(1.0f);
-
-        // trigger callback
-        action();
+        catch (RRSessionException sessionException)
+        {
+            LogMessage($"Error connecting to runtime: {sessionException.Context.ErrorMessage}", true);
+        }
+        catch (RRException generalException)
+        {
+            LogMessage($"General error connecting to runtime: {generalException.ErrorCode}", true);
+        }
     }
 }

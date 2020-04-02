@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbca41bb0b40d298ef201735d08616, type: 3}
+  m_Name: RemotingMixedRealityRegisteredServiceProvidersProfile
+  m_EditorClassIdentifier: 
+  isCustomProfile: 1
+  configurations:
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.RemoteObjectFactoryService,
+        Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    componentName: Remote Object Factory Service
+    priority: 101
+    runtimePlatform: 25
+    configurationProfile: {fileID: 11400000, guid: 36f1c3dc4da94694187069a2bcd5ca1c,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.RemoteRenderingService,
+        Assembly-CSharp
+    componentName: Remote Rendering Service
+    priority: 0
+    runtimePlatform: 25
+    configurationProfile: {fileID: 11400000, guid: bc784e4f1c1a2d74eb629957bfefdc4b,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.PointerStateService, Assembly-CSharp
+    componentName: Pointer State Service
+    priority: 10
+    runtimePlatform: 15
+    configurationProfile: {fileID: 11400000, guid: 01e1828813b910245bee82d9c066f1fd,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.AppSettingsService, Assembly-CSharp
+    componentName: AppSettingsService
+    priority: 10
+    runtimePlatform: 2047
+    configurationProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.AppNotificationService,
+        Assembly-CSharp
+    componentName: AppNotificationService
+    priority: 10
+    runtimePlatform: 15
+    configurationProfile: {fileID: 11400000, guid: 93b438ffb4e40b5409b498ad36d48c6e,
+      type: 2}

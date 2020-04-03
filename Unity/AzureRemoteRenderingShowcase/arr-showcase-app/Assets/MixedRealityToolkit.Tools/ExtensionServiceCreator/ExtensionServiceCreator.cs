@@ -300,9 +300,9 @@ namespace Microsoft.MixedReality.Toolkit.Editor
             {
                 template = System.IO.File.ReadAllText(path);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.LogWarning(e.ToString());
+                Debug.LogWarning($"Error loading template from '{path}'. Reason: {ex.Message}.");
                 return false;
             }
 
@@ -593,10 +593,9 @@ namespace Microsoft.MixedReality.Toolkit.Editor
                     return;
                 }
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                creationLog.Add("Exception when creating profile instance");
-                creationLog.Add(e.ToString());
+                creationLog.Add($"Error when creating profile instance: {ex.Message}.");
                 Stage = CreationStage.Finished;
                 Result = CreateResult.Error;
                 return;
@@ -663,10 +662,10 @@ namespace Microsoft.MixedReality.Toolkit.Editor
             {
                 System.IO.File.WriteAllText(localPath, contents);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
                 Result = CreateResult.Error;
-                creationLog.Add(e.ToString());
+                creationLog.Add($"Error writing to '{localPath}'. Reason: {ex.Message}.");
             }
         }
 

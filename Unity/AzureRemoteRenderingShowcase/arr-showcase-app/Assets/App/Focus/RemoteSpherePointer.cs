@@ -216,7 +216,7 @@ public class RemoteSpherePointer : BaseControllerPointer, IRemoteSpherePointer, 
         }
         else
         {
-            Debug.LogWarning("The RemoteSphere pointer couldn't use hand joints. The results of this pointer may not be accurate.");
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "The RemoteSphere pointer couldn't use hand joints. The results of this pointer may not be accurate.");
 
             // Could improve this if "RayStep" had an update function that took a position and direction.
             var end = pointerPosition + (Vector3.up * distance);
@@ -349,7 +349,7 @@ public class RemoteSpherePointer : BaseControllerPointer, IRemoteSpherePointer, 
 
             if (numColliders == queryBuffer.Length)
             {
-                Debug.LogWarning($"Maximum number of {numColliders} colliders found in SpherePointer overlap query. Consider increasing the query buffer size in the pointer profile.");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Maximum number of {numColliders} colliders found in SpherePointer overlap query. Consider increasing the query buffer size in the pointer profile.");
             }
 
             for (int i = 0; i < numColliders; i++)

@@ -292,8 +292,9 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             return;
         }
 
-        IMixedRealityPointer usePointer = (_pointerOverride == null) ? _focusProvider?.PrimaryPointer : _pointerOverride;
-        if (usePointer == null || usePointer.BaseCursor == null || !usePointer.BaseCursor.IsVisible)
+        IMixedRealityPointer usePointer = _pointerOverride ?? _focusProvider?.PrimaryPointer;
+        bool? isVisible = usePointer?.BaseCursor?.IsVisible;
+        if (usePointer == null || usePointer.BaseCursor == null || (!isVisible ?? true))
         {
             return;
         }
@@ -603,7 +604,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             if (!MixedRealityToolkit.Instance.RegisterService<IMixedRealitySpatialAwarenessSystem>(
                  MixedRealityToolkit.Instance.ActiveProfile.SpatialAwarenessSystemSystemType, args: args) && CoreServices.SpatialAwarenessSystem != null)
             {
-                Debug.LogError("Failed to start the Spatial Awareness System!");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Failed to start the Spatial Awareness System!");
             }
         }
     }

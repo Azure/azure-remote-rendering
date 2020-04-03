@@ -186,7 +186,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to reload profile settings. Exception: {ex.ToString()}");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to reload profile settings. Reason: {ex.Message}.");
             }
 
             if (Application.isPlaying)
@@ -264,7 +264,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to obtain machine for connection. Exception: {ex.ToString()}");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to obtain machine for connection. Reason: {ex.Message}.");
             }
 
             if (machine != null)
@@ -275,7 +275,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Failed to connect to machine. Exception: {ex.ToString()}");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to connect to machine. Reason: {ex.Message}.");
                 }
             }
         }
@@ -297,7 +297,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Failed to disconnect from machine. Exception: {ex.ToString()}");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to disconnect from machine. Reason: {ex.Message}.");
 
                 }
             }

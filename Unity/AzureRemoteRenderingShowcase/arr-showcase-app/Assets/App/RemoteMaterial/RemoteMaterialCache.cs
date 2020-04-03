@@ -166,7 +166,7 @@ public class RemoteMaterialCache
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogError($"Failed to load texture '{url}'.\r\nException: {ex.ToString()}");
+            UnityEngine.Debug.LogFormat(UnityEngine.LogType.Warning, UnityEngine.LogOption.NoStacktrace, null, $"Failed to load texture '{url}'. Reason: {ex.Message}.");
         }
 
         return result;

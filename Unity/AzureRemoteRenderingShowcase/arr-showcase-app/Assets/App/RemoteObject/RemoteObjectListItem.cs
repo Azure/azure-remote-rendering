@@ -159,7 +159,7 @@ public class RemoteObjectListItem : ListItemEventHandler
             DownloadHandlerTexture downloadedTexture = null;
             if (www.isNetworkError || www.isHttpError)
             {
-                Debug.LogWarning($"Failed to load image '{imageUrl}' ({www.error})");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to load image '{imageUrl}' ({www.error})");
             }
             else
             {

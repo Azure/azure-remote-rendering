@@ -241,7 +241,7 @@ public class ListContainer : GridObjectCollection
                 break;
 
             default:
-                Debug.LogError("Unsupported layout order. Can't calculate list container size.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Unsupported layout order. Can't calculate list container size.");
                 break;
         }
 

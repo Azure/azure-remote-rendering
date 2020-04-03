@@ -100,7 +100,6 @@ public class ModelProgressStatus : ProgressStatus
 {
     private LoadModelAsync _waitable = null;
     private TaskCompletionSource<LoadModelResult> _taskSource = new TaskCompletionSource<LoadModelResult>();
-    private float m_progress = 0.0f;
 
     public ModelProgressStatus()
     {

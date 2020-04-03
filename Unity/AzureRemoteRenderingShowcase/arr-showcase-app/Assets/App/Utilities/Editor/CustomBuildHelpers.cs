@@ -156,11 +156,11 @@ public class CustomBuilder
         }
         catch (Exception e)
         {
-            Debug.LogError($"Build Failed!\n{e.Message}\n{e.StackTrace}");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Build Failed!\n{e.Message}\n{e.StackTrace}");
             success = false;
         }
 
-        Debug.Log($"Exiting command line build... Build success? {success}");
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Exiting command line build... Build success? {success}");
         EditorApplication.Exit(success ? 0 : 1);
     }
 
@@ -483,7 +483,7 @@ public class CustomBuilder
 
         if (propertyGroupNode == null)
         {
-            Debug.LogError($"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <{propertyGroupTag} Label=\"{propertyGroupLabel}\" /> node");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <{propertyGroupTag} Label=\"{propertyGroupLabel}\" /> node");
             return false;
         }
 
@@ -525,7 +525,7 @@ public class CustomBuilder
 
         if (manifests.Length == 0)
         {
-            Debug.LogError($"Unable to find Package.appxmanifest file for build (in path - {buildDirectory})");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to find Package.appxmanifest file for build (in path - {buildDirectory})");
             return false;
         }
 
@@ -536,7 +536,7 @@ public class CustomBuilder
 
         if (capabilitiesNode == null)
         {
-            Debug.LogError($"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <Capabilities /> node");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <Capabilities /> node");
             return false;
         }
 

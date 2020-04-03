@@ -17,7 +17,7 @@ using Remote = Microsoft.Azure.RemoteRendering;
 public static class RemoteEntityExtensions
 {
     /// <summary>
-    /// This is a "no expection" version of QueryLocalBoundsAsync(). This will catch expection and return a default result.
+    /// This is a "no exception" version of QueryLocalBoundsAsync(). This will catch exceptions and return a default result.
     /// </summary>
     public static async Task<Bounds> SafeQueryLocalBoundsAsync(this Remote.Entity entity)
     {
@@ -30,7 +30,7 @@ public static class RemoteEntityExtensions
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogError($"Failed to get bounds of remote object.\r\nException: {ex.ToString()}");
+            UnityEngine.Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to get bounds of remote object. Reason: {ex.Message}");
         }
 
         return result;
@@ -174,9 +174,9 @@ public static class RemoteEntityExtensions
         {
             regex = new Regex(pattern);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Debug.LogError($"Invalid regex pattern given to FindAllByPattern. '{pattern}'\r\nException: {ex.ToString()}");
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Invalid regex pattern '{pattern}' given to FindAllByPattern.");
         }
 
         if (regex != null)

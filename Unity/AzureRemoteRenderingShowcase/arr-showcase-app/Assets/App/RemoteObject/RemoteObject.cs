@@ -289,9 +289,9 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Unexpected exception occurred when loading model. Exception:";
-            AppServices.AppNotificationService.RaiseNotification($"{msg} {ex.Message}", AppNotificationType.Error);
-            UnityEngine.Debug.LogError($"{msg} {ex.ToString()}");
+            var msg = $"Error loading model: {ex.Message}.";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
         }
 
         // If still loading, continue
@@ -494,7 +494,7 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Failed to load local model. ({model.Url}) ({model.AssetName})\r\nException: {ex.ToString()}");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to load local model '{model.AssetName}' from '{model.Url}'. Reason: {ex.Message}.");
         }
 
         GameObject localModel = null;
@@ -588,9 +588,9 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load model ({model.Url}). Exception: ";
-            AppServices.AppNotificationService.RaiseNotification($"{msg} {ex.Message}", AppNotificationType.Error);
-            UnityEngine.Debug.LogError($"{msg} {ex.ToString()}");
+            var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}.";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
         }
 
         // Apply item's transform
@@ -859,7 +859,7 @@ public class RemoteObject : MonoBehaviour
 
         if (localBounds.IsInvalidOrInfinite())
         {
-            UnityEngine.Debug.LogError($"Trying to set an invalid local bounds on the object. ({localBounds})");
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Trying to set an invalid local bounds on the object. ({localBounds})");
             localBounds.size = Vector3.zero;
         }
 

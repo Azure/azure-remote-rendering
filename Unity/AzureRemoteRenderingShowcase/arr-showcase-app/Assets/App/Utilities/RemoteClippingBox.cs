@@ -162,7 +162,7 @@ public class RemoteClippingBox : MonoBehaviour
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"Could not disable cut plane: {ex.Message}");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Could not disable cut plane: {ex.Message}");
                 }
             }
 
@@ -355,7 +355,7 @@ public class RemoteClippingBox : MonoBehaviour
         // Did we exceed the maximum number of cut planes?
         if (faceObjects.Count > MAX_CUTPLANES)
         {
-            Debug.LogWarning($"There are {faceObjects.Count} cut planes in use but some servers may only support {MAX_CUTPLANES}. Some cut planes may be ignored.");
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"There are {faceObjects.Count} cut planes in use but some servers may only support {MAX_CUTPLANES}. Some cut planes may be ignored.");
         }
     }
 

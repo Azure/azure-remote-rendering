@@ -60,7 +60,7 @@ public class RemoteSpherePointerVisual : MonoBehaviour
         _nearPointer = pointer as IMixedRealityNearPointer;
         if (_nearPointer == null)
         {
-            Debug.LogError($"No near pointer found on {gameObject.name}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"No near pointer found on {gameObject.name}.");
         }
 
         CheckAsset(visualsRoot, "Visuals Root");
@@ -72,7 +72,7 @@ public class RemoteSpherePointerVisual : MonoBehaviour
     {
         if (asset == null)
         {
-            Debug.LogError($"No {fieldname} specified on {gameObject.name}.SpherePointerVisual. Did you forget to set the {fieldname}?");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"No {fieldname} specified on {gameObject.name}.SpherePointerVisual. Did you forget to set the {fieldname}?");
         }
     }
 

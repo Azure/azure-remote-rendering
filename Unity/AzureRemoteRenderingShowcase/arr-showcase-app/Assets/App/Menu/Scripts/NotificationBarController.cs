@@ -64,13 +64,13 @@ public class NotificationBarController : MonoBehaviour
         switch (data.Type)
         {
             case AppNotificationType.Info:
-                SetNotification(15.0f, "" + data.Message, AppNotificationType.Info);
+                SetNotification(15.0f, data.Message, AppNotificationType.Info);
                 break;
             case AppNotificationType.Warning:
-                SetNotification(15.0f, "Warning: " + data.Message, AppNotificationType.Warning);
+                SetNotification(15.0f, data.Message, AppNotificationType.Warning);
                 break;
             case AppNotificationType.Error:
-                SetNotification(15.0f, "Error: " + data.Message, AppNotificationType.Error);
+                SetNotification(15.0f, data.Message, AppNotificationType.Error);
                 break;
         }
     }

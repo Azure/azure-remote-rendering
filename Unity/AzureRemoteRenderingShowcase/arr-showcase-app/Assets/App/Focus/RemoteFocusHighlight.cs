@@ -189,9 +189,9 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
             return;
         }
 
-        // First decide if childern highlighting should be disabled
-        bool wholeObject = false;
-        var highlightSettings = settings.GetSettings(focusingWholeObject && _pendingSelection.TryGetValue(_root, out wholeObject) && wholeObject);
+        // First decide if child highlighting should be disabled
+        bool wholeObject = _root != null && _pendingSelection.TryGetValue(_root, out wholeObject);
+        var highlightSettings = settings.GetSettings(focusingWholeObject && wholeObject);
         var tintColor = highlightSettings.TintColor.toRemote();
 
         // Next update highlighting flags

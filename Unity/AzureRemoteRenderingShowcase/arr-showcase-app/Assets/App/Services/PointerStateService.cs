@@ -164,7 +164,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     break;
 
                 default:
-                    Debug.LogError($"Unsupported point type '{pointerType}'");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unsupported point type '{pointerType}'");
                     success = false;
                     break;
             }

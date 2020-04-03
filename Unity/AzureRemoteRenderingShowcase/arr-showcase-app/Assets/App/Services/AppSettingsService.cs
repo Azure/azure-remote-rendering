@@ -105,9 +105,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                var msg = $"Failled to save app settings to '{DefaultAppSettingsFile}'. Exception:";
-                AppServices.AppNotificationService.RaiseNotification($"{msg} {ex.Message}", AppNotificationType.Error);
-                Debug.LogWarning($"{msg} {ex.ToString()}");
+                var msg = $"Failed to save app settings to '{DefaultAppSettingsFile}'. Reason: {ex.Message}.";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Warning);
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, msg);
             }
         }
 
@@ -121,9 +121,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                var msg = $"Failled to load app settings from '{DefaultAppSettingsFile}'. Exception:";
-                AppServices.AppNotificationService.RaiseNotification($"{msg} {ex.Message}", AppNotificationType.Error);
-                Debug.LogWarning($"{msg} {ex.ToString()}");
+                var msg = $"Failed to load app settings from '{DefaultAppSettingsFile}'. Reason: {ex.Message}.";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Warning);
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, msg);
             }
 
             if (fileSettings != null)

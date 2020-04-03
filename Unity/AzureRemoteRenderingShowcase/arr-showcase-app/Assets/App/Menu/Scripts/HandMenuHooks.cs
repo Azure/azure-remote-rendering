@@ -442,7 +442,7 @@ public class HandMenuHooks : MonoBehaviour
                 notificationBar.HideNotification();
                 break;
             default:
-                Debug.LogError($"Unknown remoting status '{_remoteRenderingService.Status}'");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unknown remoting status '{_remoteRenderingService.Status}'");
                 sessionStatusText.text = string.Empty;
                 break;
         }

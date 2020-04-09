@@ -9,7 +9,7 @@
     }
   ], 
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "0.1.22", 
+    "com.microsoft.azure.remote-rendering": "0.1.24", 
     "com.unity.ads": "2.0.8", 
     "com.unity.analytics": "3.3.5", 
     "com.unity.collab-proxy": "1.2.16", 

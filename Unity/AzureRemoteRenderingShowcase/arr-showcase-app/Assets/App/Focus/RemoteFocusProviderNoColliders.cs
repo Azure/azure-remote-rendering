@@ -646,7 +646,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to execute a remote ray cast ({cast.StartPos.toUnityPos()}) -> ({cast.EndPos.toUnityPos()}). Reason: {ex.Message}");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to execute a remote ray cast ({cast.StartPos.toUnityPos()}) -> ({cast.EndPos.toUnityPos()}). Reason: {ex.Message}");
             }
             return hits;
         }

@@ -50,8 +50,8 @@ function WriteProgress($activity, $status) {
 }
 
 function HandleException($exception) {
-    if ($_.Exception.Response.Headers.Contains("MS-CV")) {
-        $exceptionObject = "Response's MS-CV is '$($_.Exception.Response.Headers.GetValues('MS-CV'))'`r`n"
+    if ($exception.Response.Headers -ne $null -and $exception.Response.Headers.Contains("MS-CV")) {
+        $exceptionObject = "Response's MS-CV is '$($exception.Response.Headers.GetValues('MS-CV'))'`r`n"
     }
     else {
         $exceptionObject = ""

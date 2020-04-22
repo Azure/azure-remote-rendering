@@ -604,7 +604,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             if (!MixedRealityToolkit.Instance.RegisterService<IMixedRealitySpatialAwarenessSystem>(
                  MixedRealityToolkit.Instance.ActiveProfile.SpatialAwarenessSystemSystemType, args: args) && CoreServices.SpatialAwarenessSystem != null)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Failed to start the Spatial Awareness System!");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Failed to start the Spatial Awareness System!");
             }
         }
     }

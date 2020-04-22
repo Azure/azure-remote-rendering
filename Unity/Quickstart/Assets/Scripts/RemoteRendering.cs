@@ -109,11 +109,12 @@ public class RemoteRendering : MonoBehaviour
             return;
         }
 
-        // initialize the ARR service with our account details
+        // initialize the ARR service with our account details.
+        // Trim the strings in case they have been pasted into the inspector with trailing whitespaces
         AzureFrontendAccountInfo accountInfo = new AzureFrontendAccountInfo();
-        accountInfo.AccountKey = AccountKey;
-        accountInfo.AccountId = AccountId;
-        accountInfo.AccountDomain = AccountDomain;
+        accountInfo.AccountKey = AccountKey.Trim();
+        accountInfo.AccountId = AccountId.Trim();
+        accountInfo.AccountDomain = AccountDomain.Trim();
 
         arrService.Initialize(accountInfo);
     }

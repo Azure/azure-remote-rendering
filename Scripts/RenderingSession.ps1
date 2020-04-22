@@ -264,7 +264,7 @@ $config = LoadConfig `
     -AuthenticationEndpoint $AuthenticationEndpoint `
     -ServiceEndpoint $ServiceEndpoint `
     -Region $Region `
-    -VmSzie $VmSize `
+    -VmSize $VmSize `
     -MaxLeaseTime $MaxLeaseTime
 
 if ($null -eq $config) {

@@ -196,7 +196,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         {
             var msg = $"Failed to load remote model data from override file '{OverrideFilePath}'. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 
         return IsEmpty(fileData) ? null : fileData;
@@ -213,7 +213,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         {
             var msg = $"Failed to load remote model data from cloud url '{cloudFileUrl}'. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 
         return IsEmpty(fileData) ? null : fileData;
@@ -230,7 +230,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         {
             var msg = $"Failed to load remote model data from fallback file '{FallbackFilePath}'. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 
         return IsEmpty(fileData) ? null : fileData;
@@ -238,7 +238,7 @@ public class RemoteObjectListLoader : MonoBehaviour
 
     private bool TryLoadFromFallbackData(out RemoteModelFile fileData)
     {
-        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "No file data, using fallback data.");
+        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "No file data, using fallback data.");
         fileData = new RemoteModelFile();
 
         if (fallbackData != null && fallbackData.Objects != null)
@@ -272,7 +272,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         {
             var msg = $"Failed to load remote model data from Azure container. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
         return result;
     }
@@ -287,7 +287,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         {
             var msg = $"Failed to save remote model data to file. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
     }
 

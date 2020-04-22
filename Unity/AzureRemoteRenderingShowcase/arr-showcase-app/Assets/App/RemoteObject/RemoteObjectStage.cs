@@ -195,7 +195,7 @@ public class RemoteObjectStage : MonoBehaviour
     #region Public Methods
     public void ClearContainer()
     {
-        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Clearing model containers per request...");
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  "Clearing model containers per request...");
         ClearContainer(stagedObjectsContainer);
         ClearContainer(unstagedObjectsContainer);
     }

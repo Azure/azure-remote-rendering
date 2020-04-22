@@ -139,7 +139,7 @@ public class AppActions : MonoBehaviour
 
         if (quit)
         {
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Quitting application per request...");
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  "Quitting application per request...");
             Application.Quit();
         }
     }

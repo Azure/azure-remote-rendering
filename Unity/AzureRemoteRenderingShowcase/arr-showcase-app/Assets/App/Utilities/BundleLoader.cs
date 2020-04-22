@@ -26,11 +26,11 @@ public static class BundleLoader
 
         if (bundle == null)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to load model '{modelName}' from empty bundle '{bundleUri}'.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to load model '{modelName}' from empty bundle '{bundleUri}'.");
         }
         else if (!bundle.Contains(modelName))
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to load model '{modelName}'. Bundle '{bundleUri}' does not contain model.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to load model '{modelName}'. Bundle '{bundleUri}' does not contain model.");
         }
         else
         {
@@ -44,7 +44,7 @@ public static class BundleLoader
             catch (Exception ex)
             {
                 failure = true;
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Error loading model '{modelName}' from bundle '{bundleUri}'. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error loading model '{modelName}' from bundle '{bundleUri}'. Reason: {ex.Message}.");
             }
 
             if (!failure)
@@ -63,7 +63,7 @@ public static class BundleLoader
     {
         if (string.IsNullOrEmpty(uri))
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to load asset bundle from an empty uri.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to load asset bundle from an empty uri.");
             return Task.FromResult<AssetBundle>(null);
         }
 
@@ -94,7 +94,7 @@ public static class BundleLoader
     {
         if (string.IsNullOrEmpty(filepath))
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Unable to load asset bundle from an empty file path.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Unable to load asset bundle from an empty file path.");
             return null;
         }
 
@@ -108,7 +108,7 @@ public static class BundleLoader
         catch (Exception ex)
         {
             failure = true;
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Error making local request for bundle '{filepath}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making local request for bundle '{filepath}'. Reason: {ex.Message}.");
         }
 
         AssetBundle bundle = null;
@@ -127,7 +127,7 @@ public static class BundleLoader
     {
         if (string.IsNullOrEmpty(url))
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Unable to load asset bundle from an empty URL.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Unable to load asset bundle from an empty URL.");
             return null;
         }
 
@@ -142,7 +142,7 @@ public static class BundleLoader
         catch (Exception ex)
         {
             failure = true;
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Error making web request for bundle '{url}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making web request for bundle '{url}'. Reason: {ex.Message}.");
         }
 
         AssetBundle bundle = null;
@@ -152,7 +152,7 @@ public static class BundleLoader
         }
         else
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Error {webRequest.responseCode} received from web request for bundle '{url}'.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error {webRequest.responseCode} received from web request for bundle '{url}'.");
         }
 
         return bundle;

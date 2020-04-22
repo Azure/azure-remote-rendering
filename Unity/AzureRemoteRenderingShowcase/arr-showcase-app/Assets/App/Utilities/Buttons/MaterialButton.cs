@@ -73,7 +73,7 @@ public class MaterialButton : ClickableButton
 
         if (remoteMaterial == null)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Remote material is not set.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Remote material is not set.");
             return;
         }
 

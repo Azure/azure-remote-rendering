@@ -34,13 +34,13 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
         {
             if (!EditorAssemblyReloadManager.LockReloadAssemblies)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Lock Reload assemblies before attempting to build appx!");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Lock Reload assemblies before attempting to build appx!");
                 return false;
             }
 
             if (IsBuilding)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Build already in progress!");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Build already in progress!");
                 return false;
             }
 
@@ -50,14 +50,14 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
                 Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
             }
 
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Starting Unity Appx Build...");
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  "Starting Unity Appx Build...");
 
             IsBuilding = true;
             string slnFilename = Path.Combine(buildInfo.OutputDirectory, $"{PlayerSettings.productName}.sln");
 
             if (!File.Exists(slnFilename))
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Unable to find Solution to build from!");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Unable to find Solution to build from!");
                 return IsBuilding = false;
             }
 
@@ -66,7 +66,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
             if (!File.Exists(msBuildPath))
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"MSBuild.exe is missing or invalid!\n{msBuildPath}");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"MSBuild.exe is missing or invalid!\n{msBuildPath}");
                 return IsBuilding = false;
             }
 
@@ -80,7 +80,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
             }
             catch (Exception e)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to update appxmanifest!\n{e.Message}");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to update appxmanifest!\n{e.Message}");
                 return IsBuilding = false;
             }
 
@@ -122,7 +122,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
         private static async Task<int> Run(string fileName, string args, bool showDebug, CancellationToken cancellationToken)
         {
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Running command: {fileName} {args}");
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Running command: {fileName} {args}");
 
             var processResult = await new Process().StartProcessAsync(
                 fileName, args, !Application.isBatchMode, cancellationToken);
@@ -130,21 +130,21 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
             switch (processResult.ExitCode)
             {
                 case 0:
-                    Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Command successful");
+                    Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Command successful");
 
                     if (Application.isBatchMode)
                     {
-                        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, string.Join("\n", processResult.Output));
+                        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", string.Join("\n", processResult.Output));
                     }
                     break;
                 case -1073741510:
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "The build was terminated either by user's keyboard input CTRL+C or CTRL+Break or closing command prompt window.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "The build was terminated either by user's keyboard input CTRL+C or CTRL+Break or closing command prompt window.");
                     break;
                 default:
                     {
                         if (processResult.ExitCode != 0)
                         {
-                            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Command failed, errorCode: {processResult.ExitCode}");
+                            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Command failed, errorCode: {processResult.ExitCode}");
 
                             if (Application.isBatchMode)
                             {
@@ -162,7 +162,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
                                     output += $"{error}\n";
                                 }
 
-                                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, output);
+                                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  output);
                             }
                         }
                         break;
@@ -226,7 +226,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
             if (!File.Exists(projectFilePath))
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Cannot find project file: {projectFilePath}");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Cannot find project file: {projectFilePath}");
                 return false;
             }
 
@@ -270,7 +270,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
             if (identityNode == null)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing an <Identity /> node");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing an <Identity /> node");
                 return false;
             }
 
@@ -278,7 +278,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
             if (dependencies == null)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing <Dependencies /> node.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing <Dependencies /> node.");
                 return false;
             }
 
@@ -292,7 +292,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
 
             if (versionAttr == null)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing a Version attribute in the <Identity /> node.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Package.appxmanifest for build (in path - {manifestFilePath}) is missing a Version attribute in the <Identity /> node.");
                 return false;
             }
 
@@ -315,20 +315,20 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
         private static string GetManifestFilePath(IBuildInfo buildInfo)
         {
             var fullPathOutputDirectory = Path.GetFullPath(buildInfo.OutputDirectory);
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Searching for appx manifest in {fullPathOutputDirectory}...");
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Searching for appx manifest in {fullPathOutputDirectory}...");
 
             // Find the manifest, assume the one we want is the first one
             string[] manifests = Directory.GetFiles(fullPathOutputDirectory, "Package.appxmanifest", SearchOption.AllDirectories);
 
             if (manifests.Length == 0)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to find Package.appxmanifest file for build (in path - {fullPathOutputDirectory})");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to find Package.appxmanifest file for build (in path - {fullPathOutputDirectory})");
                 return null;
             }
 
             if (manifests.Length > 1)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Found more than one appxmanifest in the target build folder!");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Found more than one appxmanifest in the target build folder!");
             }
 
             return manifests[0];
@@ -374,20 +374,20 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
         private static string GetAssemblyCSharpProjectFilePath(IBuildInfo buildInfo)
         {
             var fullPathOutputDirectory = Path.GetFullPath(buildInfo.OutputDirectory);
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Searching for 'Assembly-CSharp.csproj' in {fullPathOutputDirectory}...");
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Searching for 'Assembly-CSharp.csproj' in {fullPathOutputDirectory}...");
 
             // Find the manifest, assume the one we want is the first one
             string[] manifests = Directory.GetFiles(fullPathOutputDirectory, "Assembly-CSharp.csproj", SearchOption.AllDirectories);
 
             if (manifests.Length == 0)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Unable to find 'Assembly-CSharp.csproj' file for build (in path - {fullPathOutputDirectory})");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to find 'Assembly-CSharp.csproj' file for build (in path - {fullPathOutputDirectory})");
                 return null;
             }
 
             if (manifests.Length > 1)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Found more than one 'Assembly-CSharp.csproj' in the target build folder!");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Found more than one 'Assembly-CSharp.csproj' in the target build folder!");
             }
 
             return manifests[0];
@@ -453,7 +453,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
         {
             if (String.IsNullOrEmpty(logDirectory))
             {
-                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Not logging {logFileName} because no logDirectory was provided");
+                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Not logging {logFileName} because no logDirectory was provided");
                 return "";
             }
 

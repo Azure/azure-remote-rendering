@@ -552,7 +552,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         {
             if (Entity != null && Entity != entity)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Attempting to attach a new entity to proxy that already has an entity");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Attempting to attach a new entity to proxy that already has an entity");
                 return;
             }
 
@@ -598,7 +598,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             RefCount--;
             if (RefCount < 0)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Proxy object released too many times.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Proxy object released too many times.");
                 RefCount = 0;
             }
             return RefCount;

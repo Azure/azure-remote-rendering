@@ -36,7 +36,9 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) ext
 
 > All settings are optional if you set these values via a [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file. The [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file can be placed under Unity's *StreamingAssets* directory. If this file exists, the app will use the settings within the file, instead of those within the configuration profile.
 > 
->  The [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file is not tracked by *git* (as defined in the app's [.gitignore](../.gitignore)), preventing accidental commits of private/secret information. So it is preferred to use [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the MRTK's configuration profile.
+> The [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file is not tracked by *git* (as defined in the app's [.gitignore](../.gitignore)), preventing accidental commits of private/secret information. So it is preferred to use [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the MRTK's configuration profile.
+>
+> Additionally the [arr.overrides.xml](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. The [arr.overrides.xml](.samples/arr.overrides.xml) file needs to be placed in the "C:/Users/&lt;username&gt;/AppData/LocalLow/Microsoft/ARR Showcase" folder on PC or in the "LocalState" folder of your app package on HoloLens. The file should only contain the settings you want to override.
 
 <br/>
 

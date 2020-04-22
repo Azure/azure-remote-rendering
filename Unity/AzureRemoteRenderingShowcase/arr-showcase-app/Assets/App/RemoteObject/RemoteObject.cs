@@ -291,7 +291,7 @@ public class RemoteObject : MonoBehaviour
         {
             var msg = $"Error loading model: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 
         // If still loading, continue
@@ -494,7 +494,7 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to load local model '{model.AssetName}' from '{model.Url}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load local model '{model.AssetName}' from '{model.Url}'. Reason: {ex.Message}.");
         }
 
         GameObject localModel = null;
@@ -590,7 +590,7 @@ public class RemoteObject : MonoBehaviour
         {
             var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 
         // Apply item's transform
@@ -859,7 +859,7 @@ public class RemoteObject : MonoBehaviour
 
         if (localBounds.IsInvalidOrInfinite())
         {
-            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Trying to set an invalid local bounds on the object. ({localBounds})");
+            UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Trying to set an invalid local bounds on the object. ({localBounds})");
             localBounds.size = Vector3.zero;
         }
 

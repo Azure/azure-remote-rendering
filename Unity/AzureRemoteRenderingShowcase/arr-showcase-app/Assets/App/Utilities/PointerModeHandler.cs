@@ -51,7 +51,7 @@ public class PointerModeHandler : MonoBehaviour, IMixedRealityPointerHandler
             PointerModeAndResponse pointerModeAndResponse = pointerModes[index];
             if (_pointerResponses.ContainsKey(pointerModeAndResponse.Mode))
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Duplicate pointer mode \'{pointerModeAndResponse.Mode}\' specified in \'{gameObject.name}\'.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Duplicate pointer mode \'{pointerModeAndResponse.Mode}\' specified in \'{gameObject.name}\'.");
             }
             else
             {

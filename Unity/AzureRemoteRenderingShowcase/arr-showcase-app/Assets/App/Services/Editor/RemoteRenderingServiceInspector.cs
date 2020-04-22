@@ -79,6 +79,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
 
         private void DrawSessionControls(IRemoteRenderingService service)
         {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
             GUILayout.BeginVertical();
             GUILayout.BeginHorizontal();
 
@@ -186,7 +191,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to reload profile settings. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to reload profile settings. Reason: {ex.Message}.");
             }
 
             if (Application.isPlaying)
@@ -264,7 +269,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to obtain machine for connection. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to obtain machine for connection. Reason: {ex.Message}.");
             }
 
             if (machine != null)
@@ -275,7 +280,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to connect to machine. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to connect to machine. Reason: {ex.Message}.");
                 }
             }
         }
@@ -297,7 +302,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Failed to disconnect from machine. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to disconnect from machine. Reason: {ex.Message}.");
 
                 }
             }

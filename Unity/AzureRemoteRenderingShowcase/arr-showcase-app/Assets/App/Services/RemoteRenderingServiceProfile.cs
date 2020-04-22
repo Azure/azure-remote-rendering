@@ -94,11 +94,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     else if (AccountDomains == null)
                     {
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "'AccountDomains' is null.");
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "'AccountDomains' is null.");
                     }
                     else if (Array.IndexOf(AccountDomains, value) < 0)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"'AccountDomains' doesn't contain the preferred domain, '{value}'.");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"'AccountDomains' doesn't contain the preferred domain, '{value}'.");
                     }
 
                     _preferredDomain = value;

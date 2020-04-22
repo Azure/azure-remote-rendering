@@ -30,7 +30,7 @@ public static class RemoteEntityExtensions
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Failed to get bounds of remote object. Reason: {ex.Message}");
+            UnityEngine.Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to get bounds of remote object. Reason: {ex.Message}");
         }
 
         return result;
@@ -176,7 +176,7 @@ public static class RemoteEntityExtensions
         }
         catch (Exception)
         {
-            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, $"Invalid regex pattern '{pattern}' given to FindAllByPattern.");
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Invalid regex pattern '{pattern}' given to FindAllByPattern.");
         }
 
         if (regex != null)

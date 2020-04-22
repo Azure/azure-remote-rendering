@@ -74,7 +74,7 @@ public class CubeMapButton : ClickableButton
 
         if (remoteCubeMap == null)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Remote cube map is not set.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Remote cube map is not set.");
             return;
         }
 

@@ -65,7 +65,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             if (machine == null)
             {
                 var msg = $"Unable to load model: this is no remote rendering session. (url = {loadModelParams.ModelUrl})";
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 return null;
             }
@@ -73,7 +73,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             if (machine.Session.Connection.ConnectionStatus != ConnectionStatus.Connected)
             {
                 var msg = $"Unable to load model: manager is not connected. (url = {loadModelParams.ModelUrl})";
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 return null;
             }
@@ -98,7 +98,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 if (machine == null)
                 {
                     var msg = $"Unable to load model: there is no remote rendering session. (url = {loadModelParams.ModelUrl})";
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, msg);
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                     break;
                 }

@@ -24,7 +24,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public void RaiseNotification(String message, AppNotificationType type)
         {
-            type = AppNotificationType.Warning;
             if (_appNotificationServiceProfile != null && type < _appNotificationServiceProfile.MinNotificationLevel)
             {
                 return;

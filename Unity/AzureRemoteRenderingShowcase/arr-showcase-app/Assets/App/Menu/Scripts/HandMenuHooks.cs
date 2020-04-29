@@ -399,7 +399,7 @@ public class HandMenuHooks : MonoBehaviour
         {
             case RemoteRenderingServiceStatus.SessionReadyAndDisconnected:
                 sessionStatusText.text = "Disconnected";
-                notificationBar.SetNotification(3f, "Session disconnected.");
+                notificationBar.SetScrollableNotification(3f, "Session disconnected.");
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnectionError:
                 sessionStatusText.text = "Disconnected";
@@ -407,7 +407,7 @@ public class HandMenuHooks : MonoBehaviour
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnected:
                 sessionStatusText.text = "Connected";
-                notificationBar.SetNotification(3f, "Session connected.");
+                notificationBar.SetScrollableNotification(3f, "Session connected.");
                 showStartSessionButton = false;
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnecting:
@@ -426,15 +426,15 @@ public class HandMenuHooks : MonoBehaviour
                 break;
             case RemoteRenderingServiceStatus.SessionError:
                 sessionStatusText.text = "Failure";
-                notificationBar.SetNotification(3f, "Session failed to start.");
+                notificationBar.SetScrollableNotification(3f, "Session failed to start.");
                 break;
             case RemoteRenderingServiceStatus.SessionExpired:
                 sessionStatusText.text = "Expired";
-                notificationBar.SetNotification(3f, "Session expired.");
+                notificationBar.SetScrollableNotification(3f, "Session expired.");
                 break;
             case RemoteRenderingServiceStatus.SessionStopped:
                 sessionStatusText.text = "Stopped";
-                notificationBar.SetNotification(3f, "Session stopped.");
+                notificationBar.SetScrollableNotification(3f, "Session stopped.");
                 break;
             case RemoteRenderingServiceStatus.NoSession:
             case RemoteRenderingServiceStatus.Unknown:

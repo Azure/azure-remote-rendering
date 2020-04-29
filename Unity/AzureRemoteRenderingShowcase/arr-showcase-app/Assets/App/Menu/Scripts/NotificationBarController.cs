@@ -4,6 +4,8 @@
 using Microsoft.MixedReality.Toolkit.Extensions;
 using UnityEngine;
 
+using static AnimateText;
+
 /// <summary>
 /// Controls when the notification bar appears, how long it appears, and what it says.
 /// </summary>
@@ -14,8 +16,24 @@ public class NotificationBarController : MonoBehaviour
     private float _durationTime = 0f;
     private bool _isLoadingModel = false;
     private const string _loadingModelStringFormat = "Loading model: {0:F2}%";
+    // Notifications override download progress
+    private bool _isDisplayingNotification = false;
 
     #region Serialized Fields
+    [SerializeField]
+    [Tooltip("How long a notification is displayed.")]
+    [Min(0.0f)]
+    private float notificationDuration = 15.0f;
+
+    /// <summary>
+    /// How long a notification is displayed.
+    /// </summary>
+    public float NotificationDuration
+    {
+        get => notificationDuration;
+        set => notificationDuration = value;
+    }
+
     [SerializeField]
     [Tooltip("The object that displays notification messages to the user.")]
     private GameObject notificationBar = null;
@@ -64,25 +82,25 @@ public class NotificationBarController : MonoBehaviour
         switch (data.Type)
         {
             case AppNotificationType.Info:
-                SetNotification(15.0f, data.Message, AppNotificationType.Info);
+                SetScrollableNotification(notificationDuration, data.Message, AppNotificationType.Info);
                 break;
             case AppNotificationType.Warning:
-                SetNotification(15.0f, data.Message, AppNotificationType.Warning);
+                SetScrollableNotification(notificationDuration, data.Message, AppNotificationType.Warning);
                 break;
             case AppNotificationType.Error:
-                SetNotification(15.0f, data.Message, AppNotificationType.Error);
+                SetScrollableNotification(notificationDuration, data.Message, AppNotificationType.Error);
                 break;
         }
     }
 
     private void Update()
     {
-        if (_currentTime < _durationTime)
+        if (_isDisplayingNotification)
         {
             _currentTime += Time.deltaTime;
-            if (_currentTime >= _durationTime)
+            if (_durationTime >= 0.0f && _currentTime >= _durationTime && _textAnimation.MessageShownCompletely)
             {
-                notificationBar.SetActive(false);
+                _isDisplayingNotification = false;
             }
         }
         else
@@ -90,16 +108,15 @@ public class NotificationBarController : MonoBehaviour
             float progress = AppServices.RemoteObjectFactory.Progress;
             if (progress > 0f && progress < 1f)
             {
-                string progressString = string.Format(_loadingModelStringFormat, progress * 100.0f);
-
                 if (!_isLoadingModel)
                 {
                     _isLoadingModel = true;
-                    SetNotification(-1, progressString);
+                    notificationBar.SetActive(true);
                 }
 
-                SetNotificationText(progressString);
-                SetDownloadFill(progress);
+                string progressString = string.Format(_loadingModelStringFormat, progress * 100.0f);
+                _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(progressString, AppNotificationType.Info) };
+                progressBar.AnimateFill(progress);
             }
             else
             {
@@ -108,58 +125,68 @@ public class NotificationBarController : MonoBehaviour
                     // reset the download bar, turn it off
                     _isLoadingModel = false;
                     progressBar.FillAmount = 0f;
-                    notificationBar.SetActive(false);
                 }
             }
         }
+        notificationBar.SetActive(_isDisplayingNotification || _isLoadingModel);
     }
     #endregion MonoBehavior Functions
 
     #region Public Functions
-    public void HideNotification()
+    public void SetScrollableNotification(float duration, string message, AppNotificationType type = AppNotificationType.Info)
     {
-        if (_textAnimation != null)
-        {
-            _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(string.Empty, AppNotificationType.Info) };
-        }
-
-        _durationTime = 0f;
-        _currentTime = 0f;
-        notificationBar.SetActive(false);
+        UpdateTextAnimation(0.0f, ConvertToTextData(new string[] { message }, type), AnimationType.Scrolling);
+        SetNotificationBarDisplayDuration(duration);
     }
 
     public void SetNotification(float duration, string message, AppNotificationType type = AppNotificationType.Info)
     {
-        if (_textAnimation != null)
-        {
-            _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(message, type) };
-        }
-
-        _durationTime = duration;
-        _currentTime = 0f;
-
-        //re-enabling will make the bar flash
-        if(notificationBar.activeInHierarchy)
-        {
-            notificationBar.SetActive(false);
-        }
-        notificationBar.SetActive(true);
+        SetNotification(duration, 0.0f, new string[] { message }, type);
     }
 
     public void SetNotification(float duration, float animTime, string[] messages, AppNotificationType type = AppNotificationType.Info)
     {
+        UpdateTextAnimation(animTime, ConvertToTextData(messages, type), AnimationType.Switching);
+        SetNotificationBarDisplayDuration(duration);
+    }
+
+    public void HideNotification()
+    {
+        UpdateTextAnimation(0.0f, new AnimateText.TextData[] { new AnimateText.TextData(string.Empty, AppNotificationType.Info) }, AnimationType.Switching);
+
+        _durationTime = 0f;
+        _currentTime = 0f;
+        _isDisplayingNotification = false;
+        notificationBar.SetActive(false);
+    }
+    #endregion Public Functions
+
+    #region Private Functions
+    private TextData[] ConvertToTextData(string[] messages, AppNotificationType type = AppNotificationType.Info)
+    {
+        var newTextData = new TextData[messages.Length];
+        for (int i = 0; i < messages.Length; i++)
+        {
+            newTextData[i] = new  TextData(messages[i], type);
+        }
+        return newTextData;
+    }
+
+    private void UpdateTextAnimation(float animTime, TextData[] textData, AnimationType animationType)
+    {
         if (_textAnimation != null)
         {
-            _textAnimation.TextDataToAnimate = new AnimateText.TextData[messages.Length];
-            for (int i = 0; i < messages.Length; i++)
-            {
-                _textAnimation.TextDataToAnimate[i] = new AnimateText.TextData(messages[i], type);
-            }
-            _textAnimation.AnimationLength = animTime;
+            _textAnimation.TextAnimationLength = animTime;
+            _textAnimation.TextDataToAnimate = textData;
+            _textAnimation.CurrentAnimationType = animationType;
         }
+    }
 
+    private void SetNotificationBarDisplayDuration(float duration)
+    {
         _durationTime = duration;
         _currentTime = 0f;
+        _isDisplayingNotification = true;
 
         //re-enabling will make the bar flash
         if (notificationBar.activeInHierarchy)
@@ -168,18 +195,5 @@ public class NotificationBarController : MonoBehaviour
         }
         notificationBar.SetActive(true);
     }
-
-    public void SetNotificationText(string newText)
-    {
-        if (_textAnimation != null)
-        {
-            _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(newText, AppNotificationType.Info) };
-        }
-    }
-
-    public void SetDownloadFill(float fillAmount)
-    {
-        progressBar.AnimateFill(fillAmount);
-    }
-    #endregion Public Functions
+    #endregion Private Functions
 }

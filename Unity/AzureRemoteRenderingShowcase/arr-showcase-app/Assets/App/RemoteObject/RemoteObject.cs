@@ -289,7 +289,7 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Error loading model: {ex.Message}.";
+            var msg = $"Error loading model: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -494,7 +494,7 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load local model '{model.AssetName}' from '{model.Url}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load local model '{model.AssetName}' from '{model.Url}'. Reason: {ex.Message}");
         }
 
         GameObject localModel = null;
@@ -588,7 +588,7 @@ public class RemoteObject : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}.";
+            var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }

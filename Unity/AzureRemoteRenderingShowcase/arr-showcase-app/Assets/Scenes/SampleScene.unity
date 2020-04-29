@@ -821,6 +821,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 1098040877}
     m_Modifications:
+    - target: {fileID: 0}
+      propertyPath: _scrollSpeed
+      value: 0.01
+      objectReference: {fileID: 0}
     - target: {fileID: 1374968675397860547, guid: 8ee306ac28894f94bbb3c05883e4e59b,
         type: 3}
       propertyPath: Stage

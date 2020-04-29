@@ -278,7 +278,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                var msg = $"Error creating frontend: {ex.Message}.";
+                var msg = $"Error creating frontend: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                 return null;
@@ -308,9 +308,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 var resultSession = await sessionTask;
                 return AddMachine(resultSession);
             }
-            catch (RRSessionException ex)
+            catch (Exception ex)
             {
-                string msg = $"Failed to create session. Result: {ex.Context.Result.ToString()}. Reason: {ex.Context.ErrorMessage}.";
+                string msg = $"Failed to create session. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
             }
@@ -348,7 +348,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                var msg = $"Failed to initialize ARR service. Reason: {ex.Message}.";
+                var msg = $"Failed to initialize ARR service. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
             }
@@ -632,7 +632,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to open last session ({LastSession.Id}). Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to open last session ({LastSession.Id}). Reason: {ex.Message}");
                 }
             }
 
@@ -645,7 +645,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 catch (Exception ex)
                 {
                     lastMachine = null;
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to connect to last session ({LastSession.Id}). Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to connect to last session ({LastSession.Id}). Reason: {ex.Message}");
                 }
             }
 
@@ -875,7 +875,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load container data. Reason: {ex.Message}.");
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load container data. Reason: {ex.Message}");
                     }
 
                     if (enumerationResults != null && enumerationResults.Blobs != null && enumerationResults.Blobs.Length > 0)
@@ -980,7 +980,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from model index file '{blobUrl}'. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from model index file '{blobUrl}'. Reason: {ex.Message}");
                 }
                 return fileData;
             }
@@ -1161,7 +1161,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}");
                 }
 
                 return Value;
@@ -1430,7 +1430,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     catch (Exception ex)
                     {
-                        var msg = $"Failed to connect to ARR Inspector. Reason: {ex.Message}.";
+                        var msg = $"Failed to connect to ARR Inspector. Reason: {ex.Message}";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                         Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                     }
@@ -1692,7 +1692,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    var msg = $"Failed to disconnect from runtime. Reason: {ex.Message}.";
+                    var msg = $"Failed to disconnect from runtime. Reason: {ex.Message}";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                     Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                 }
@@ -1749,7 +1749,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to get rendering properties during connection. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to get rendering properties during connection. Reason: {ex.Message}");
                 }
 
                 bool tryConnect = false;
@@ -1793,7 +1793,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     catch (Exception ex)
                     {
-                        var msg = $"Failed to connect to session. Reason: {ex.Message}.";
+                        var msg = $"Failed to connect to session. Reason: {ex.Message}";
                         RRException rre = ex as RRException;
                         if (rre != null)
                         {
@@ -2157,7 +2157,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load texture '{url}'. Reason: {ex.Message}.");
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load texture '{url}'. Reason: {ex.Message}");
                 }
 
                 return texture;

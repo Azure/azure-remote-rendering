@@ -1,3 +1,6 @@
+# This Powershell script is an example for the usage of the Azure Remote Rendering service
+# Documentation: https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts
+#
 # Usage: 
 # Fill out the accountSettings and renderingSessionSettings in arrconfig.json next to this file!
 # This script is using the ARR REST API to start a rendering session 
@@ -55,6 +58,18 @@ Param(
 
 . "$PSScriptRoot\ARRUtils.ps1" #include ARRUtils for Logging, Config parsing
 
+Set-StrictMode -Version Latest
+$PrerequisitesInstalled = CheckPrerequisites
+if (-Not $PrerequisitesInstalled) {
+    WriteError("Prerequisites not installed - Exiting.")
+    exit 1
+}
+
+$LoggedIn = CheckLogin
+if (-Not $LoggedIn) {
+    WriteError("User not logged in - Exiting.")
+    exit 1
+}
 # Create a Session by calling REST API <endpoint>/v1/accounts/<accountId>/sessions/create/
 # returns a session GUID which can be used to retrieve session status
 function CreateRenderingSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $vmSize = "standard", $maxLeaseTime = "4:0:0", $additionalParameters) {
@@ -228,22 +243,29 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
 
     $totalTimeElapsed = $(New-TimeSpan $startTime $(get-date)).TotalSeconds
     if ("ready" -eq $sessionStatus.ToLower()) {
-        WriteInformation ("Session '$SessionId' is ready ...")
-        WriteInformation ("Total time elapsed: $totalTimeElapsed ...")
+		WriteInformation ("")
+		Write-Host -ForegroundColor Green "Session is ready.";
+		WriteInformation ("")
+        WriteInformation ("SessionId: $SessionId")
+		WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
+		WriteInformation ("")
+		WriteInformation ("Response details:")
         WriteInformation($response)
         return $sessionProperties
     }
 
     if ("error" -eq $sessionStatus.ToLower()) {
-        WriteInformation ("An attempt to create a new session with Id: $SessionId resulted in an error")
-        WriteInformation ("Total time elapsed: $totalTimeElapsed  ...")
+        WriteInformation ("The attempt to create a new session resulted in an error.")
+        WriteInformation ("SessionId: $SessionId")
+        WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
         WriteInformation($response)
         exit 1
     }
 
     if ("expired" -eq $sessionStatus.ToLower()) {
-        WriteInformation ("An attempt to create a new session with Id: $SessionId expired before it became ready. Check your settings in your configuration (arrconfig.json)")
-        WriteInformation ("Total time elapsed: $totalTimeElapsed  ...")
+        WriteInformation ("The attempt to create a new session expired before it became ready. Check the settings in your configuration (arrconfig.json).")
+        WriteInformation ("SessionId: $SessionId")
+        WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
         WriteInformation($response)
         exit 1
     }
@@ -268,7 +290,7 @@ $config = LoadConfig `
     -MaxLeaseTime $MaxLeaseTime
 
 if ($null -eq $config) {
-    WriteError("Error reading config file. Exiting.")
+    WriteError("Error reading config file - Exiting.")
     exit 1
 }
 
@@ -276,8 +298,7 @@ $defaultConfig = GetDefaultConfig
 
 $accountOkay = VerifyAccountSettings $config $defaultConfig $ServiceEndpoint
 if ($false -eq $accountOkay) {
-    WriteError("Ensure correct accountSettings in $ConfigFile")
-    WriteError("Exiting because of config issue")
+    WriteError("Error reading accountSettings in $ConfigFile - Exiting.")
     exit 1
 }
 
@@ -286,7 +307,7 @@ if (-Not ($GetSessionProperties -or $GetSessions -or $StopSession -or ($UpdateSe
     #otherwise we need to check them    
     $vmSettingsOkay = VerifyRenderingSessionSettings $config $defaultConfig
     if (-Not $vmSettingsOkay) {
-        WriteError("renderSessionSettings not valid. please ensure valid renderSessionSettings in $ConfigFile or commandline parameters")
+        WriteError("renderSessionSettings not valid. please ensure valid renderSessionSettings in $ConfigFile or commandline parameters - Exiting.")
         exit 1
     }
 }

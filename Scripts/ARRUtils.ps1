@@ -1,3 +1,6 @@
+# This Powershell script is an example for the usage of the Azure Remote Rendering service
+# Documentation: https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts
+
 $Global:ARRAuthenticationToken = $null
 
 $ARRAuthenticationEndpoint = "https://sts.mixedreality.azure.com"
@@ -13,6 +16,35 @@ $ARRServiceEndpoints = @{
 $ARRAvailableVMSizes = @{
     standard = $true
     premium  = $true
+}
+
+$docsAvailableString = "Documentation is available at https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts"
+function CheckPrerequisites()
+{
+    $azStorageInstalled = Get-Module -ListAvailable -Name Az.Storage
+    if (-Not $azStorageInstalled) {
+        WriteErrorResponse "Az.Storage module is not installed - Install it via 'Install-Module -Name Az -AllowClobber'. $($docsAvailableString)"
+        return $False
+    }
+
+    $azAccountsInstalled = Get-Module -ListAvailable -Name Az.Accounts
+    if (-Not $azAccountsInstalled) {
+        WriteErrorResponse "Az.Accounts module is not installed - Install it via 'Install-Module -Name Az -AllowClobber'. $($docsAvailableString)" 
+        return $False
+    }
+    return $True
+}
+
+function CheckLogin()
+{
+    $context = Get-AzContext
+    if (!$context) 
+    {
+        WriteErrorResponse "Not logged into a subscription. You need to log in via the Connect-AzAccount command. $($docsAvailableString)"
+        return $False
+    } 
+    WriteSuccess "Using Subscription: '$($context.Name)' TenantId: '$($context.Tenant.Id)'"
+    return $True
 }
 
 # Format output messages
@@ -460,8 +492,7 @@ function GenerateInputContainerSAS([string]$blobEndPoint, [string]$blobContainer
         return $inputContainerSAS
     }
     else {
-        WriteError("Unable to generate Input container SAS. Please ensure parameters are valid ...")
-
+        WriteError("Unable to generate Input container SAS. Please ensure parameters are valid - Exiting.")
         exit 1
     }
 }
@@ -481,8 +512,7 @@ function GenerateOutputmodelSASUrl($convertedAssets, [string]$blobEndPoint, $sto
         return $blobSASUri
     }
     else {
-        WriteError("Unable to generate model sas URI Please ensure parameters are valid ...")
-
+        WriteError("Unable to generate model sas URI Please ensure parameters are valid - Exiting.")
         exit 1
     }
 }
@@ -500,8 +530,7 @@ function GenerateOutputContainerSAS([string]$blobEndPoint, [string]$blobContaine
         return $outputContainerSAS
     }
     else {
-        WriteError("Unable to generate output container SAS. Please ensure parameters are valid ...")
-
+        WriteError("Unable to generate output container SAS. Please ensure parameters are valid - Exiting.")
         exit 1
     }
 }
@@ -524,8 +553,7 @@ function GetAuthenticationToken([string]$authenticationEndpoint, [GUID]$accountI
             return $Global:ARRAuthenticationToken
         }
         else {
-            WriteError("Unable to get an authentication token - please check your accountId and accountKey ...")
-
+            WriteError("Unable to get an authentication token - please check your accountId and accountKey - Exiting.")
             exit 1
         }
     }

@@ -77,7 +77,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to save override file. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to save override file. Reason: {ex.Message}");
             }
         }
 
@@ -223,7 +223,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from override file '{DefaultOverrideFilePath}'. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from override file '{DefaultOverrideFilePath}'. Reason: {ex.Message}");
             }
 
             return fileData;
@@ -238,7 +238,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             catch (Exception ex)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from account file '{DefaultDeployedFilePath}'. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from account file '{DefaultDeployedFilePath}'. Reason: {ex.Message}");
             }
 
             return fileData;

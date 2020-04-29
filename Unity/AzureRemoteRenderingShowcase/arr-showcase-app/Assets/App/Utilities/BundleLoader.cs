@@ -44,7 +44,7 @@ public static class BundleLoader
             catch (Exception ex)
             {
                 failure = true;
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error loading model '{modelName}' from bundle '{bundleUri}'. Reason: {ex.Message}.");
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error loading model '{modelName}' from bundle '{bundleUri}'. Reason: {ex.Message}");
             }
 
             if (!failure)
@@ -108,7 +108,7 @@ public static class BundleLoader
         catch (Exception ex)
         {
             failure = true;
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making local request for bundle '{filepath}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making local request for bundle '{filepath}'. Reason: {ex.Message}");
         }
 
         AssetBundle bundle = null;
@@ -142,7 +142,7 @@ public static class BundleLoader
         catch (Exception ex)
         {
             failure = true;
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making web request for bundle '{url}'. Reason: {ex.Message}.");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Error making web request for bundle '{url}'. Reason: {ex.Message}");
         }
 
         AssetBundle bundle = null;

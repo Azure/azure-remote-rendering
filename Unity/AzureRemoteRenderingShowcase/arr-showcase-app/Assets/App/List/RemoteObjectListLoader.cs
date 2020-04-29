@@ -194,7 +194,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load remote model data from override file '{OverrideFilePath}'. Reason: {ex.Message}.";
+            var msg = $"Failed to load remote model data from override file '{OverrideFilePath}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -211,7 +211,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load remote model data from cloud url '{cloudFileUrl}'. Reason: {ex.Message}.";
+            var msg = $"Failed to load remote model data from cloud url '{cloudFileUrl}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -228,7 +228,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load remote model data from fallback file '{FallbackFilePath}'. Reason: {ex.Message}.";
+            var msg = $"Failed to load remote model data from fallback file '{FallbackFilePath}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -270,7 +270,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load remote model data from Azure container. Reason: {ex.Message}.";
+            var msg = $"Failed to load remote model data from Azure container. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -285,7 +285,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to save remote model data to file. Reason: {ex.Message}.";
+            var msg = $"Failed to save remote model data to file. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }

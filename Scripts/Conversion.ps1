@@ -1,3 +1,6 @@
+# This Powershell script is an example for the usage of the Azure Remote Rendering service
+# Documentation: https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts
+#
 # Usage: 
 # Fill out the assetConversionSettings in arrconfig.json next to this file or provide all necessary parameters on the commandline 
 # This script is using the ARR REST API to convert assets to the asset format used in rendering sessions
@@ -6,6 +9,7 @@
 #   Requires that the ARR account has access to the storage account. The documentation explains how to grant access. 
 #   Will:
 #   - Load config from arrconfig.json or optional file provided by the -ConfigFile parameter
+#   - Retrieve Azure Storage credentials for the configured storage account and logged in user
 #   - Upload the directory pointed to in assetConversionSettings.localAssetDirectoryPath to the storage input container
 #      using the provided storage account.
 #   - Start a conversion using the ARR Conversion REST API and retrieves a conversion Id 
@@ -57,6 +61,19 @@ Param(
 )
 
 . "$PSScriptRoot\ARRUtils.ps1"
+
+Set-StrictMode -Version Latest
+$PrerequisitesInstalled = CheckPrerequisites
+if (-Not $PrerequisitesInstalled) {
+    WriteError("Prerequisites not installed - Exiting.")
+    exit 1
+}
+
+$LoggedIn = CheckLogin
+if (-Not $LoggedIn) {
+    WriteError("User not logged in - Exiting.")
+    exit 1
+}
 
 if (-Not ($Upload -or $ConvertAsset -or $GetConversionStatus )) {
     # if none of the three stages is explicitly asked for execute all stages and poll for conversion status until finished
@@ -339,7 +356,7 @@ $config = LoadConfig `
     -OutputAssetFileName $OutputAssetFileName
 
 if ($null -eq $config) {
-    WriteError("Error reading config file. Exiting.")
+    WriteError("Error reading config file - Exiting.")
     exit 1
 }
 
@@ -347,16 +364,14 @@ $defaultConfig = GetDefaultConfig
 
 $accountOkay = VerifyAccountSettings $config $defaultConfig $ServiceEndpoint
 if ($false -eq $accountOkay) {
-    WriteError("Ensure correct accountSettings in $ConfigFile")
-    WriteError("Exiting because of config issue")
+    WriteError("Error reading accountSettings in $ConfigFile - Exiting.")
     exit 1
 }
 
 if ($ConvertAsset -or $Upload -or $UseContainerSas) {
     $storageSettingsOkay = VerifyStorageSettings $config $defaultConfig
     if ($false -eq $storageSettingsOkay) {
-        WriteError("Ensure correct assetConversionSettings in $ConfigFile")
-        WriteError("Exiting because of config issue")
+        WriteError("Error reading assetConversionSettings in $ConfigFile - Exiting.")
         exit 1
     }
     
@@ -364,7 +379,7 @@ if ($ConvertAsset -or $Upload -or $UseContainerSas) {
     # we do not need the storage settings if we only want to spin up a session
     $isValid = ValidateConversionSettings $config $defaultConfig $ConvertAsset
     if ($false -eq $isValid) {
-        WriteError("The config file is not valid. Please ensure the required values are filled in ...")
+        WriteError("The config file is not valid. Please ensure the required values are filled in - Exiting.")
         exit 1
     }
     WriteSuccess("Successfully Loaded Configurations from file : $ConfigFile ...")
@@ -379,7 +394,7 @@ if ($ConvertAsset -or $Upload -or $UseContainerSas) {
 if ($Upload) {
     $uploadSuccessful = UploadAssetDirectory $config.assetConversionSettings
     if ($false -eq $uploadSuccessful) {
-        WriteError("Upload failed - exiting.")
+        WriteError("Upload failed - Exiting.")
         exit 1
     }
 }

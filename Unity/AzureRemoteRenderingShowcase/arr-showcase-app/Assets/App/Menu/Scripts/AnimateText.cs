@@ -1,21 +1,17 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 /// <summary>
 /// Used to update a text object over time given an array of strings
 /// </summary>
 public class AnimateText : MonoBehaviour
 {
-    private TextMeshProUGUI _mainText;
-    private Transform _mainTextTransform;
     private RectTransform _mainTextRectTransform;
-
-    private TextMeshProUGUI _cloneText;
-    private Transform _cloneTextTransform;
     private RectTransform _cloneTextRectTransform;
+    private TextData[] _textDataToAnimate = new TextData[0];
 
     private float _notificationBarWidth;
     private float _textAreaWidth;
@@ -26,26 +22,6 @@ public class AnimateText : MonoBehaviour
 
     private int _currentTextIndex = 0;
     private float _currentAnimationTime = 0f;
-
-    public class TextData
-    {
-        public TextData(string text, AppNotificationType type)
-        {
-            Text = text;
-            Type = type;
-        }
-
-        public string Text;
-        public AppNotificationType Type;
-    }
-
-    public enum AnimationType
-    {
-        // Displays a single text message, scrolling it through the text area if it is too long
-        Scrolling,
-        // Displays multiple messages, switching from one to the next in fixed time steps.
-        Switching,
-    }
 
     #region Serialized Fields
     [SerializeField]
@@ -125,143 +101,199 @@ public class AnimateText : MonoBehaviour
         get => textAnimationLength;
         set => textAnimationLength = value;
     }
+
+    [Header("UI Parts")]
+
+    [SerializeField]
+    [Tooltip("The first text mesh to use when animating text.")]
+    private TextMeshProUGUI textFront = null;
+
+    /// <summary>
+    /// The first text mesh to use when animating text.
+    /// </summary>
+    public TextMeshProUGUI TextFront
+    {
+        get => textFront;
+        set => textFront = value;
+    }
+
+    [SerializeField]
+    [Tooltip("The second text mesh to use when animating text, if the first mesh couldn't fit the entire string.")]
+    private TextMeshProUGUI textBack = null;
+
+    /// <summary>
+    /// The first text mesh to use when animating text.
+    /// </summary>
+    public TextMeshProUGUI TextBack
+    {
+        get => textFront;
+        set => textFront = value;
+    }
     #endregion Serialized Fields
 
-    private bool messageShownCompletely = false;
-
+    #region Public Properties
     /// <summary>
     /// Message is visible at once or has fully scrolled through the text area at least once.
     /// </summary>
-    public bool MessageShownCompletely
-    {
-        get => messageShownCompletely;
-    }
-
-    private TextData[] textDataToAnimate = new TextData[0];
+    public bool MessageShownCompletely { get; private set; } = false;
 
     /// <summary>
     /// The strings to start animating.
     /// </summary>
     public TextData[] TextDataToAnimate
     {
+        get => _textDataToAnimate;
+
         set
         {
-            textDataToAnimate = value;
+            _textDataToAnimate = value;
             _scrollPosition = 0.0f;
             _currentAnimationTime = 0.0f;
             _currentTextIndex = 0;
+
             var newText = value?.Length > 0 ? value[0].Text : "";
             UpdateText(newText);
+
             var newType = value?.Length > 0 ? value[0].Type : AppNotificationType.Info;
             UpdateColor(newType);
         }
     }
 
-    private AnimationType currentAnimationType = AnimationType.Switching;
-    public AnimationType CurrentAnimationType
-    {
-        get => currentAnimationType;
-        set => currentAnimationType = value;
-    }
-
-    private void UpdateColor(AppNotificationType type)
-    {
-        switch (type)
-        {
-            case AppNotificationType.Info:
-                _mainText.color = infoColor;
-                _cloneText.color = infoColor;
-                break;
-            case AppNotificationType.Warning:
-                _mainText.color = warningColor;
-                _cloneText.color = warningColor;
-                break;
-            case AppNotificationType.Error:
-                _mainText.color = errorColor;
-                _cloneText.color = errorColor;
-                break;
-        }
-    }
-
-    private void UpdateText(string newText)
-    {
-        _mainText.text = newText;
-        if (_mainText.preferredWidth > _textAreaWidth)
-        {
-            _cloneText.text = newText;
-            _mainTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, _mainText.preferredWidth + scrollGap);
-            _mainTextRectTransform.position = new Vector3(_startPosition.x, _startPosition.y, _startPosition.z);
-            _cloneTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, _cloneText.preferredWidth);
-            _cloneTextRectTransform.position = new Vector3(_startPosition.x + _mainTextRectTransform.rect.width, _startPosition.y, _startPosition.z);
-            _textNeedsScrolling = true;
-            messageShownCompletely = false;
-        }
-        else
-        {
-            _cloneText.text = "";
-            _mainTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, _textAreaWidth);
-            _textNeedsScrolling = false;
-            messageShownCompletely = true;
-            _mainTextRectTransform.position = new Vector3(_startPosition.x, _startPosition.y, _startPosition.z);
-            _cloneTextRectTransform.position = new Vector3(_startPosition.x + _notificationBarWidth, _startPosition.y, _startPosition.z);
-        }
-    }
+    /// <summary>
+    /// The type of animation to be applied.
+    /// </summary>
+    public AnimationType CurrentAnimationType { get; set; } = AnimationType.Switching;
+    #endregion Public Properties
 
     #region MonoBehavior Functions
     private void Awake()
     {
-        _mainTextTransform = gameObject.transform.Find("TextFront");
-        _mainText = _mainTextTransform.GetComponent<TextMeshProUGUI>();
-        _mainTextRectTransform = _mainText.GetComponent<RectTransform>();
 
-        _cloneTextTransform = gameObject.transform.Find("TextBack");
-        _cloneText = _cloneTextTransform.GetComponent<TextMeshProUGUI>();
-        _cloneTextRectTransform = _cloneText.GetComponent<RectTransform>();
+        _mainTextRectTransform = textFront.GetComponent<RectTransform>();
+        Debug.Assert(_mainTextRectTransform != null, "Text Front needs to have a RectTransform.");
+
+        _cloneTextRectTransform = textBack.GetComponent<RectTransform>();
+        Debug.Assert(_cloneTextRectTransform != null, "Text Back needs to have a RectTransform.");
 
         _textAreaWidth = _mainTextRectTransform.rect.width;
-        _startPosition = _mainTextRectTransform.position;
-        _notificationBarWidth = _mainText.transform.GetComponent<RectTransform>().rect.width;
+        _startPosition = _mainTextRectTransform.localPosition;
+        _notificationBarWidth = _textAreaWidth;
 
-        if (textDataToAnimate?.Length > 0)
+        if (_textDataToAnimate?.Length > 0)
         {
-            UpdateText(textDataToAnimate[0].Text);
-            UpdateColor(textDataToAnimate[0].Type);
+            UpdateText(_textDataToAnimate[0].Text);
+            UpdateColor(_textDataToAnimate[0].Type);
         }
     }
 
     private void Update()
     {
-        switch (currentAnimationType)
+        switch (CurrentAnimationType)
         {
             case AnimationType.Switching:
-                if (textDataToAnimate?.Length > 1 && textAnimationLength > 0.0f)
+                if (_textDataToAnimate?.Length > 1 && textAnimationLength > 0.0f)
                 {
                     _currentAnimationTime += Time.deltaTime;
                     if (_currentAnimationTime >= textAnimationLength)
                     {
                         _currentAnimationTime = 0f;
-                        _currentTextIndex = (_currentTextIndex + 1) % textDataToAnimate.Length;
-                        UpdateText(textDataToAnimate[_currentTextIndex].Text);
-                        UpdateColor(textDataToAnimate[_currentTextIndex].Type);
+                        _currentTextIndex = (_currentTextIndex + 1) % _textDataToAnimate.Length;
+                        UpdateText(_textDataToAnimate[_currentTextIndex].Text);
+                        UpdateColor(_textDataToAnimate[_currentTextIndex].Type);
                     }
                 }
                 break;
+
             case AnimationType.Scrolling:
                 if (_textNeedsScrolling)
                 {
-                    _mainTextRectTransform.position = new Vector3(_startPosition.x - _scrollPosition, _startPosition.y, _startPosition.z);
-                    _cloneTextRectTransform.position = new Vector3(_startPosition.x - _scrollPosition + _mainTextRectTransform.rect.width, _startPosition.y, _startPosition.z);
+                    _mainTextRectTransform.localPosition = new Vector3(_startPosition.x - _scrollPosition, _startPosition.y, _startPosition.z);
+                    _cloneTextRectTransform.localPosition = new Vector3(_startPosition.x - _scrollPosition + _mainTextRectTransform.rect.width, _startPosition.y, _startPosition.z);
 
                     _scrollPosition += scrollSpeed * Time.deltaTime;
 
                     if (_scrollPosition >= _mainTextRectTransform.rect.width)
                     {
                         _scrollPosition -= _mainTextRectTransform.rect.width;
-                        messageShownCompletely = true;
+                        MessageShownCompletely = true;
                     }
                 }
                 break;
         }
     }
     #endregion MonoBehavior Functions
+
+    #region Private Functions
+    private void UpdateColor(AppNotificationType type)
+    {
+        switch (type)
+        {
+            case AppNotificationType.Info:
+                textFront.color = infoColor;
+                textBack.color = infoColor;
+                break;
+            case AppNotificationType.Warning:
+                textFront.color = warningColor;
+                textBack.color = warningColor;
+                break;
+            case AppNotificationType.Error:
+                textFront.color = errorColor;
+                textBack.color = errorColor;
+                break;
+        }
+    }
+
+    private void UpdateText(string newText)
+    {
+        if (_mainTextRectTransform == null || _cloneTextRectTransform == null)
+        {
+            return;
+        }
+
+        textFront.text = newText;
+        if (textFront.preferredWidth > _textAreaWidth)
+        {
+            textBack.text = newText;
+            _mainTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, textFront.preferredWidth + scrollGap);
+            _mainTextRectTransform.localPosition = new Vector3(_startPosition.x, _startPosition.y, _startPosition.z);
+            _cloneTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, textBack.preferredWidth);
+            _cloneTextRectTransform.localPosition = new Vector3(_startPosition.x + _mainTextRectTransform.rect.width, _startPosition.y, _startPosition.z);
+            _textNeedsScrolling = true;
+            MessageShownCompletely = false;
+        }
+        else
+        {
+            textBack.text = "";
+            _mainTextRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, _textAreaWidth);
+            _textNeedsScrolling = false;
+            MessageShownCompletely = true;
+            _mainTextRectTransform.localPosition = new Vector3(_startPosition.x, _startPosition.y, _startPosition.z);
+            _cloneTextRectTransform.localPosition = new Vector3(_startPosition.x + _notificationBarWidth, _startPosition.y, _startPosition.z);
+        }
+    }
+    #endregion Public Functions
+
+    #region Public Classes
+    public class TextData
+    {
+        public TextData(string text, AppNotificationType type)
+        {
+            Text = text;
+            Type = type;
+        }
+
+        public string Text;
+        public AppNotificationType Type;
+    }
+    #endregion Public Classes
+
+    #region Public Enum
+    public enum AnimationType
+    {
+        // Displays a single text message, scrolling it through the text area if it is too long
+        Scrolling,
+        // Displays multiple messages, switching from one to the next in fixed time steps.
+        Switching,
+    }
+    #endregion Public Enum
 }

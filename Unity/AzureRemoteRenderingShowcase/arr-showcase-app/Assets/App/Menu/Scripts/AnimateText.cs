@@ -208,7 +208,7 @@ public class AnimateText : MonoBehaviour
     }
 
     #region MonoBehavior Functions
-    private void Start()
+    private void Awake()
     {
         _mainTextTransform = gameObject.transform.Find("TextFront");
         _mainText = _mainTextTransform.GetComponent<TextMeshProUGUI>();

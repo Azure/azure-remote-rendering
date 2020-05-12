@@ -908,7 +908,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Convert an Azure Blob metadata object to the app ModelContainer object.
             /// </summary>
-            private static RemoteContainer ToModelContainer(string containter, Blob blob)
+            private static RemoteContainer ToModelContainer(string container, Blob blob)
             {
                 if (blob == null || blob.Name == null)
                 {
@@ -937,7 +937,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 RemoteModel model = new RemoteModel()
                 {
                     Name = modelName,
-                    Url = $"{containter}/{blob.Name}"
+                    Url = $"{container}/{blob.Name}"
                 };
 
                 RemoteContainer modelContainer = new RemoteContainer()
@@ -1927,30 +1927,61 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Asynchronously load a model. This call will return immediately with an object that will emit an event when the model load has completed on the server.
             /// </summary>
-            /// <param name="modelId">String identifier for the model.</param>
-            public LoadModelAsync LoadModelAsyncAsOperation(LoadModelFromSASParams inputParams)
+            /// <param name="model">The model to load.</param>
+            /// <param name="parent">The parent of the model.</param>
+            /// <returns></returns>
+            public LoadModelAsync LoadModelAsyncAsOperation(RemoteModel model, Entity parent)
             {
-
                 if (!IsValid())
                 {
                     return null;
                 }
 
-                return _arrSession.Actions.LoadModelFromSASAsync(inputParams);
+                // For builtin models the SAS load function must be used.
+                if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return _arrSession.Actions.LoadModelFromSASAsync(new LoadModelFromSASParams(
+                        model.Url,
+                        parent));
+                }
+                else
+                {
+                    return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
+                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountName}.blob.core.windows.net",
+                        AppServices.RemoteRendering.LoadedProfile.StorageModelContainer,
+                        model.ExtractBlobPath(),
+                        parent));
+                }
             }
 
             /// <summary>
-            /// Load model with extended parameters
+            /// Load model with extended parameters.
             /// </summary>
-            /// <returns>Model details</returns>
-            public Task<LoadModelResult> LoadModelAsync(LoadModelFromSASParams inputParams)
+            /// <param name="model">The model to load.</param>
+            /// <param name="parent">The parent of the model.</param>
+            /// <returns></returns>
+            public Task<LoadModelResult> LoadModelAsync(RemoteModel model, Entity parent)
             {
                 if (!IsValid())
                 {
                     return Task.FromResult<LoadModelResult>(null);
                 }
 
-                return _arrSession.Actions.LoadModelFromSASAsync(inputParams).AsTask();
+                // For builtin models the SAS load function must be used.
+                if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return _arrSession.Actions.LoadModelFromSASAsync(new LoadModelFromSASParams(
+                        model.Url,
+                        parent)).AsTask();
+                }
+                else
+                {
+                    return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
+                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountName}.blob.core.windows.net",
+                        AppServices.RemoteRendering.LoadedProfile.StorageModelContainer,
+                        model.ExtractBlobPath(),
+                        parent)).AsTask();
+                }
             }
 
             /// <summary>
@@ -1958,14 +1989,18 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </summary>
             /// <param name="textureId">String identifier for the texture.</param>
             /// <returns></returns>
-            public Task<Remote.Texture> LoadTextureAsync(LoadTextureFromSASParams inputParams)
+            public Task<Remote.Texture> LoadTextureAsync(string storageAccountName, string containerName, string blobPath, TextureType type)
             {
                 if (!IsValid())
                 {
                     return Task.FromResult<Remote.Texture>(null);
                 }
 
-                return _arrSession.Actions.LoadTextureFromSASAsync(inputParams).AsTask();
+                return _arrSession.Actions.LoadTextureAsync(new LoadTextureParams(
+                    $"{storageAccountName}.blob.core.windows.net",
+                    containerName,
+                    blobPath,
+                    type)).AsTask();
             }
 
             /// <summary>

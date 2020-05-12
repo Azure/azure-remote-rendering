@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Provide product feedback
+    url: https://feedback.azure.com/forums/928696-azure-remote-rendering
+    about: Please provide feedback here.
+  - name: Stack Overflow
+    url: https://stackoverflow.com/questions/tagged/azure-remote-rendering
+    about: Ask the community questions about Azure Remote Rendering

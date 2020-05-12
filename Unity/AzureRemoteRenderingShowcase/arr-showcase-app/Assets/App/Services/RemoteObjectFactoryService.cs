@@ -58,13 +58,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
         }
 
-        public ModelProgressStatus Load(LoadModelFromSASParams loadModelParams)
+        public ModelProgressStatus Load(RemoteModel model, Entity parent)
         {
             var machine = AppServices.RemoteRendering?.PrimaryMachine;
 
             if (machine == null)
             {
-                var msg = $"Unable to load model: this is no remote rendering session. (url = {loadModelParams.ModelUrl})";
+                var msg = $"Unable to load model: this is no remote rendering session. (url = {model.Url})";
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 return null;
@@ -72,18 +72,18 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (machine.Session.Connection.ConnectionStatus != ConnectionStatus.Connected)
             {
-                var msg = $"Unable to load model: manager is not connected. (url = {loadModelParams.ModelUrl})";
+                var msg = $"Unable to load model: manager is not connected. (url = {model.Url})";
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                 return null;
             }
 
             ModelProgressStatus progressTask = new ModelProgressStatus();
-            ScaleLoad(loadModelParams, progressTask);
+            ScaleLoad(model, parent, progressTask);
             return progressTask;
         }
 
-        private async void ScaleLoad(LoadModelFromSASParams loadModelParams, ModelProgressStatus progressTask)
+        private async void ScaleLoad(RemoteModel model, Entity parent, ModelProgressStatus progressTask)
         {
             var machine = AppServices.RemoteRendering?.PrimaryMachine;
 
@@ -97,7 +97,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 if (machine == null)
                 {
-                    var msg = $"Unable to load model: there is no remote rendering session. (url = {loadModelParams.ModelUrl})";
+                    var msg = $"Unable to load model: there is no remote rendering session. (url = {model.Url})";
                     Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
                     break;
@@ -108,7 +108,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     if (_loadingTasks.Count == 0 || 
                         _loadingTasks.Count < _remoteObjectFactoryServiceProfile.ConcurrentModelLoads)
                     {
-                        loadOperation = machine.Actions.LoadModelAsyncAsOperation(loadModelParams);
+                        loadOperation = machine.Actions.LoadModelAsyncAsOperation(model, parent);
                         break;
                     }
                 }

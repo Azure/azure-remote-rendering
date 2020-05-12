@@ -15,6 +15,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Load a model.
         /// </summary>
-        ModelProgressStatus Load(LoadModelFromSASParams loadModelParams);
+        ModelProgressStatus Load(RemoteModel model, Entity parent);
 	}
 }

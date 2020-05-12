@@ -573,7 +573,7 @@ public class RemoteObject : MonoBehaviour
 
         if (remoteObjectFactoryService != null)
         {
-            loadTask = remoteObjectFactoryService.Load(new LoadModelFromSASParams(model.Url, remoteParent)).Result;
+            loadTask = remoteObjectFactoryService.Load(model, remoteParent).Result;
         }
         else
         {

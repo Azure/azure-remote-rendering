@@ -18,7 +18,7 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) ext
 
 <br/>
 
-| <div style="width:190px"> Session Setting</div> | Description                                                                                                                     |
+| <div style="width:190px">Session Setting</div> | Description                                                                                                                     |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Size                | The ARR session size, either *Standard* or *Premium*. See [limitations of session sizes](https://docs.microsoft.com/azure/remote-rendering/reference/limits#overall-number-of-polygons).    |
 | Session Override    | Either a session guid or a session host name. If specified, the app will attempt to connect to this session. |
@@ -45,6 +45,9 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) ext
 | Storage Account Name    | The [ARR storage account name](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts). This account owns the *model container*.
 | Storage Account Key     | The Azure Storage Account key. Needed if the *model container* is private.
 | Storage Model Container | The Azure Storage Container that contains a set of arrAsset model files.
+
+> [!IMPORTANT]
+> To be able to load models from the storage account, you must link it to your ARR account. The necessary steps are described on the [<u>account creation page</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts) of the Remote Rendering documentation. Please note that this is only necessary for loading models. For simplicity's sake, the application obtains a list of models from the storage container by a different mechanism for which it requires the storage account key. When building similar functionality for your own application, you will want to consider a different authentication approach as described in the [<u>authentication how-to guide</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication).
 
 Changed settings will be applied the next time you click *play* in editor, or by clicking the *apply configuration button* during play mode.
 

@@ -165,9 +165,33 @@ public class RemoteContainer : RemoteItemBase
 public class RemoteModel : RemoteItemBase
 {
     /// <summary>
+    /// Extracts the path to the blob within the container.
+    /// <returns>The blob path if it exists, empty otherwise.</returns>
+    /// </summary>
+    public string ExtractBlobPath()
+    {
+        string blobPath = string.Empty;
+
+        var blobUrl = new Uri(Url);
+        if (Uri.IsWellFormedUriString(blobUrl.AbsoluteUri, UriKind.RelativeOrAbsolute) &&
+            Uri.CheckHostName(blobUrl.Host) != UriHostNameType.Unknown &&
+            blobUrl.Segments.Length >= 3) // must hold service endpoint, container name, and blob path
+        {
+            string containerName = blobUrl.Segments[1].Replace("/", "");
+            // The blob path is the local path minus the container name,
+            // which is the first segments of the path. We strip it and the
+            // surrounding directory delimiters from the beginning of the
+            // local path.
+            blobPath = blobUrl.LocalPath.Substring(containerName.Length + 2);
+        }
+
+        return blobPath;
+    }
+
+    /// <summary>
     /// The remote URL for the object's model file.
     /// </summary>
-    public string Url;
+    public string Url { get; set; }
 
     public bool ShouldSerializeUrl()
     {
@@ -187,7 +211,7 @@ public class RemotePlaceholderModel : RemoteItemBase
     public string Url;
 
     /// <summary>
-    /// The name of model insdie the bundle.
+    /// The name of the model inside the bundle.
     /// </summary>
     public string AssetName;
 

@@ -19,23 +19,32 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         bool IsValid();
 
         /// <summary>
-        /// Asynchronously load a model. This call will return immediately with an object that will emit an event when the model load has completed on the server.
+        /// Asynchronously loads a model from a linked storage account or a publicly accessible container.
+        /// This call will return immediately with an object that will emit an event when the model load has completed on the server.
         /// </summary>
-        /// <param name="modelId">String identifier for the model.</param>
-        LoadModelAsync LoadModelAsyncAsOperation(LoadModelFromSASParams inputParams);
-
-        /// <summary>
-        /// Load model with extended parameters
-        /// </summary>
-        /// <returns>Model details</returns>
-        Task<LoadModelResult> LoadModelAsync(LoadModelFromSASParams inputParams);
-
-        /// <summary>
-        /// Asynchronously load a texture. This call will return immediately with an object that will emit an event when the texture load has completed on the server.
-        /// </summary>
-        /// <param name="textureId">String identifier for the texture.</param>
+        /// <param name="model">The model to load.</param>
+        /// <param name="parent">The parent of the model.</param>
         /// <returns></returns>
-        Task<Remote.Texture> LoadTextureAsync(LoadTextureFromSASParams inputParams);
+        LoadModelAsync LoadModelAsyncAsOperation(RemoteModel model, Entity parent);
+
+        /// <summary>
+        /// Loads a model from a linked storage account or a publicly accessible container.
+        /// </summary>
+        /// <param name="model">The model to load.</param>
+        /// <param name="parent">The parent of the model.</param>
+        /// <returns></returns>
+        Task<LoadModelResult> LoadModelAsync(RemoteModel model, Entity parent);
+
+        /// <summary>
+        /// Asynchronously loads a texture from a linked storage account or a publicly accessible container.
+        /// This call will return immediately with an object that will emit an event when the texture load has completed on the server.
+        /// </summary>
+        /// <param name="storageAccountName">The plain storage account name, .e.g., 'mystorageaccount'.</param>
+        /// <param name="containerName">The name of the container within the storage account, e.g, 'mycontainer'.</param>
+        /// <param name="blobPath">The path to the texture within the container, e.g., 'path/to/file/myFile.arrAsset.</param>
+        /// <param name="textureType">The type of texture to load.</param>
+        /// <returns></returns>
+        Task<Remote.Texture> LoadTextureAsync(string storageAccountName, string containerName, string blobPath, TextureType textureType);
 
         /// <summary>
         /// Asynchronously perform a raycast query on the remote scene.  This call will return immediately with an object that will emit an event when the raycast has returned from the server.

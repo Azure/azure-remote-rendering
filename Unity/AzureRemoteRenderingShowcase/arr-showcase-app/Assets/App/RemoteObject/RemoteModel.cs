@@ -191,7 +191,7 @@ public class RemoteModel : RemoteItemBase
     /// <summary>
     /// The remote URL for the object's model file.
     /// </summary>
-    public string Url { get; set; }
+    public string Url;
 
     public bool ShouldSerializeUrl()
     {

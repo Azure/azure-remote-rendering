@@ -30,4 +30,4 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 Have an idea or suggestion? [Give us your feedback](https://feedback.azure.com/forums/928696-azure-remote-rendering)
 
-Have an issue? [Refer to our Troubleshooting Guide](https://docs.microsoft.com/en-us/azure/remote-rendering/resources/troubleshoot) OR [Ask the community on Stack Overflow](https://stackoverflow.com/questions/tagged/azure-remote-rendering)
+Have an issue? [Refer to our Troubleshooting Guide](https://docs.microsoft.com/en-us/azure/remote-rendering/resources/troubleshoot) OR Ask the community on [Stack Overflow](https://stackoverflow.com/questions/tagged/azure-remote-rendering) and [Microsoft Q&A](https://docs.microsoft.com/en-us/answers/topics/azure-remote-rendering.html)

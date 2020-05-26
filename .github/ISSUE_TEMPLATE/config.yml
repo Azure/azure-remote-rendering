@@ -5,4 +5,7 @@ contact_links:
     about: Please provide feedback and request new features here.
   - name: Stack Overflow
     url: https://stackoverflow.com/questions/tagged/azure-remote-rendering
-    about: Ask the community questions about Azure Remote Rendering
+    about: Ask the community questions about Azure Remote Rendering on Stack Overflow
+  - name: Microsoft Q&A
+    url: https://docs.microsoft.com/en-us/answers/topics/azure-remote-rendering.html
+    about: Ask the community questions about Azure Remote Rendering on Microsoft Q&A

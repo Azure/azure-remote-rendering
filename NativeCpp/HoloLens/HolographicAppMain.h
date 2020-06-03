@@ -36,6 +36,7 @@ namespace HolographicApp
         Disconnected,
 
         CreatingSession,
+        StartingSession,
         Connecting,
         Connected,
 
@@ -72,7 +73,8 @@ namespace HolographicApp
 
     #ifdef USE_REMOTE_RENDERING
         void OnConnectionStatusChanged(RR::ConnectionStatus status, RR::Result error);
-        void SetNewState(AppConnectionStatus state, RR::Result error);
+        void SetNewState(AppConnectionStatus state, const char* statusMsg);
+        void SetNewSession(RR::ApiHandle<RR::AzureSession> newSession);
         void StartModelLoading();
         void UpdateStatusText();
     #endif
@@ -173,9 +175,12 @@ namespace HolographicApp
 
         // Connection state machine:
         AppConnectionStatus m_currentStatus = AppConnectionStatus::Disconnected;
+        std::string m_statusMsg;
         RR::Result m_connectionResult = RR::Result::Success;
         RR::Result m_modelLoadResult = RR::Result::Success;
         bool m_isConnected = false;
+        bool m_sessionStarted = false;
+        RR::ApiHandle<RR::SessionPropertiesAsync> m_sessionPropertiesAsync;
         bool m_modelLoadTriggered = false;
         float m_modelLoadingProgress = 0.f;
         bool m_modelLoadFinished = false;
@@ -183,6 +188,7 @@ namespace HolographicApp
 
         // Status text:
         double m_lastTime = -1;
+        double m_sessionStartingTime = 0.0;
         std::unique_ptr<StatusDisplay> m_statusDisplay;
 
 #endif

@@ -49,7 +49,6 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
     {
         // Users need to fill out the following with their account data and model
         RR::AzureFrontendAccountInfo init;
-        memset(&init, 0, sizeof(RR::AzureFrontendAccountInfo));
         init.AccountId = "00000000-0000-0000-0000-000000000000";
         init.AccountKey = "<account key>";
         init.AccountDomain = "westus2.mixedreality.azure.com"; // <change to your region>
@@ -62,24 +61,6 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
     // 3. Open/create rendering session
     {
         bool createNewSession = true;
-
-        auto SetNewSession = [this](RR::ApiHandle<RR::AzureSession> newSession)
-        {
-            SetNewState(AppConnectionStatus::Connecting, RR::Result::Success);
-            m_session = newSession;
-            m_api = m_session->Actions();
-            m_graphicsBinding = m_session->GetGraphicsBinding().as<RR::GraphicsBindingWmrD3d11>();
-            m_session->ConnectionStatusChanged([this](auto status, auto error)
-                {
-                    OnConnectionStatusChanged(status, error);
-                });
-
-            // The following is async, but we'll get notifications via OnConnectionStatusChanged
-            RR::ConnectToRuntimeParams init;
-            init.ignoreCertificateValidation = false;
-            init.mode = RR::ServiceRenderMode::Default;
-            m_session->ConnectToRuntime(init);
-        };
 
         // If we had an old (valid) session that we can recycle, we call synchronous function m_frontEnd->OpenRenderingSession
         if (!m_sessionOverride.empty())
@@ -108,10 +89,10 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
                     }
                     else
                     {
-                        SetNewState(AppConnectionStatus::ConnectionFailed, RR::Result::Fail);
+                        SetNewState(AppConnectionStatus::ConnectionFailed, "failed");
                     }
                 });
-            SetNewState(AppConnectionStatus::CreatingSession, RR::Result::Success);
+            SetNewState(AppConnectionStatus::CreatingSession, nullptr);
         }
     }
 
@@ -149,23 +130,26 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
 
 
 #ifdef USE_REMOTE_RENDERING
+
 void HolographicAppMain::OnConnectionStatusChanged(RR::ConnectionStatus status, RR::Result error)
 {
     m_needsStatusUpdate = true;
+    const char* asString = RR::ResultToString(error);
+    m_connectionResult = error;
 
     switch (status)
     {
     case RR::ConnectionStatus::Connecting:
-        SetNewState(AppConnectionStatus::Connecting, error);
+        SetNewState(AppConnectionStatus::Connecting, asString);
         break;
     case RR::ConnectionStatus::Connected:
         if (error == RR::Result::Success)
         {
-            SetNewState(AppConnectionStatus::Connected, error);
+            SetNewState(AppConnectionStatus::Connected, asString);
         }
         else
         {
-            SetNewState(AppConnectionStatus::ConnectionFailed, error);
+            SetNewState(AppConnectionStatus::ConnectionFailed, asString);
         }
         m_modelLoadTriggered = m_modelLoadFinished = false;
         m_isConnected = error == RR::Result::Success;
@@ -173,11 +157,11 @@ void HolographicAppMain::OnConnectionStatusChanged(RR::ConnectionStatus status, 
     case RR::ConnectionStatus::Disconnected:
         if (error == RR::Result::Success)
         {
-            SetNewState(AppConnectionStatus::Disconnected, error);
+            SetNewState(AppConnectionStatus::Disconnected, asString);
         }
         else
         {
-            SetNewState(AppConnectionStatus::ConnectionFailed, error);
+            SetNewState(AppConnectionStatus::ConnectionFailed, asString);
         }
         m_modelLoadTriggered = m_modelLoadFinished = false;
         m_isConnected = false;
@@ -292,6 +276,51 @@ HolographicFrame HolographicAppMain::Update()
     {
         // Tick the client to receive messages
         m_api->Update();
+
+        // query session status periodically until we reach 'session started'
+        if (!m_sessionStarted && m_sessionPropertiesAsync == nullptr)
+        {
+            if (auto propAsync = m_session->GetPropertiesAsync())
+            {
+                m_sessionPropertiesAsync = *propAsync;
+                m_sessionPropertiesAsync->Completed([this](const RR::ApiHandle<RR::SessionPropertiesAsync>& async)
+                    {
+                        if (auto res = async->Result())
+                        {
+                            switch (res->Status)
+                            {
+                            case RR::RenderingSessionStatus::Ready:
+                            {
+                                // The following is async, but we'll get notifications via OnConnectionStatusChanged
+                                m_sessionStarted = true;
+                                SetNewState(AppConnectionStatus::Connecting, nullptr);
+                                RR::ConnectToRuntimeParams init;
+                                init.ignoreCertificateValidation = false;
+                                init.mode = RR::ServiceRenderMode::Default;
+                                m_session->ConnectToRuntime(init);
+                            }
+                            break;
+                            case RR::RenderingSessionStatus::Error:
+                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session error");
+                                break;
+                            case RR::RenderingSessionStatus::Stopped:
+                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session stopped");
+                                break;
+                            case RR::RenderingSessionStatus::Expired:
+                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session expired");
+                                break;
+                            }
+
+                        }
+                        else
+                        {
+                            SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
+                        }
+                        m_sessionPropertiesAsync = nullptr; // next try
+                        m_needsStatusUpdate = true;
+                    });
+            }
+        }
 
         if (m_isConnected && !m_modelLoadTriggered)
         {
@@ -476,24 +505,28 @@ void HolographicApp::HolographicAppMain::UpdateStatusText()
         sprintf(txtBuffer, "Creating session...");
         m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::White, 1.2f });
         break;
+    case AppConnectionStatus::StartingSession:
+    {
+        sprintf(txtBuffer, "Starting session...");
+        m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::White, 1.2f });
+        int elapsedSecs = (int)(m_timer.GetTotalSeconds() - m_sessionStartingTime);
+        sprintf(txtBuffer, "...this may take a while. Elapsed time: %ds", elapsedSecs);
+        m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::Small, StatusDisplay::White, 1.2f });
+        break;
+    }
     case AppConnectionStatus::Connecting:
         sprintf(txtBuffer, "Connecting...");
         m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::White, 1.2f });
         break;
     case AppConnectionStatus::Connected:
+        sprintf(txtBuffer, "Connected");
+        m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Green, 1.2f });
+        break;
     case AppConnectionStatus::ConnectionFailed:
-        if (m_connectionResult == RR::Result::Success)
-        {
-            sprintf(txtBuffer, "Connected");
-            m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Green, 1.2f });
-        }
-        else
-        {
-            sprintf(txtBuffer, "Failed to connect");
-            m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Red, 1.2f });
-            sprintf(txtBuffer, "Error: %s", RR::ResultToString(m_connectionResult));
-            m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Red, 1.2f });
-        }
+        sprintf(txtBuffer, "Failed to connect");
+        m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Red, 1.2f });
+        sprintf(txtBuffer, "Error: %s", m_statusMsg.c_str());
+        m_statusDisplay->AddLine(StatusDisplay::Line{ toWChar.from_bytes(txtBuffer), StatusDisplay::LargeBold, StatusDisplay::Red, 1.2f });
         break;
     case AppConnectionStatus::Disconnected:
         m_statusDisplay->AddLine(StatusDisplay::Line{ L"Disconnected", StatusDisplay::LargeBold, StatusDisplay::Yellow, 1.2f });
@@ -517,12 +550,28 @@ void HolographicApp::HolographicAppMain::UpdateStatusText()
     }
 }
 
-void HolographicApp::HolographicAppMain::SetNewState(AppConnectionStatus state, RR::Result error)
+void HolographicApp::HolographicAppMain::SetNewState(AppConnectionStatus state, const char* statusMsg)
 {
     m_currentStatus = state;
-    m_connectionResult = error;
+    m_statusMsg = statusMsg ? statusMsg : "";
     m_needsStatusUpdate = true;
 }
+
+void HolographicAppMain::SetNewSession(RR::ApiHandle<RR::AzureSession> newSession)
+{
+    SetNewState(AppConnectionStatus::StartingSession, nullptr);
+
+    m_sessionStartingTime = m_timer.GetTotalSeconds();
+    m_session = newSession;
+    m_api = m_session->Actions();
+    m_graphicsBinding = m_session->GetGraphicsBinding().as<RR::GraphicsBindingWmrD3d11>();
+    m_session->ConnectionStatusChanged([this](auto status, auto error)
+        {
+            OnConnectionStatusChanged(status, error);
+        });
+
+};
+
 #endif
 
 // Renders the current frame to each holographic camera, according to the

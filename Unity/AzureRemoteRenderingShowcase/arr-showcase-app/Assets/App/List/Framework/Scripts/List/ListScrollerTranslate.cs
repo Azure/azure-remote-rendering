@@ -15,6 +15,9 @@ public class ListScrollerTranslate : ListScrollerBase
     private Vector3 _initialPosition;
 
     #region Serialized Fields
+
+    [Header("List Scroller Translate Fields")]
+
     [SerializeField]
     [Tooltip("Position lerp multiplier.")]
     private float moveLerpTime = 0.1f;
@@ -185,10 +188,12 @@ public class ListScrollerTranslate : ListScrollerBase
     }
 
     /// <summary>
-    /// Set the list size.
+    /// Handle the setting of list size and update the scroll area size.
     /// </summary>
-    public override void SetScrollSize(Vector2 listSize)
+    protected override void OnSetScrollSize(Vector2 listSize)
     {
+        this._initialPosition = new Vector3(0, 0, _initialPosition.z);
+
         var listContainer = gameObject.GetComponent<ListContainer>();
         if (listContainer == null)
         {
@@ -200,7 +205,6 @@ public class ListScrollerTranslate : ListScrollerBase
             this.NodesPerPage = 0;
             this.NodesInMovableDirection = 0;
             this.NodesInNonMovableDirection = 0;
-            this._initialPosition = Vector3.zero;
             return;
         }
 
@@ -217,7 +221,7 @@ public class ListScrollerTranslate : ListScrollerBase
         this.NodesPerPage = this.PageCount == 0 ? 0 : Mathf.Ceil(this.NodesInMovableDirection / this.PageCount) * this.NodesInNonMovableDirection;
         this.NodesPerScrollUnit = this.ContentSize == 0 ? 0 : this.NodesInMovableDirection / this.ContentSize;
 
-        this._initialPosition = -0.5f * GetMovementAxis() * (this.ContentSize - this.PageSize);
+        this._initialPosition += -0.5f * GetMovementAxis() * (this.ContentSize - this.PageSize);
         this.SnapTo(this._goal);
     }
     #endregion Public Functions

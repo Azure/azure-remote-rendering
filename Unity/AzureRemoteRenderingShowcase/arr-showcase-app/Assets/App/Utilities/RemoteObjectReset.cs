@@ -3,16 +3,12 @@
 
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
-using Microsoft.MixedReality.Toolkit.Extensions;
 using System.Collections.Generic;
 using UnityEngine;
 
-using Remote = Microsoft.Azure.RemoteRendering;
-
 public class RemoteObjectReset : MonoBehaviour
 {
-    private List<EntityState> _originalState = new List<EntityState>();
-    private IRemoteRenderingMachine _machine = null;
+    private IEnumerable<EntitySnapshot> _originalState = null;
 
     #region Serialized Fields
     [SerializeField]
@@ -34,7 +30,38 @@ public class RemoteObjectReset : MonoBehaviour
             }
         }
     }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Called when ResetObject has completed.")]
+    private RemoteObjectResetCompletedEvent resetCompleted = new RemoteObjectResetCompletedEvent();
+
+    /// <summary>
+    /// Called when ResetObject has completed.
+    /// </summary>
+    public RemoteObjectResetCompletedEvent ResetCompleted
+    {
+        get => resetCompleted;
+    }
     #endregion Serialized Fields
+
+    #region Public Properties
+    /// <summary>
+    /// Get the initial state of the remote object.
+    /// </summary>
+    public IEnumerable<EntitySnapshot> OriginalState
+    {
+        get
+        {
+            if (_originalState == null)
+            {
+                CaptureInitialStateOnce();
+            }
+            return _originalState;
+        }
+    }
+    #endregion Public Properties
 
     #region MonoBehavior Methods
     private void Start()
@@ -45,8 +72,9 @@ public class RemoteObjectReset : MonoBehaviour
 
     #region Public Methods
     /// <summary>
-    /// Get the root object, and save it's state.
+    /// Call this once a remote object is loaded. This gets the root object, and save it's state.
     /// </summary>
+    /// <remarks>This is called via an event binding in the inspector window.</remarks>
     public void InitializeObject(RemoteObjectLoadedEventData data)
     {
         Root = data?.SyncObject?.transform;
@@ -57,71 +85,52 @@ public class RemoteObjectReset : MonoBehaviour
     /// </summary>
     public void ResetObject()
     {
-        if (_machine == null)
-        {
-            return;
-        }
+        ResetObject(true);
+    }
 
+    /// <summary>
+    /// Reset to the original Entity state
+    /// </summary>
+    public void ResetObject(bool resetMaterials)
+    {
         foreach (var state in _originalState)
         {
-            Entity entity = state.entity;
-            if (entity != null)
+            Entity entity = state.Entity;
+            if (entity != null && entity.Valid)
             {
-                entity.ReplaceMaterials(null);
-                entity.Parent = state.parent;
-                entity.Position = state.position;
-                entity.Rotation = state.rotation;
-                entity.Scale = state.scale;
+                if (resetMaterials)
+                {
+                    entity.ReplaceMaterials(null);
+                }
+
+                entity.Parent = state.Parent?.Entity;
+                entity.Position = state.LocalPosition.toRemotePos();
+                entity.Rotation = state.LocalRotation.toRemote();
+                entity.Scale = state.LocalScale.toRemote();
             }
         }
+
+        resetCompleted?.Invoke(new RemoteObjectResetCompletedEventData(this));
     }
     #endregion Public Methods
 
     #region Private Methods
     private void CaptureInitialStateOnce()
     {
-        _originalState.Clear();
-        _machine = null;
-        if (root == null)
+        RemoteEntitySyncObject syncObject = null;
+        if (root != null)
         {
-            return;
+            syncObject = root.GetComponent<RemoteEntitySyncObject>();
         }
 
-        var syncObject = root.GetComponent<RemoteEntitySyncObject>();
-        if (syncObject == null)
+        if (syncObject == null || !syncObject.IsEntityValid)
         {
-            return;
+            _originalState = null;
         }
-
-        syncObject.Entity.VisitEntity((Entity entity) =>
+        else
         {
-            if (entity != null)
-            {
-                _originalState.Add(new EntityState()
-                {
-                    entity = entity,
-                    parent = entity.Parent,
-                    position = entity.Position,
-                    rotation = entity.Rotation,
-                    scale = entity.Scale
-                });
-            }
-            return Entity.VisitorResult.ContinueVisit;
-        });
-
-        _machine = AppServices.RemoteRendering.PrimaryMachine;
+            _originalState = syncObject.Entity.CreateSnapshot();
+        }
     }
     #endregion Private Methods
-
-    #region Private Structs
-    private struct EntityState
-    {
-        public Entity entity;
-        public Entity parent;
-        public Remote.Double3 position;
-        public Remote.Quaternion rotation;
-        public Remote.Float3 scale;
-    }
-
-    #endregion Private Structs
 }

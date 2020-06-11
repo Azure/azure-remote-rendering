@@ -124,9 +124,8 @@ public class AppActions : MonoBehaviour
             GameObject dialogObject = null;
             try
             {
-                dialogObject = GameObject.Instantiate(quitConfirmationDialog.gameObject);
-                AppDialog dialog = dialogObject.GetComponent<AppDialog>();
-                quit = await dialog.DiaglogTask;
+                dialogObject = Instantiate(quitConfirmationDialog.gameObject);
+                quit = await dialogObject.GetComponent<AppDialog>().Open();
             }
             finally
             {

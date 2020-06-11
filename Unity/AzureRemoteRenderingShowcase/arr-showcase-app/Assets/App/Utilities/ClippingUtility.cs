@@ -25,6 +25,19 @@ public class ClippingUtility : MonoBehaviour
     }
 
     [SerializeField]
+    [Tooltip("The objects contained in this container will never be clipped by the set Clipping Primitive.")]
+    private Transform ignoreContainer;
+
+    /// <summary>
+    /// The objects contained in this container will never be clipped by the set Clipping Primitive.
+    /// </summary>
+    public Transform IgnoreContainer
+    {
+        get => ignoreContainer;
+        set => ignoreContainer = value;
+    }
+
+    [SerializeField]
     [Tooltip("The object containing the children to be clipped.")]
     private ClippingPrimitive clippingPrimitive;
 
@@ -66,7 +79,10 @@ public class ClippingUtility : MonoBehaviour
         {
             foreach (var renderer in foundRenders)
             {
-                clippingPrimitive.RemoveRenderer(renderer);
+                if (ignoreContainer == null || !renderer.transform.IsChildOf(ignoreContainer))
+                {
+                    clippingPrimitive.RemoveRenderer(renderer);
+                }
             }
             foundRenders = null;
         }
@@ -80,7 +96,10 @@ public class ClippingUtility : MonoBehaviour
         {
             foreach (var renderer in foundRenders)
             {
-                clippingPrimitive.AddRenderer(renderer);
+                if (ignoreContainer == null || !renderer.transform.IsChildOf(ignoreContainer))
+                {
+                    clippingPrimitive.AddRenderer(renderer);
+                }
             }
         }
     }
@@ -95,7 +114,10 @@ public class ClippingUtility : MonoBehaviour
         var renderers = @object.GetComponentsInChildren<Renderer>();
         foreach (var renderer in renderers)
         {
-            clippingPrimitive.RemoveRenderer(renderer);
+            if (ignoreContainer == null || !renderer.transform.IsChildOf(ignoreContainer))
+            {
+                clippingPrimitive.RemoveRenderer(renderer);
+            }
         }
     }
 
@@ -109,7 +131,10 @@ public class ClippingUtility : MonoBehaviour
         var renderers = @object.GetComponentsInChildren<Renderer>();
         foreach (var renderer in renderers)
         {
-            clippingPrimitive.AddRenderer(renderer);
+            if (ignoreContainer == null || !renderer.transform.IsChildOf(ignoreContainer))
+            {
+                clippingPrimitive.AddRenderer(renderer);
+            }
         }
     }
     #endregion Public Functions

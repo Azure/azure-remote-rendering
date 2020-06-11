@@ -42,7 +42,7 @@ public class PointerModeHandler : MonoBehaviour, IMixedRealityPointerHandler
 
     #region MonoBehaviour Implementation
     private void Start()
-    {       
+    {
         // Convert the struct array into a dictionary, with the keywords and the methods as the values.
         // This helps easily link the pointer mode to the UnityEvent to be invoked.
         int pointerModesCount = pointerModes.Length;

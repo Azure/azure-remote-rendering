@@ -51,3 +51,17 @@ MonoBehaviour:
     runtimePlatform: 15
     configurationProfile: {fileID: 11400000, guid: 93b438ffb4e40b5409b498ad36d48c6e,
       type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.SharingService, Assembly-CSharp
+    componentName: SharingService
+    priority: 12
+    runtimePlatform: 25
+    configurationProfile: {fileID: 11400000, guid: 2ab461f7a68284844a0259348e57ee39,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.AnchoringService, Assembly-CSharp
+    componentName: AnchoringService
+    priority: 11
+    runtimePlatform: 25
+    configurationProfile: {fileID: 11400000, guid: aa4fd0bf413fea24bb88f20ba593c279,
+      type: 2}

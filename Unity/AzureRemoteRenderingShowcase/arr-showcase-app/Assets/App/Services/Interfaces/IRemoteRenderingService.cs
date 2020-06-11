@@ -73,5 +73,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Connect to a known session id. Once created connect must be called on the machine.
         /// </summary>
         Task<IRemoteRenderingMachine> Open(string id);
+
+        /// <summary>
+        /// Connect to an existing or new session if not already connected.
+        /// </summary>
+        Task<IRemoteRenderingMachine> AutoConnect();
     }
 }

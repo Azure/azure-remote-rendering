@@ -86,7 +86,7 @@ public class AppDialog : MonoBehaviour
         if (cancelButton != null)
         {
             cancelButton.OnClick.AddListener(ClickedCanceled);
-        }        
+        }
     }
 
     /// <summary>
@@ -94,9 +94,15 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     private void OnEnable()
     {
-        Transform cameraTransform = CameraCache.Main.transform;
-        transform.position = cameraTransform.position + (cameraTransform.forward * startDistance);
-        transform.rotation = Quaternion.LookRotation(cameraTransform.forward, cameraTransform.up);
+        PlaceInFront();
+    }
+
+    /// <summary>
+    /// If destroyed before user selected an option, return false.
+    /// </summary>
+    private void OnDestroy()
+    {
+        _taskSource.TrySetResult(false);
     }
     #endregion MonoBehavior Functions
 
@@ -104,12 +110,14 @@ public class AppDialog : MonoBehaviour
     /// <summary>
     /// Open the dialog
     /// </summary>
-    public void Open()
+    public Task<bool> Open()
     {
         if (gameObject != null)
         {
             gameObject.SetActive(true);
         }
+
+        return DiaglogTask;
     }
 
     /// <summary>
@@ -129,6 +137,16 @@ public class AppDialog : MonoBehaviour
     #endregion Public Functions
 
     #region Private Functions
+    /// <summary>
+    /// Place dialog in front of the user.
+    /// </summary>
+    private void PlaceInFront()
+    {
+        Transform cameraTransform = CameraCache.Main.transform;
+        transform.position = cameraTransform.position + (cameraTransform.forward.normalized * startDistance);
+        transform.rotation = Quaternion.LookRotation((transform.position - cameraTransform.position).normalized, Vector3.up);
+    }
+
     /// <summary>
     /// The old button was clicked
     /// </summary>

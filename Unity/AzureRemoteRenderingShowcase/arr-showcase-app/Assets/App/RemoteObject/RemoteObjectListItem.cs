@@ -1,6 +1,5 @@
 ﻿using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Rendering;
-using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -14,6 +13,7 @@ public class RemoteObjectListItem : ListItemEventHandler
     private Texture2D loadedTexture = null;
     private string loadedTextureUrl = null;
     private MaterialInstance imageMaterial = null;
+    private bool logVerboseMessages = false;
 
     #region Serialized Fields
     [SerializeField]

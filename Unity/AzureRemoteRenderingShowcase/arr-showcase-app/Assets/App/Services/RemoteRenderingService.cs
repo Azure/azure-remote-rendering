@@ -27,6 +27,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     [MixedRealityExtensionService(SupportedPlatforms.WindowsStandalone | SupportedPlatforms.WindowsUniversal | SupportedPlatforms.WindowsEditor)]
     public class RemoteRenderingService : BaseExtensionService, IRemoteRenderingService, IMixedRealityExtensionService
     {
+        private Task _initializationTask;
+        private Task<IRemoteRenderingMachine> _autoConnectTask;
         private AzureFrontend _arrFrontend = null;
         private RemoteRenderingMachine _primaryMachine = null;
         private RemoteRenderingStorage _storage = new RemoteRenderingStorage();
@@ -139,7 +141,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 if (_sessionStatus != value)
                 {
                     _sessionStatus = value;
-                    UpdateCombinesStatus();
+                    UpdateCombinedStatus();
                 }
             }
         }
@@ -159,7 +161,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 if (_connectionStatus != value)
                 {
                     _connectionStatus = value;
-                    UpdateCombinesStatus();
+                    UpdateCombinedStatus();
                 }
             }
         }
@@ -312,7 +314,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 string msg = $"Failed to create session. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
             }
 
             return null;
@@ -334,6 +336,44 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             return Task.FromResult<IRemoteRenderingMachine>(AddMachine(GetFrontend(domain).OpenRenderingSession(id)));
         }
 
+        /// <summary>
+        /// Connect to an existing or new session if not already connected.
+        /// </summary>
+        public async Task<IRemoteRenderingMachine> AutoConnect()
+        {
+            await _initializationTask;
+
+            // If there is already an active auto connect task, return this
+            if (_autoConnectTask != null)
+            {
+                return await _autoConnectTask;
+            }
+
+            // Save auto connect task to avoid simultaneous session creations.
+            var autoConnectTaskSource = new TaskCompletionSource<IRemoteRenderingMachine>();
+            _autoConnectTask = autoConnectTaskSource.Task;
+
+            // Wait for the new session. Then clear the auto-connect task variable, to allow
+            // new session creations later.
+            IRemoteRenderingMachine result = null;
+            try
+            {
+                result = await ConnectToBestMachine(allowCreation: true);
+                autoConnectTaskSource.SetResult(result);
+            }
+            catch (Exception ex)
+            {
+                autoConnectTaskSource.SetException(ex);
+                throw ex;
+            }
+            finally
+            {
+                _autoConnectTask = null;
+            }
+
+            return result;
+        }
+
         #endregion IRemoteRenderingService Methods
 
         #region BaseExtensionService Methods
@@ -341,16 +381,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             base.Initialize();
             _isDestroyed = false;
+            _initializationTask = InitializeAsync();
 
             try
             {
-                await InitializeAsync();
+                await _initializationTask;
             }
             catch (Exception ex)
             {
                 var msg = $"Failed to initialize ARR service. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
             }
         }
 
@@ -480,7 +521,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 _primaryMachine?.Session.Connection.Disconnect();
                 _primaryMachine = machine;
                 PrimaryMachineChanged?.Invoke(this, machine);
-                UpdateCombinesStatus();
+                UpdateCombinedStatus();
             }
 
             // Also re-save last session, as the properties may have changed
@@ -504,7 +545,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 oldMachine = _primaryMachine;
                 _primaryMachine = null;
                 PrimaryMachineChanged?.Invoke(this, null);
-                UpdateCombinesStatus();
+                UpdateCombinedStatus();
             }
 
             if (oldMachine != null)
@@ -547,7 +588,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
         }
 
-        private void UpdateCombinesStatus()
+        private void UpdateCombinedStatus()
         {
             Debug.Assert(UnityEngine.WSA.Application.RunningOnAppThread(), "Not running on app thread.");
 
@@ -620,39 +661,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             InitializeEditor();
             InitializeLastSessionOverride();
 
+            // Attempt to auto connect to last machine
             IRemoteRenderingMachine lastMachine = null;
-            if (Application.isPlaying && LastSession.HasId())
+            if (Application.isPlaying)
             {
-                try
-                {
-                    if (!string.IsNullOrEmpty(LastSession.Id))
-                    {
-                        lastMachine = await Open(LastSession.Id, LastSession.PreferredDomain);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to open last session ({LastSession.Id}). Reason: {ex.Message}");
-                }
-            }
-
-            if (lastMachine != null)
-            {
-                try
-                {
-                    await lastMachine.Session.Connection.Connect();
-                }
-                catch (Exception ex)
-                {
-                    lastMachine = null;
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to connect to last session ({LastSession.Id}). Reason: {ex.Message}");
-                }
+                lastMachine = await ConnectToBestMachine(allowCreation: false);
             }
 
             // Only update status once we know for sure there is no "last machine"
             if (lastMachine == null)
             {
-                UpdateCombinesStatus();
+                UpdateCombinedStatus();
             }
         }
 
@@ -699,8 +718,130 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 var msg = $"Could not parse session guid: {LoadedProfile.SessionOverride}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
             }
+        }
+
+        /// <summary>
+        /// Find the best machine session, and attempt to connect to it.
+        /// </summary>
+        /// <param name="allowCreation">
+        /// If true, new remote rendering sessiodns may be created.
+        /// </param>
+        /// <remarks>
+        /// This tries connecting to a list of machine. The connection attempts occur in the following order;
+        /// once a connection is made, no further attempts are made.
+        ///
+        /// 1) The currently set "PrimaryMachine"
+        /// 2) The last used machine from a previous app session (i.e. LastSession)
+        /// 3) If allowCreation is true, create a new machine and connect to it.
+        /// </summary>
+        private async Task<IRemoteRenderingMachine> ConnectToBestMachine(bool allowCreation)
+        {
+            bool connected = false;
+            IRemoteRenderingMachine lastMachine = null;
+
+            // First attempt to connect to the primary machine
+            if (PrimaryMachine != null && PrimaryMachine.Session.Status.IsValid())
+            {
+                lastMachine = PrimaryMachine;
+            }
+
+            if (lastMachine != null && lastMachine.Session.Connection.ConnectionStatus == ConnectionStatus.Disconnected)
+            {
+                try
+                {
+                    connected = await lastMachine.Session.Connection.Connect();
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Failed to connect to primary machine. Reason: {ex.Message}";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                }
+
+                if (!connected)
+                {
+                    lastMachine = null;
+                }
+            }
+
+            // Next, if no connection, connect to the last session id.
+            if (lastMachine == null && LastSession.HasId())
+            {
+                try
+                {
+                    if (!string.IsNullOrEmpty(LastSession.Id))
+                    {
+                        lastMachine = await Open(LastSession.Id, LastSession.PreferredDomain);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Failed to open last session ({LastSession.Id}). Reason: {ex.Message}.";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                }
+
+                if (lastMachine != null)
+                {
+                    try
+                    {
+                        connected = await lastMachine.Session.Connection.Connect();
+                    }
+                    catch (Exception ex)
+                    {
+                        lastMachine = null;
+
+                        var msg = $"Failed to connect to last session ({LastSession.Id}). Reason: {ex.Message}.";
+                        AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                    }
+                }
+
+                if (!connected)
+                {
+                    lastMachine = null;
+                }
+            }
+
+            // Finally, if still no connection, create a new session to connect to.
+            if (lastMachine == null && allowCreation)
+            {
+                try
+                {
+                    lastMachine = await Create();
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Failed to create a new remote machine. Reason: {ex.Message}.";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                }
+
+                if (lastMachine != null)
+                {
+                    try
+                    {
+                        connected = await lastMachine.Session.Connection.Connect();
+                    }
+                    catch (Exception ex)
+                    {
+                        lastMachine = null;
+
+                        var msg = $"Failed to connect a new remote machine. Reason: {ex.Message}.";
+                        AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                    }
+                }
+
+                if (!connected)
+                {
+                    lastMachine = null;
+                }
+            }
+
+            return lastMachine;
         }
 
         private void DestroyEditor()
@@ -1098,7 +1239,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (InvalidOperationException)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Couldn't update service stats.");
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Couldn't update service stats.");
                 }
                 _arrSession.Actions?.Update();
             }
@@ -1432,7 +1573,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         var msg = $"Failed to connect to ARR Inspector. Reason: {ex.Message}";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                     }
                 }
 
@@ -1447,7 +1588,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         {
                             var msg = $"URI '{fileUrl}' failed to launch).";
                             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                         }
                     }, false);
 #else
@@ -1694,7 +1835,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var msg = $"Failed to disconnect from runtime. Reason: {ex.Message}";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                 }
 
                 if (_arrSession != null)
@@ -1757,19 +1898,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     if (_isDisposed)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Ignoring connection request, because object is disposed.");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because object is disposed.");
                     }
                     else if (_connectionCount != connectionId)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Ignoring connection request, because another connection request has been made.");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because another connection request has been made.");
                     }
                     else if (_properties.Value.Status != RenderingSessionStatus.Ready)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Ignoring connection request, because the session is still not ready ({_properties.Value.Status}).");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because the session is still not ready ({0}).", _properties.Value.Status);
                     }
                     else if (_disconnectRequested)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  "Ignoring connection request, because a disconnect request has been made.");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because a disconnect request has been made.");
                     }
                     else
                     {
@@ -1830,7 +1971,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         var msg = $"Session disconnected unexpectedly. Error: {error}";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                     }
                 }
             }
@@ -2157,23 +2298,39 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Load a 2D texture.
             /// </summary>
-            public Task<Remote.Texture> LoadTexture2D(string url)
+            public async Task<Remote.Texture> LoadTexture2D(string url)
             {
-                return LoadTexture(url, Remote.TextureType.Texture2D);
+                try
+                {
+                    return await LoadTexture(url, Remote.TextureType.Texture2D);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                    return null;
+                }
             }
 
             /// <summary>
             /// Load a cube map texture.
             /// </summary>
-            public Task<Remote.Texture> LoadTextureCubeMap(string url)
+            public async Task<Remote.Texture> LoadTextureCubeMap(string url)
             {
-                return LoadTexture(url, Remote.TextureType.CubeMap);
+                try
+                {
+                    return await LoadTexture(url, Remote.TextureType.CubeMap);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                    return null;
+                }
             }
 
             /// <summary>
             /// Load a texture.
             /// </summary>
-            public async Task<Remote.Texture> LoadTexture(string url, Remote.TextureType type)
+            private Task<Remote.Texture> LoadTexture(string url, Remote.TextureType type)
             {
                 if (string.IsNullOrEmpty(url))
                 {
@@ -2185,35 +2342,34 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                Remote.Texture texture = null;
-                try
-                {
-                    texture = await _arrSession.Actions.LoadTextureFromSASAsync(new LoadTextureFromSASParams(url, type)).AsTask();
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load texture '{url}'. Reason: {ex.Message}");
-                }
-
-                return texture;
+                return _arrSession.Actions.LoadTextureFromSASAsync(new LoadTextureFromSASParams(url, type)).AsTask();
             }
 
             /// <summary>
             /// Load and set cube map
             /// </summary>
-            public async Task SetLighting(RemoteLightingData remoteLightingData)
+            public async Task SetLighting(string url)
             {
                 if (!IsValid())
                 {
                     return;
                 }
 
-                if (string.IsNullOrEmpty(remoteLightingData?.Url))
+                if (string.IsNullOrEmpty(url))
                 {
                     return;
                 }
 
-                var texture = await LoadTextureCubeMap(remoteLightingData.Url);
+                Remote.Texture texture = null;
+                try
+                {
+                    texture = await LoadTexture(url, Remote.TextureType.CubeMap);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                }
+
                 if (texture != null)
                 {
                     var skySettings = GetSkyReflectionSettings();

@@ -10,11 +10,6 @@ public class RemoteObjectLoadedEvent : UnityEvent<RemoteObjectLoadedEventData>
 {
 }
 
-[Serializable]
-public class RemoteObjectLoadingProgressEvent : UnityEvent<RemoteObjectLoadingProgressEventData>
-{
-}
-
 public class RemoteObjectLoadedEventData
 {
     public RemoteObjectLoadedEventData(RemoteEntitySyncObject syncObject)

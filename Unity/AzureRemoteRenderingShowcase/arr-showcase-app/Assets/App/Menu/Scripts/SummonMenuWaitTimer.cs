@@ -107,7 +107,11 @@ public class SummonMenuWaitTimer : MonoBehaviour
     public void TriggerTimer()
     {
         StopTimer();
-        _fillRoutine = StartCoroutine(FillRoutine());
+
+        if (isActiveAndEnabled)
+        {
+            _fillRoutine = StartCoroutine(FillRoutine());
+        }
     }
 
     public void StopTimer()
@@ -119,9 +123,13 @@ public class SummonMenuWaitTimer : MonoBehaviour
         }
 
         _fillRoutineRunning = false;
-        circleImage.fillAmount = 0f;
         gameObject.transform.localScale = _startScale;
-        circleImage.color = Color.white;
+
+        if (circleImage != null)
+        {
+            circleImage.fillAmount = 0f;
+            circleImage.color = Color.white;
+        }
     }
     #endregion Public Functions
 

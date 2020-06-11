@@ -30,6 +30,19 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     [Header("General Settings")]
 
     [SerializeField]
+    [Tooltip("The target to be moved. This will default to this transform if null.")]
+    private Transform target;
+
+    /// <summary>
+    /// The target to be moved. This will default to this transform if null.
+    /// </summary>
+    public Transform Target
+    {
+        get => target;
+        set => target = value;
+    }
+
+    [SerializeField]
     [Tooltip("The placeholder to move and show while placing object.")]
     private Transform placeholder;
 
@@ -218,6 +231,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     public Task StartPlacement()
     {
         StopOtherPlacements();
+        SetInitialPosition();
 
         if (_placementFinished == null)
         {
@@ -232,14 +246,20 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             AppServices.PointerStateService.ShowPointer(PointerType.HandRay)
         };
 
+        bool wasInPlacement = InPlacement;
+
         SetSpatialMeshVisibility(true);
-        _placementPosition = transform.position;
-        _placementRotation = transform.rotation;
+        _placementPosition = target.position;
+        _placementRotation = target.rotation;
         InPlacement = true;
         RegisterHandlers();
         UpdatePlacementVisualActiveState();
 
-        onPlacing?.Invoke();
+        if (!wasInPlacement)
+        {
+            onPlacing?.Invoke();
+        }
+
         return _placementFinished.Task;
     }
 
@@ -252,6 +272,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         UnregisterHandlers();
         SetSpatialMeshVisibility(false);
 
+        bool wasInPlacement = InPlacement;
+
         InPlacement = false;
         _lastUsedPointer = null;
         UpdatePlacementVisualActiveState();
@@ -262,7 +284,10 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             _placementFinished = null;
         }
 
-        onPlaced?.Invoke();
+        if (wasInPlacement)
+        {
+            onPlaced?.Invoke();
+        }
     }
     #endregion Public Methods
 
@@ -281,8 +306,12 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
 
     protected override void OnEnable()
     {
+        if (target == null)
+        {
+            target = transform;
+        }
+
         base.OnEnable();
-        SetInitialPosition();
     }
 
     private void Update()
@@ -319,10 +348,10 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         }
 
         // Smooth transform to the goal
-        UpdateTransformToGoal(transform);
+        UpdateTransformToGoal(target);
 
         // Only move placeholder, if it wasn't already moved
-        if (placeholder != null && !placeholder.IsChildOf(transform))
+        if (placeholder != null && !placeholder.IsChildOf(target))
         {
             UpdateTransformToGoal(placeholder);
         }
@@ -432,8 +461,11 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         }
 
         var camera = CameraCache.Main.transform;
-        var direction = camera.TransformDirection(directionFromHead.normalized).normalized;
-        transform.position = camera.position + (direction * distanceFromHead);
+        if (camera != null)
+        {
+            var direction = camera.TransformDirection(directionFromHead.normalized).normalized;
+            target.position = camera.position + (direction * distanceFromHead);
+        }
     }
 
     /// <summary>
@@ -463,7 +495,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         {
             // Only use focus provider result if target is not part of this hierarchy, otherwise
             // try to find a hit object that is "behind" this object.
-            if (!focusDetails.Object.transform.IsChildOf(transform))
+            if (!focusDetails.Object.transform.IsChildOf(target))
             {
                 position = focusDetails.Point;
                 hasResult = true;
@@ -476,7 +508,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
                 {
                     var currentHit = hits[i];
                     if (currentHit.collider != null &&
-                        !currentHit.collider.transform.IsChildOf(transform))
+                        !currentHit.collider.transform.IsChildOf(target))
                     {
                         position = currentHit.point;
                         hasResult = true;

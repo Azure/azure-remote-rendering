@@ -59,6 +59,7 @@ public class ListColliderClipper : MonoBehaviour
         if (_lastDataSource != itemRepeater.DataSource)
         {
             _lastDataSource = itemRepeater.DataSource;
+            _lastVisibleRegion = (-1, 0);
             DisableAll();
         }
 

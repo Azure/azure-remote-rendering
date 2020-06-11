@@ -188,7 +188,6 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
         {
             return;
         }
-
         // First decide if child highlighting should be disabled
         bool wholeObject = _root != null && _pendingSelection.TryGetValue(_root, out wholeObject);
         var highlightSettings = settings.GetSettings(focusingWholeObject && wholeObject);

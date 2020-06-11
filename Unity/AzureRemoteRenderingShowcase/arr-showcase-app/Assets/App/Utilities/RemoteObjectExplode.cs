@@ -1,130 +1,172 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using UnityEngine;
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
+using Microsoft.MixedReality.Toolkit;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Events;
 
 using Remote = Microsoft.Azure.RemoteRendering;
 
 public class RemoteObjectExplode : MonoBehaviour
 {
+    private IList<ExplodeData> _animationData;
+    private Coroutine _explosion;
+
+    #region Serialized Fields
+    [SerializeField]
     [Tooltip("The max distance a piece can fly out from the center")]
-    [UnityEngine.Range(0.0f, 5.0f)]
-    public float Distance = 0.0f;
+    [Range(0.0f, 5.0f)]
+    private float distance = 1.0f;
 
-    [Tooltip("The smoothing value on animation")]
-    public float Smoothing = .75f;
-
-    [Tooltip("Should the exploding auto start")]
-    public bool AutoStart = false;
-
-    private IList<ExplodeData> animationData;
-    private float lastDistance = 0f;
-    private Task<bool> animationUpdateTask = Task.FromResult(true);
-
-    public void Start()
+    /// <summary>
+    /// The max distance a piece can fly out from the center.
+    /// </summary>
+    public float Distance
     {
-        DisableExplosion = !AutoStart;
+        get => distance;
+        set => distance = value;
     }
 
+    [SerializeField]
+    [Tooltip("The smoothing value on animation. For remote rendered content it's recommended to have no smoothing, so the explosion happen instantly. If the explosion is animated with remote rendered content, the frame rate my drop below 60 Hz.")]
+    private float smoothing = 0.0f;
+
+    /// <summary>
+    /// The smoothing value on animation. For remote rendered content it's recommended to
+    /// have no smoothing, so the explosion happen instantly. If the explosion is animated
+    /// with remote rendered content, the frame rate my drop below 60 Hz.
+    /// </summary>
+    public float Smoothing
+    {
+        get => smoothing;
+        set => smoothing = value;
+    }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when the explosion has started.")]
+    private UnityEvent explodeStarted = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the explosion has started.
+    /// </summary>
+    public UnityEvent ExplodedStated => explodeStarted;
+
+    [SerializeField]
+    [Tooltip("Event raised when the explosion has completed.")]
+    private UnityEvent explodeCompleted = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the explosion has completed.
+    /// </summary>
+    public UnityEvent ExplodeCompleted => explodeCompleted;
+    #endregion Serialize Fields
+
+    #region Public Functions
+    /// <summary>
+    /// Try to reset the object pieces, and restar the explosion
+    /// </summary>
     public void StartExplode()
     {
-        lastDistance = 0;
-        DisableExplosion = false;
-    }
-
-    public bool DisableExplosion { get; set; } = true;
-
-    private void Update()
-    {
-        bool animationUpdateCompleted = 
-            (animationUpdateTask != null && animationUpdateTask.IsCompleted);
-
-        if (animationUpdateCompleted)
+        if (_explosion != null)
         {
-            bool doneAnimating = animationUpdateTask.Result;
+            StopCoroutine(_explosion);
+            _explosion = null;
+        }
 
-            float newDistance = DisableExplosion ? 0 : Distance;
-            if (lastDistance != newDistance)
+        _explosion = StartCoroutine(PlayExplosion(distance));
+    }
+    #endregion Public Functions
+
+    #region Private Functions
+    private IEnumerator PlayExplosion(float explodeDistance)
+    {
+        explodeStarted?.Invoke();
+
+        if (_animationData == null)
+        {
+            _animationData = CreateAnimationData();
+        }
+        else
+        {
+            foreach (var data in _animationData)
             {
-                if (doneAnimating)
-                {
-                    if (lastDistance == 0 && newDistance > 0)
-                    {
-                        CreateAnimationData(newDistance);
-                        doneAnimating = false;
-                    }
-                    else if (newDistance > 0)
-                    {
-                        doneAnimating = false;
-                    }
-                    else if (newDistance == 0 && animationData != null)
-                    {
-                        doneAnimating = false;
-                    }
-                }  
-
-                animationUpdateTask = Task.FromResult(doneAnimating);
-                lastDistance = newDistance;
-            }
-
-            if (!doneAnimating && animationData != null)
-            {
-                animationUpdateTask = UpdateExplode(animationData, newDistance, Smoothing);
+                data.Reset();
             }
         }
+
+        bool doneAnimating = false;
+        while (!doneAnimating)
+        {
+            yield return UpdateExplode(_animationData, explodeDistance, Smoothing, (bool result) => doneAnimating = result);
+            yield return null;
+        }
+
+        _explosion = null;
+        explodeCompleted?.Invoke();
     }
 
-    private async void CreateAnimationData(float explodeDistance)
+    private IList<ExplodeData> CreateAnimationData()
     {
-        animationData = null;
-
-        if (explodeDistance <= 0)
+        RemoteEntitySyncObject root = CaptureSyncObject();
+        if (root == null || !root.IsEntityValid)
         {
-            return;
+            return null;
         }
 
-        var root = CaptureSyncObject();
-
-        var data = CaptureRemoteMeshes(root);
-        if (data == null)
+        // first attempt to reuse the snap shots for the "reset" object.
+        // ortherwise create a new snap shot
+        RemoteObjectReset reset = root.GetComponentInParent<RemoteObjectReset>();
+        IEnumerable<EntitySnapshot> snapshots = reset?.OriginalState;
+        if (snapshots == null)
         {
-            return;
+            snapshots = root.Entity.CreateSnapshot();
         }
 
-        List<Task<AABB3D>> boundsTasks = new List<Task<AABB3D>>();
-        foreach (var explodeData in data)
+        return CreateExplodeData(snapshots);
+    }
+
+    /// <summary>
+    /// Create and initialize explosion data from snapshot data.
+    /// </summary>
+    private IList<ExplodeData> CreateExplodeData(IEnumerable<EntitySnapshot> snapshots)
+    {
+        IList<ExplodeData> data = ToExplodeData(snapshots);
+        if (data == null || data.Count == 0)
         {
-            // TODO....probably can compute bounds locally
-            boundsTasks.Add(explodeData.Transform.Entity.QueryWorldBoundsAsync().AsTask());
+            return null;
         }
 
-        AABB3D[] allAABBBounds = await Task.WhenAll(boundsTasks);
-        Bounds parentBounds = default(Bounds);
-
-        // Calculate total bounds and center positions of pieces
-        for (int i = 0; i < allAABBBounds.Length; i++)
+        // Calculate the global parent bounds
+        Bounds parentBounds = default;
+        for (int i = 0; i < data.Count; i++)
         {
-            Bounds currentBounds = allAABBBounds[i].toUnity();
-            data[i].Center = currentBounds.center;
+            ExplodeData explodeData = data[i];
+            AABB3D localBounds = explodeData.Mesh.Mesh.Bounds;
+            Vector3 max = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.max.toUnityPos());
+            Vector3 min = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.min.toUnityPos());
+            var globalBounds = new Bounds((min + max) * 0.5f, max - min);
 
+            explodeData.Center = globalBounds.center;
             if (i == 0)
             {
-                parentBounds = currentBounds;
+                parentBounds = globalBounds;
             }
             else
             {
-                parentBounds.Encapsulate(currentBounds);
+                parentBounds.Encapsulate(globalBounds);
             }
         }
 
         // Calculate target positions, and convert start and target to local space
         float maxDistanceFromCenter = parentBounds.extents.magnitude;
-        for (int i = 0; i < allAABBBounds.Length; i++)
+        for (int i = 0; i < data.Count; i++)
         {
             ExplodeData currentData = data[i];
 
@@ -136,21 +178,10 @@ public class RemoteObjectExplode : MonoBehaviour
             currentData.Direction = distanceFromCenter <= 0 ? Vector3.zero : directionFromCenter;
         }
 
-        // Commit explosion data
-        if (animationData == null)
-        {
-            animationData = data;
-        }
+        return data;
     }
 
-    private Task<bool> UpdateExplode(IList<ExplodeData> items, float explodeDistance, float smoothing)
-    {
-        TaskCompletionSource<bool> source = new TaskCompletionSource<bool>();
-        StartCoroutine(UpdateExplodeImpl(items, explodeDistance, smoothing, result => source.TrySetResult(result)));
-        return source.Task;
-    }
-
-    private System.Collections.IEnumerator UpdateExplodeImpl(IList<ExplodeData> items, float explodeDistance, float smoothing, Action<bool> result)
+    private IEnumerator UpdateExplode(IList<ExplodeData> items, float explodeDistance, float smoothing, Action<bool> result)
     { 
         if (items == null)
         {
@@ -165,7 +196,7 @@ public class RemoteObjectExplode : MonoBehaviour
         {
             foreach (var data in items)
             {
-                data.Transform.Entity.Position = data.StartLocal.toRemotePos();
+                data.Snapshot.Entity.Position = data.StartLocal.toRemotePos();
                 if (maxTime < DateTime.Now - start)
                 {
                     yield return null;
@@ -180,8 +211,9 @@ public class RemoteObjectExplode : MonoBehaviour
             {
                 Vector3 velocity = data.Velocity;
                 data.MaxDistance = explodeDistance;
+                data.Update();
                 data.CurrentLocal = Vector3.SmoothDamp(data.CurrentLocal, data.TargetLocal, ref velocity, smoothing, float.MaxValue, deltaTime);
-                data.Transform.Entity.Position = data.CurrentLocal.toRemotePos();
+                data.Snapshot.Entity.Position = data.CurrentLocal.toRemotePos();
                 done &= (data.CurrentLocal - data.TargetLocal).sqrMagnitude <= 0.000001f;
                 data.Velocity = velocity;
                 if (maxTime < DateTime.Now - start)
@@ -196,63 +228,56 @@ public class RemoteObjectExplode : MonoBehaviour
         result(done);
     }
 
+    /// <summary>
+    /// Find the nearest remote entity sync object.
+    /// </summary>
+    /// <returns></returns>
     private RemoteEntitySyncObject CaptureSyncObject()
     {
         return GetComponentInChildren<RemoteEntitySyncObject>();
     }
 
-    private IList<ExplodeData> CaptureRemoteMeshes(RemoteEntitySyncObject syncObject)
-    {     
-        Entity rootEntity = null;
-        if (syncObject != null)
-        {
-            rootEntity = syncObject.Entity;
-        }
-
-        EntityTransform entityTransform = null;
-        if (rootEntity != null)
-        {
-            entityTransform = rootEntity.CreateTransformSnapshot();
-        }
-
-        return ToExplodeData(entityTransform);
-    }
-
-    private IList<ExplodeData> ToExplodeData(EntityTransform entityTransform)
+    /// <summary>
+    /// Wrap EntitySnapshots in ExplodeData objects which will contain info on the pieces explosion position.
+    /// </summary>
+    private IList<ExplodeData> ToExplodeData(IEnumerable<EntitySnapshot> entitySnapshots)
     {
-        List<ExplodeData> remoteMeshes = new List<ExplodeData>();
-        ToExplodeDataImpl(entityTransform, remoteMeshes);
-        return remoteMeshes;
-    }
-
-    private void ToExplodeDataImpl(EntityTransform entityTransform, IList<ExplodeData> list)
-    {
-        if (entityTransform == null)
+        if (entitySnapshots == null)
         {
-            return;
+            return null;
         }
 
-        foreach (var child in entityTransform.Children)
+        List<ExplodeData> explodeData = new List<ExplodeData>();
+        foreach (EntitySnapshot snapshot in entitySnapshots)
         {
-            ToExplodeDataImpl(child, list);
+            var mesh = snapshot.Entity.FindComponentOfType<Remote.MeshComponent>();
+            if (mesh != null)
+            {
+                explodeData.Add(new ExplodeData(snapshot, mesh));
+            };
         }
-
-        if (entityTransform.Entity.FindComponentOfType<Remote.MeshComponent>() != null)
-        {
-            list.Add(new ExplodeData(entityTransform));
-        };
+        return explodeData;
     }
+    #endregion Private Functions
 
+    #region Private Classes
     private class ExplodeData
     {
-        public ExplodeData(EntityTransform transform)
+        private Vector3 startLocal = Vector3.negativeInfinity;
+        private Vector3 target = Vector3.negativeInfinity;
+        private Vector3 targetLocal = Vector3.negativeInfinity;
+        private Vector3 direction = Vector3.negativeInfinity;
+        private float explosionRatio = 0.0f;
+        private float maxDistance = 0.0f;
+
+        public ExplodeData(EntitySnapshot snapshot, MeshComponent mesh)
         {
-            Transform = transform;
-            StartLocal = transform.Entity.Position.toUnityPos();
-            UpdateTarget();
+            Snapshot = snapshot;
+            Mesh = mesh;
+            startLocal = snapshot.LocalPosition;
+            Start = ToWorldSpace(ref startLocal);
         }
 
-        private float explosionRatio = 0.0f;
         public float ExplosionRatio
         {
             get => explosionRatio;
@@ -261,12 +286,11 @@ public class RemoteObjectExplode : MonoBehaviour
                 if (explosionRatio != value)
                 {
                     explosionRatio = value;
-                    UpdateTarget();
+                    target = Vector3.negativeInfinity;
                 }
             }
         }
 
-        private float maxDistance = 0.0f;
         public float MaxDistance
         {
             get => maxDistance;
@@ -275,12 +299,11 @@ public class RemoteObjectExplode : MonoBehaviour
                 if (maxDistance != value)
                 {
                     maxDistance = value;
-                    UpdateTarget();
+                    target = Vector3.negativeInfinity;
                 }
             }
         }
 
-        private Vector3 direction = Vector3.zero;
         public Vector3 Direction
         {
             get => direction;
@@ -296,112 +319,73 @@ public class RemoteObjectExplode : MonoBehaviour
                     {
                         direction = value.normalized;
                     }
-                    UpdateTarget();
+                    target = Vector3.negativeInfinity;
                 }
             }
         }
+
+        public Vector3 StartLocal => startLocal;
+
+        public Vector3 Start { get; }
 
         public Vector3 Velocity { get; set; }
 
-        public EntityTransform Transform { get; private set; }
+        public EntitySnapshot Snapshot { get; }
 
-        public Vector3 TargetLocal { get; private set; }
+        public MeshComponent Mesh { get; }
 
-        private Vector3 target;
-        public Vector3 Target
+        public Vector3 TargetLocal => targetLocal;
+
+        public Vector3 Target => target;
+
+        public Vector3 CurrentLocal { get; set; }
+
+        public Vector3 Center { get; set; }
+
+        public void Update()
         {
-            get => target;
-
-            private set
+            if (target.IsValidVector())
             {
-                target = value;
-                TargetLocal = ToParentSpace(ref target);
+                return;
             }
+
+            float targetDistance = MaxDistance * ExplosionRatio;
+            if (targetDistance <= 0 || Direction == Vector3.zero)
+            {
+                target = Start;
+            }
+            else
+            {
+                target = Start + (Direction * targetDistance);
+            }
+
+            targetLocal = ToParentSpace(ref target);
         }
 
-        private Vector3 currentLocal;
-        public Vector3 CurrentLocal
+        public void Reset()
         {
-            get => currentLocal;
-
-            set
-            {
-                currentLocal = value;
-            }
+            Velocity = Vector3.zero;
+            CurrentLocal = StartLocal;
         }
-
-        private Vector3 startLocal;
-        public Vector3 StartLocal
-        {
-            get => startLocal;
-
-            set
-            {
-                startLocal = value;
-                Start = ToWorldSpace(ref startLocal);
-            }
-        }
-
-        private Vector3 start;
-        public Vector3 Start
-        {
-            get => start;
-
-            set
-            {
-                if (start != value)
-                {
-                    start = value;
-                    UpdateTarget();
-                }
-            }
-        }
-
-        public Vector3 CenterLocal { get; private set; }
-
-        private Vector3 center;
-        public Vector3 Center
-        {
-            get => center;
-
-            set
-            {
-                center = value;
-                CenterLocal = ToParentSpace(ref center);
-            }
-        }
-
         private Vector3 ToParentSpace(ref Vector3 point)
         {
-            if (Transform?.Parent == null)
+            if (Snapshot?.Parent == null)
             {
                 return point;
             }
 
-            return Transform.Parent.ToLocal.MultiplyPoint(point);
+            return Snapshot.Parent.ToLocal.MultiplyPoint(point);
         }
 
         private Vector3 ToWorldSpace(ref Vector3 point)
         {
-            if (Transform?.Parent == null)
+            if (Snapshot?.Parent == null)
             {
                 return point;
             }
 
-            return Transform.Parent.ToWorld.MultiplyPoint(point);
+            return Snapshot.Parent.ToWorld.MultiplyPoint(point);
         }
-
-        private void UpdateTarget()
-        {
-            float targetDistance = MaxDistance * ExplosionRatio;
-            if (targetDistance <= 0 || Direction == Vector3.zero)
-            {
-                Target = Start;
-            }
-            else
-            {
-                Target = Start + (Direction * targetDistance);
-            }
-        }
+        #endregion Private Classes
     }
 }

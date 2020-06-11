@@ -52,6 +52,19 @@ public class CubeMapButton : ClickableButton
         get => remoteCubeMap;
         set => remoteCubeMap = value;
     }
+
+    [SerializeField]
+    [Tooltip("The behavior that will do the work to change the scene's sky reflection cube map.")]
+    private ChangeSkyReflection changeSkyReflection = null;
+
+    /// <summary>
+    /// The behavior that will do the work to change the scene's sky reflection cube map.
+    /// </summary>
+    public ChangeSkyReflection ChangeSkyReflection
+    {
+        get => changeSkyReflection;
+        set => changeSkyReflection = value;
+    }
     #endregion Serialized Fields
 
     #region MonoBehavior Methods
@@ -65,6 +78,11 @@ public class CubeMapButton : ClickableButton
         if (previewRenderer != null)
         {
             previewMaterial = previewRenderer.EnsureComponent<MaterialInstance>();
+        }
+
+        if (changeSkyReflection == null)
+        {
+            changeSkyReflection = GetComponentInParent<ChangeSkyReflection>();
         }
     }
 
@@ -109,15 +127,14 @@ public class CubeMapButton : ClickableButton
         }
     }
 
-    private async void ApplyCubeMap()
+    private void ApplyCubeMap()
     {
-        IRemoteRenderingMachine machine = AppServices.RemoteRendering.PrimaryMachine;
-        if (machine == null || remoteCubeMap == null)
+        if (changeSkyReflection != null &&
+            remoteCubeMap != null &&
+            !string.IsNullOrEmpty(remoteCubeMap.Url))
         {
-            return;
+            changeSkyReflection.CubeMapUrl = remoteCubeMap.Url;
         }
-
-        await machine.Actions.SetLighting(remoteCubeMap);
     }
     #endregion Private Methods
 }

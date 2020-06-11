@@ -30,9 +30,10 @@ public class RemoteMaterialCache
         Task<Remote.Material> remoteMaterial = null;
         lock (m_nameToMaterial)
         {
-            if (m_nameToMaterial.ContainsKey(material.name))
+            if (!string.IsNullOrEmpty(material.Name) &&
+                m_nameToMaterial.ContainsKey(material.Name))
             {
-                remoteMaterial = m_nameToMaterial[material.name];
+                remoteMaterial = m_nameToMaterial[material.Name];
                 if (remoteMaterial.IsCanceled || remoteMaterial.IsFaulted)
                 {
                     remoteMaterial = null;
@@ -55,21 +56,25 @@ public class RemoteMaterialCache
         {
             if (material.Type == MaterialType.Pbr)
             {
-                m_nameToMaterial[material.name] = result = InitializePhysicalMaterial(material);
+                result = InitializePhysicalMaterial(material);
             }
             else
             {
-                m_nameToMaterial[material.name] = result = InitializeColorMaterial(material);
+                result = InitializeColorMaterial(material);
+            }
+
+            if (!string.IsNullOrEmpty(material.Name))
+            {
+                m_nameToMaterial[material.Name] = result;
             }
         }
         return result;
     }
 
-    private async Task<Remote.Material> InitializePhysicalMaterial(
-        RemoteMaterial material)
+    private async Task<Remote.Material> InitializePhysicalMaterial(RemoteMaterial material)
     {
         var remoteMaterial = RemoteManagerUnity.CurrentSession?.Actions.CreateMaterial(MaterialType.Pbr);
-        remoteMaterial.Name = material.name;
+        remoteMaterial.Name = material.Name;
 
         PbrMaterial pbrMaterial = remoteMaterial as PbrMaterial;
         pbrMaterial.AlbedoColor = material.AlbedoColor.toRemoteColor4();
@@ -107,7 +112,7 @@ public class RemoteMaterialCache
     private async Task<Remote.Material> InitializeColorMaterial(RemoteMaterial material)
     {
         var remoteMaterial = RemoteManagerUnity.CurrentSession?.Actions.CreateMaterial(MaterialType.Color);
-        remoteMaterial.Name = material.name;
+        remoteMaterial.Name = material.Name;
 
         ColorMaterial colorMaterial = remoteMaterial as ColorMaterial;
         colorMaterial.AlbedoColor = material.AlbedoColor.toRemoteColor4();

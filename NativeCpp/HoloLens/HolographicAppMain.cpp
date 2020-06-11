@@ -54,7 +54,6 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
         init.AccountDomain = "westus2.mixedreality.azure.com"; // <change to your region>
         m_modelURI = "builtin://Engine";
         m_sessionOverride = ""; // If there is a valid session ID to re-use, put it here. Otherwise a new one is created
-
         m_frontEnd = RR::ApiHandle(RR::AzureFrontend(init));
     }
 
@@ -629,24 +628,6 @@ bool HolographicAppMain::Render(HolographicFrame const& holographicFrame)
             }
             context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-#ifdef USE_REMOTE_RENDERING
-            // Inject remote rendering: as soon as we are connected, start blitting the remote frame.
-            // We do the blitting after the Clear, and before our rendering.
-            if (m_isConnected)
-            {
-                m_graphicsBinding->BlitRemoteFrame();
-            }
-
-            // Show a status text during connection, while loading or when an error occurred
-            if (!m_isConnected || !m_modelLoadFinished || m_modelLoadResult != RR::Result::Success)
-            {
-                if (m_statusDisplay != nullptr)
-                {
-                    // Draw connection/progress/error status
-                    m_statusDisplay->Render();
-                }
-            }
-#endif
             //
             // TODO: Replace the sample content with your own content.
             //
@@ -675,6 +656,28 @@ bool HolographicAppMain::Render(HolographicFrame const& holographicFrame)
 
             // Attach the view/projection constant buffer for this camera to the graphics pipeline.
             bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
+
+#ifdef USE_REMOTE_RENDERING
+            if (cameraActive)
+            {
+                // Inject remote rendering: as soon as we are connected, start blitting the remote frame.
+                // We do the blitting after the Clear and viewport setup, and before our rendering.
+                if (m_isConnected)
+                {
+                    m_graphicsBinding->BlitRemoteFrame();
+                }
+
+                // Show a status text during connection, while loading or when an error occurred
+                if (!m_isConnected || !m_modelLoadFinished || m_modelLoadResult != RR::Result::Success)
+                {
+                    if (m_statusDisplay != nullptr)
+                    {
+                        // Draw connection/progress/error status
+                        m_statusDisplay->Render();
+                    }
+                }
+            }
+#endif
 
 #ifdef DRAW_SAMPLE_CONTENT
             // Only render world-locked content when positional tracking is active.

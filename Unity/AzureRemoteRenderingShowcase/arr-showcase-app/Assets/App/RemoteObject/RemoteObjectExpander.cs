@@ -393,8 +393,19 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             ProxyObject proxyObject = GetProxyObject(entity);
             if (proxyObject == null)
             {
-                GameObject proxyGameObject = (proxyPrefab == null) ? new GameObject() : Instantiate(proxyPrefab);
-                proxyGameObject.SetActive(false);
+                GameObject proxyGameObject;
+                if (proxyPrefab == null)
+                {
+                    proxyGameObject = new GameObject();
+                    // avoid scripts from running when adding components
+                    proxyGameObject.SetActive(false);
+                }
+                else
+                {
+                    // avoid scripts from running right when instantiated and when adding components
+                    proxyPrefab.SetActive(false);
+                    proxyGameObject = Instantiate(proxyPrefab);
+                }
 
                 // Attach proxy after binding to sync object
                 proxyObject = proxyGameObject.EnsureComponent<ProxyObject>();

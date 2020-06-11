@@ -28,12 +28,12 @@ public class MaterialButton : ClickableButton
 
     [SerializeField]
     [Tooltip("The remote material to apply when clicked.")]
-    private RemoteMaterial remoteMaterial;
+    private RemoteMaterialObject remoteMaterial;
 
     /// <summary>
     /// The remote material to apply when clicked
     /// </summary>
-    public RemoteMaterial RemoteMaterial
+    public RemoteMaterialObject RemoteMaterial
     {
         get => remoteMaterial;
         set => remoteMaterial = value;
@@ -85,9 +85,9 @@ public class MaterialButton : ClickableButton
         setter.Mode = PointerMode.Material;
         setter.ModeData = remoteMaterial;
 
-        if (previewMaterial != null)
+        if (previewMaterial != null && remoteMaterial.Data != null)
         {
-            previewMaterial.Material.color = remoteMaterial.AlbedoColor;
+            previewMaterial.Material.color = remoteMaterial.Data.AlbedoColor;
         }
 
         UpdateLabelText();

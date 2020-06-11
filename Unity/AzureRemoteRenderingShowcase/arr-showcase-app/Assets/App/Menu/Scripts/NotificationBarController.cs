@@ -3,6 +3,7 @@
 
 using Microsoft.MixedReality.Toolkit.Extensions;
 using UnityEngine;
+using UnityEngine.Events;
 
 using static AnimateText;
 
@@ -52,13 +53,24 @@ public class NotificationBarController : MonoBehaviour
     private ProgressBarFill progressBar = null;
 
     /// <summary>
-    /// The object that displays download progress to the user."
+    /// The object that displays download progress to the user.
     /// </summary>
     public ProgressBarFill ProgressBar
     {
         get => progressBar;
         set => progressBar = value;
     }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when the notification bar is hidden.")]
+    private UnityEvent notificationBarHidden = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the notification bar is hidden.
+    /// </summary>
+    public UnityEvent NotificationBarHidden => notificationBarHidden;
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
@@ -98,14 +110,14 @@ public class NotificationBarController : MonoBehaviour
         if (_isDisplayingNotification)
         {
             _currentTime += Time.deltaTime;
-            if (_durationTime >= 0.0f && _currentTime >= _durationTime && _textAnimation.MessageShownCompletely)
+            if (_durationTime >= 0.0f && _currentTime >= _durationTime && _textAnimation != null && _textAnimation.MessageShownCompletely)
             {
-                _isDisplayingNotification = false;
+                HideNotification();
             }
         }
         else
         {
-            float progress = AppServices.RemoteObjectFactory.Progress;
+            float progress = AppServices.RemoteObjectFactory?.Progress ?? 0f;
             if (progress > 0f && progress < 1f)
             {
                 if (!_isLoadingModel)
@@ -115,20 +127,27 @@ public class NotificationBarController : MonoBehaviour
                 }
 
                 string progressString = string.Format(_loadingModelStringFormat, progress * 100.0f);
-                _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(progressString, AppNotificationType.Info) };
-                progressBar.AnimateFill(progress);
-            }
-            else
-            {
-                if (_isLoadingModel)
+
+                if (_textAnimation != null)
                 {
-                    // reset the download bar, turn it off
-                    _isLoadingModel = false;
+                    _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(progressString, AppNotificationType.Info) };
+                }
+
+                progressBar?.AnimateFill(progress);
+            }
+            else if (_isLoadingModel)
+            {
+                // reset the download bar, turn it off
+                _isLoadingModel = false;
+
+                if (progressBar != null)
+                {
                     progressBar.FillAmount = 0f;
                 }
+
+                HideNotification();
             }
         }
-        notificationBar.SetActive(_isDisplayingNotification || _isLoadingModel);
     }
     #endregion MonoBehavior Functions
 
@@ -158,6 +177,7 @@ public class NotificationBarController : MonoBehaviour
         _currentTime = 0f;
         _isDisplayingNotification = false;
         notificationBar.SetActive(false);
+        notificationBarHidden?.Invoke();
     }
     #endregion Public Functions
 
@@ -188,7 +208,7 @@ public class NotificationBarController : MonoBehaviour
         _currentTime = 0f;
         _isDisplayingNotification = true;
 
-        //re-enabling will make the bar flash
+        // re-enabling will make the bar flash
         if (notificationBar.activeInHierarchy)
         {
             notificationBar.SetActive(false);

@@ -12,10 +12,10 @@ using Windows.Storage;
 
 public static class LocalStorageHelper
 {
-    public static async Task<TResult> Load<TResult>(string filePath) where TResult : class
+    public static async Task<TResult> Load<TResult>(string filePath) 
     {
         bool appxFile = filePath?.StartsWith("ms-appx:///") == true;
-        TResult result = null;
+        TResult result = default;
 
         if (appxFile || File.Exists(filePath))
         {
@@ -44,7 +44,7 @@ public static class LocalStorageHelper
                 result = await Task.Run(() =>
                 {
                     XmlSerializer xml = new XmlSerializer(typeof(TResult));
-                    return xml.Deserialize(stream) as TResult;
+                    return (TResult)xml.Deserialize(stream);
                 });
             }
             finally
@@ -57,7 +57,7 @@ public static class LocalStorageHelper
         return result;
     }
 
-    public static async Task Save<TResult>(string filePath, TResult data) where TResult : class
+    public static async Task Save<TResult>(string filePath, TResult data)
     {
         MemoryStream stream = null;
         FileStream file = null;

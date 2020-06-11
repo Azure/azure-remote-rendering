@@ -17,28 +17,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             Transform parent = null, 
             Action<RemoteObject> initailizeAction = null)
         {
-            // The RemoteObject will manage getting the "primary machine"
-            return Load(null, remoteData, containerPrefab, parent, initailizeAction);
-        }
-
-        public static RemoteObject Load(
-            IRemoteRenderingMachine machine,
-            RemoteItemBase remoteData,
-            GameObject containerPrefab, 
-            Transform parent = null, 
-            Action<RemoteObject> initailizeAction = null)
-        {
-            if (remoteData == null)
+            GameObject newObject;
+            if (containerPrefab == null)
             {
-                return null;
+                newObject = new GameObject();
+                // avoid scripts from running when adding to object
+                newObject.SetActive(false);
             }
-
-            var newObject = containerPrefab == null ? new GameObject() : GameObject.Instantiate(containerPrefab);
-            newObject.SetActive(false);
-            newObject.transform.SetParent(parent, false);
+            else
+            {
+                // avoid scripts from running right when initantiated and adding to object
+                containerPrefab.SetActive(false);
+                newObject = GameObject.Instantiate(containerPrefab);
+            }
+            newObject.transform.SetParent(parent, true);
 
             var remoteObject = newObject.EnsureComponent<RemoteObject>();
-            remoteObject.PrimaryMachine = machine;
             remoteObject.Data = remoteData;
 
             initailizeAction?.Invoke(remoteObject);

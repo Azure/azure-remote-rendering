@@ -7,10 +7,16 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+    - target: {fileID: 2182247995863920963, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
-      propertyPath: m_Name
-      value: QuitAppDialog
+      propertyPath: m_Text
+      value: "Quitting the application will not stop your \nremote session, however
+        your model \nplacements will be lost.\n\nDo you really want to quit the application? "
+      objectReference: {fileID: 0}
+    - target: {fileID: 2182247995863920963, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_Anchor
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
@@ -67,21 +73,15 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 2246367649367138475, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+    - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.0594
+      propertyPath: m_Name
+      value: QuitAppDialog
       objectReference: {fileID: 0}
-    - target: {fileID: 2182247995863920963, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+    - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
-      propertyPath: m_Text
-      value: "Quitting the application will not stop your \nremote session, however
-        your model \nplacements will be lost.\n\nDo you really want to quit the application? "
-      objectReference: {fileID: 0}
-    - target: {fileID: 2182247995863920963, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
-        type: 3}
-      propertyPath: m_Anchor
-      value: 3
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471203046030, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
@@ -147,6 +147,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_text
       value: Yes
+      objectReference: {fileID: 0}
+    - target: {fileID: 2246367649367138475, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.0594
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 905dccb9ff8d07b4f9423664ed5a2ccc, type: 3}

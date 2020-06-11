@@ -12,26 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 835cd86ab31a1ca439ad8a57068f4ee0, type: 3}
   m_Name: Red 2
   m_EditorClassIdentifier: 
-  Type: 0
-  AlbedoColor: {r: 0.8301887, g: 0.36810252, b: 0.36810252, a: 1}
-  AlbedoTextureUrl: 
-  AlphaClipThreshold: 0.5
-  FadeOut: 1
-  TexCoordOffset: {x: 0, y: 0}
-  TexCoordScale: {x: 1, y: 1}
-  AOMapUrl: 
-  AOScale: 1
-  EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
-  EmissiveMapUrl: 
-  Metalness: 1
-  MetalnessMapUrl: https://ddegpustorage.blob.core.windows.net/arr-showcase-sample/textures/Metal_03_metallic.dds
-  NormalMapUrl: 
-  PbrFlags: 12
-  VertexAlphaMode: 0
-  VertexColorMode: 0
-  Roughness: 0.75
-  RoughnessMapUrl: https://ddegpustorage.blob.core.windows.net/arr-showcase-sample/textures/Metal_03_smoothness.dds
-  ColorFlags: 2
-  ColorTransparencyMode: 0
-  VertexMix: 0
-  LocalMaterial: {fileID: 2100000, guid: 6a5a16bb39060c6499d020874ea81358, type: 2}
+  Data:
+    Name: Red 2
+    Type: 0
+    AlbedoColor: {r: 0.8301887, g: 0.36810252, b: 0.36810252, a: 1}
+    AlbedoTextureUrl: 
+    AlphaClipThreshold: 0.5
+    FadeOut: 1
+    TexCoordOffset: {x: 0, y: 0}
+    TexCoordScale: {x: 1, y: 1}
+    AOMapUrl: 
+    AOScale: 1
+    Metalness: 1
+    MetalnessMapUrl: https://ddegpustorage.blob.core.windows.net/arr-showcase-sample/textures/Metal_03_metallic.dds
+    NormalMapUrl: 
+    PbrFlags: 12
+    VertexAlphaMode: 0
+    Roughness: 0.75
+    RoughnessMapUrl: https://ddegpustorage.blob.core.windows.net/arr-showcase-sample/textures/Metal_03_smoothness.dds
+    ColorFlags: 2
+    ColorTransparencyMode: 0
+    VertexMix: 0

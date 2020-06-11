@@ -86,9 +86,9 @@ public abstract class RemoteItemBase
 
         public bool ShouldSerializePosition() { return Position != Vector3.zero; }
 
-        public bool ShouldSerializeRotation() { return Position != Vector3.zero; }
+        public bool ShouldSerializeRotation() { return Rotation != Vector3.zero; }
 
-        public bool ShouldSerializeScale() { return Position != Vector3.one; }
+        public bool ShouldSerializeScale() { return Scale != Vector3.one; }
 
         public bool ShouldSerializeMinSize() { return MinSize != Vector3.zero; }
 
@@ -138,6 +138,7 @@ public class RemoteContainer : RemoteItemBase
     {
         return Items != null && Items.Length > 0;
     }
+
     public bool ShouldSerializeImageUrl()
     {
         return !string.IsNullOrEmpty(ImageUrl);

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
+using System;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -11,6 +12,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Get the total loading progress
         /// </summary>
         float Progress { get; }
+
+        /// <summary>
+        /// Get if there are models currently being loaded.
+        /// </summary>
+        bool IsLoading { get; }
+
+        /// <summary>
+        /// Event raised when loading of models has started.
+        /// </summary>
+        event Action<IRemoteObjectFactoryService> LoadStarted;
+
+
+        /// <summary>
+        /// Event raised when loading of models has completed.
+        /// </summary>
+        event Action<IRemoteObjectFactoryService> LoadCompleted;
 
         /// <summary>
         /// Load a model.

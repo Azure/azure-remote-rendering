@@ -2,21 +2,25 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// Used to position the game object's transform ontop of the target. The object's orientation is also changed to "Rotation Euler Default".
 /// </summary>
 public class PlaceOnTarget : MonoBehaviour
 {
+    Coroutine _placementCoroutine = null;
+
     #region Serialized Fields
     [SerializeField]
-    [Tooltip("The target whose position will be used when resetting the position of this transform.")]
+    [Tooltip("The target whose position will be changed.")]
     private GameObject target = null;
 
     /// <summary>
-    /// The target whose position will be used when resetting the position of this transform.
+    /// The target whose position will be changed.
     /// </summary>
     public GameObject Target
     {
@@ -25,16 +29,30 @@ public class PlaceOnTarget : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("Should 'Rotation Euler Default' value be applied relative to the target object.")]
-    private bool rotateInTargetSpace = true;
+    [Tooltip("The source for the position that will be used when resetting the position of this transform.")]
+    private GameObject source = null;
 
     /// <summary>
-    /// Should 'Rotation Euler Default' value be applied relative to the target object.
+    /// The source for the position position will be used when resetting the position of this transform.
     /// </summary>
-    public bool RotateInTargetSpace
+    public GameObject Source
     {
-        get => rotateInTargetSpace;
-        set => rotateInTargetSpace = value;
+        get => source;
+        set => source = value;
+    }
+
+    [SerializeField]
+    [EnumFlag]
+    [Tooltip("Should 'Rotation Euler Default' value be applied relative to the source object.")]
+    private RotateFlags rotatationType = RotateFlags.SourceAll;
+
+    /// <summary>
+    /// Should 'Rotation Euler Default' value be applied relative to the source object.
+    /// </summary>
+    public RotateFlags RotatationType
+    {
+        get => rotatationType;
+        set => rotatationType = value;
     }
 
     [Header("Transform settings")]
@@ -90,52 +108,113 @@ public class PlaceOnTarget : MonoBehaviour
         get => initialPlacementDelay;
         set => initialPlacementDelay = value;
     }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when object is placed.")]
+    private UnityEvent onPlaced = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when object is placed
+    /// </summary>
+    public UnityEvent OnPlaced => onPlaced;
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
-    private async void Awake()
-    {
-        // Enablement will still do a placement. So if iniitialPlacementDelay is zero,
-        // don't perform an extra placement calculation.
-        if (initialPlacementDelay > 0)
-        {
-            await Task.Delay(TimeSpan.FromSeconds(initialPlacementDelay));
-            Place();
-        }
-    }
-
     private void OnEnable()
     {
-        Place();
+        if (_placementCoroutine != null)
+        {
+            StopCoroutine(_placementCoroutine);
+        }
+        _placementCoroutine = StartCoroutine(PlacementCoroutine());
     }
     #endregion MonoBehavior Functions
 
     #region Public Functions
     /// <summary>
-    /// Position the game object's transform to it's original orientation in relation to a given target.
+    /// Position the game object's transform to it's original orientation in relation to a given source.
     /// </summary>
     public void Place()
     {
-        if (target == null)
+        if (source == null)
         {
             return;
         }
 
-        this.transform.position = target.transform.position
-            + (target.transform.forward * positionOffSet.z)
-            + (target.transform.up * positionOffSet.y)
-            + (target.transform.right * positionOffSet.x);
-
-        this.transform.localScale = scaleDefault;
-
-        if (rotateInTargetSpace)
+        if (target == null)
         {
-            this.transform.rotation = target.transform.rotation * Quaternion.Euler(rotationEulerDefault);
+            target = this.gameObject;
+        }
+
+        target.transform.position = source.transform.position
+            + (source.transform.forward * positionOffSet.z)
+            + (source.transform.up * positionOffSet.y)
+            + (source.transform.right * positionOffSet.x);
+
+        target.transform.localScale = scaleDefault;
+
+        if (rotatationType != RotateFlags.None)
+        {
+            Vector3 sourceRotation = Vector3.zero;
+            if ((rotatationType & RotateFlags.SourcePitch) == RotateFlags.SourcePitch)
+            {
+                sourceRotation.x = source.transform.rotation.eulerAngles.x;
+            }
+            if ((rotatationType & RotateFlags.SourceYaw) == RotateFlags.SourceYaw)
+            {
+                sourceRotation.y = source.transform.rotation.eulerAngles.y;
+            }
+            if ((rotatationType & RotateFlags.SourceRoll) == RotateFlags.SourceRoll)
+            {
+                sourceRotation.z = source.transform.rotation.eulerAngles.z;
+            }
+
+            target.transform.rotation = Quaternion.Euler(sourceRotation) * Quaternion.Euler(rotationEulerDefault);
         }
         else
         {
-            this.transform.rotation = Quaternion.Euler(rotationEulerDefault);
+            target.transform.rotation = Quaternion.Euler(rotationEulerDefault);
         }
+
+        onPlaced?.Invoke();
     }
     #endregion Public Functions
+
+    #region Private Functions
+    /// <summary>
+    /// Start placement with an initial delay, if any delay.
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator PlacementCoroutine()
+    {
+        if (initialPlacementDelay > 0)
+        {
+            yield return new WaitForSeconds(initialPlacementDelay);
+        }
+        initialPlacementDelay = 0;
+        Place();
+        yield break;
+    }
+    #endregion Private Functions
+
+    #region Public Enum Flags
+    [Flags]
+    public enum RotateFlags
+    {
+        [Tooltip("Apply rotation in world space.")]
+        None = 0,
+        [Tooltip("Rotate in the source's space, using it's X rotation.")]
+        SourcePitch = 1,
+        [Tooltip("Rotate in the source's space, using it's Y rotation.")]
+        SourceYaw = 2,
+        [Tooltip("Rotate in the source's space, using it's Z rotation.")]
+        SourceRoll = 4,
+        [Tooltip("Rotate in the source's space, using it's X, Y, and Z rotation.")]
+        SourceAll = SourcePitch | SourceYaw | SourceRoll,
+        [Tooltip("Rotate in the source's space, using it's X and Y rotation.")]
+        SourceWorldUp = SourcePitch | SourceYaw,
+    }
+    #endregion Public Enum Flags
 }

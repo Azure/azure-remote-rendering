@@ -4,9 +4,10 @@
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Rendering;
+using UnityEngine.Events;
 using Remote = Microsoft.Azure.RemoteRendering;
 
 /// <summary>
@@ -34,6 +35,17 @@ public class ChangeMaterial : MonoBehaviour
             }
         }
     }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when a new material is applied to an entity.")]
+    private UnityEvent<Entity, RemoteMaterial> materialApplied = new RemoteMaterialEvent();
+
+    /// <summary>
+    /// Event raised when a new material is applied to an entity.
+    /// </summary>
+    public UnityEvent<Entity, RemoteMaterial> MaterialApplied => materialApplied;
     #endregion Serialized Fields
 
     #region MonoBehavior Methods
@@ -60,9 +72,14 @@ public class ChangeMaterial : MonoBehaviour
     /// </summary>
     public void SetMaterial(object newMaterial)
     {
-        if (newMaterial is RemoteMaterial)
+        switch (newMaterial)
         {
-            Material = (RemoteMaterial)newMaterial;
+            case RemoteMaterial remoteMaterial:
+                Material = remoteMaterial;
+                break;
+            case RemoteMaterialObject remoteMaterialObject:
+                Material = remoteMaterialObject?.Data;
+                break;
         }
     }
 
@@ -88,21 +105,35 @@ public class ChangeMaterial : MonoBehaviour
         return Apply(eventData);
     }
 
-    public async Task Apply(MixedRealityPointerEventData eventData)
+    public Task Apply(MixedRealityPointerEventData eventData)
     {
-        IRemotePointerResult pointerResult =
-            AppServices.RemoteFocusProvider?.GetRemoteResult(eventData.Pointer);
+        IRemotePointerResult pointerResult = AppServices.RemoteFocusProvider?.GetRemoteResult(eventData.Pointer);
+        return Apply(pointerResult.TargetEntity);
+    }
 
-        Entity entity = pointerResult.TargetEntity;
-
-        IRemoteRenderingMachine machine = AppServices.RemoteRendering.PrimaryMachine;
-
-        Remote.Material loadedMaterial = null;
-        if (entity != null && machine != null)
+    public Task Apply(Entity entity, RemoteMaterial remoteMaterial)
+    {
+        if (remoteMaterial == null)
         {
-            loadedMaterial = await machine.Actions.LoadMaterial(material);
+            return Task.CompletedTask;
         }
 
+        SetMaterial(remoteMaterial);
+        return Apply(entity);
+    }
+
+    public async Task Apply(Entity entity)
+    {
+        IRemoteRenderingMachine machine = AppServices.RemoteRendering.PrimaryMachine;
+        if (material == null || machine == null || entity == null || !entity.Valid)
+        {
+            return;
+        }
+
+        Task<Remote.Material> materialTask = machine.Actions.LoadMaterial(material);
+        materialApplied?.Invoke(entity, material);
+
+        Remote.Material loadedMaterial = await materialTask;
         if (loadedMaterial != null)
         {
             entity.ReplaceMaterials(loadedMaterial);
@@ -122,12 +153,26 @@ public class ChangeMaterial : MonoBehaviour
         }
 
         IRemoteRenderingMachine machine = AppServices.RemoteRendering?.PrimaryMachine;
-        if (machine == null)
+        if (machine == null || !machine.Actions.IsValid())
         {
             return;
         }
 
-        await machine.Actions.LoadMaterial(loadMaterial);
+        try
+        {
+            await machine.Actions.LoadMaterial(loadMaterial);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Failed to load material '{loadMaterial.Name}'.\r\nException: {ex.ToString()}");
+        }
     }
     #endregion Private Method
+
+    #region Private Classes
+    [Serializable]
+    private class RemoteMaterialEvent : UnityEvent<Entity, RemoteMaterial>
+    { }
+    #endregion Private Classes
+
 }

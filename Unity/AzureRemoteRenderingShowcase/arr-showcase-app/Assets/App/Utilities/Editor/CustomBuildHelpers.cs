@@ -145,7 +145,7 @@ public class CustomBuilder
         // parse command line arguments
         ParseBuildCommandLine(ref customBuildInfo);
 
-        Debug.LogFormat("Starting command line build for application ({0})...", customBuildInfo.CustomType);
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Starting command line build for application ({0})...", customBuildInfo.CustomType);
         EditorAssemblyReloadManager.LockReloadAssemblies = true;
 
         bool success = false;
@@ -156,11 +156,11 @@ public class CustomBuilder
         }
         catch (Exception e)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Build Failed!\n{e.Message}\n{e.StackTrace}");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Build Failed!\n{e.Message}\n{e.StackTrace}");
             success = false;
         }
 
-        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  $"Exiting command line build... Build success? {success}");
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Exiting command line build... Build success? {success}");
         EditorApplication.Exit(success ? 0 : 1);
     }
 
@@ -210,7 +210,7 @@ public class CustomBuilder
                 break;
 
             default:
-                Debug.LogWarningFormat("Unknown build type (type = {0})", type);
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Unknown build type (type = {0})", type);
                 break;
         }
         return result;
@@ -401,12 +401,6 @@ public class CustomBuilder
         {
             EditorUtility.DisplayProgressBar("Creating AppX", "Compiling, Linking, and Packaging...", 0.9f);
 
-            if (!IsPCBuild(customAppxBuildInfo.CustomType))
-            {
-                // First add "gazeInput" device capability
-                AddDeviceCapabilities(customAppxBuildInfo.OutputDirectory, new string[] { "gazeInput" });
-            }
-
             // Add "<ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>Warning</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>" to work around ARM64 MSBUILD bug
             AddGlobalProperties(customAppxBuildInfo.OutputDirectory, PlayerSettings.productName, new (string, string)[] {
                 ( "ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch", "Warning" )
@@ -426,7 +420,7 @@ public class CustomBuilder
         catch (Exception ex)
         {
             appxSuccess = false;
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Exception occurred when creating AppX package. {ex.ToString()}");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Exception occurred when creating AppX package. {0}", ex.ToString());
         }
 
         EditorUtility.ClearProgressBar();
@@ -453,7 +447,7 @@ public class CustomBuilder
         }
         catch (Exception ex)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Exception occurred when trying to lock assemblies for building. {ex.ToString()}");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Exception occurred when trying to lock assemblies for building. Reasion: {0}", ex.Message);
         }
     }
 
@@ -483,7 +477,7 @@ public class CustomBuilder
 
         if (propertyGroupNode == null)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <{propertyGroupTag} Label=\"{propertyGroupLabel}\" /> node");
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <{propertyGroupTag} Label=\"{propertyGroupLabel}\" /> node");
             return false;
         }
 
@@ -512,66 +506,6 @@ public class CustomBuilder
         }
 
         rootNode.Save(projectFile);
-        return true;
-    }
-
-    private static bool AddDeviceCapabilities(string buildDirectory, string[] additionalCapabilities)
-    {
-        // The child tag to use
-        string capabilityTag = "DeviceCapability";
-
-        // Find the manifest, assume the one we want is the first one
-        string[] manifests = Directory.GetFiles(buildDirectory, "Package.appxmanifest", SearchOption.AllDirectories);
-
-        if (manifests.Length == 0)
-        {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unable to find Package.appxmanifest file for build (in path - {buildDirectory})");
-            return false;
-        }
-
-        string manifest = manifests[0];
-        var rootNode = XElement.Load(manifest);
-        var defaultNamespace = rootNode.GetDefaultNamespace();
-        var capabilitiesNode = rootNode.Element(rootNode.GetDefaultNamespace() + "Capabilities");
-
-        if (capabilitiesNode == null)
-        {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Package.appxmanifest for build (in path - {buildDirectory}) is missing an <Capabilities /> node");
-            return false;
-        }
-
-        HashSet<string> needToAdd = new HashSet<string>();
-        foreach (var additionalCapability in additionalCapabilities)
-        {
-            needToAdd.Add(additionalCapability.ToLower());
-        }
-
-        var capabilityElements = capabilitiesNode.Elements();
-        foreach (var element in capabilityElements)
-        {
-            if (element.Name == defaultNamespace + capabilityTag)
-            {
-                var elementNameAttribute = element.Attribute(XName.Get("Name"));
-                if (elementNameAttribute != null)
-                {
-                    needToAdd.Remove(elementNameAttribute.Value.ToLower());
-                }
-            }
-        }
-
-        foreach (var additionalCapability in additionalCapabilities)
-        {
-            if (!needToAdd.Contains(additionalCapability.ToLower()))
-            {
-                continue;
-            }
-
-            var newElement = new XElement(defaultNamespace + capabilityTag);
-            newElement.SetAttributeValue("Name", additionalCapability);
-            capabilitiesNode.Add(newElement);
-        }
-
-        rootNode.Save(manifest);
         return true;
     }
 }

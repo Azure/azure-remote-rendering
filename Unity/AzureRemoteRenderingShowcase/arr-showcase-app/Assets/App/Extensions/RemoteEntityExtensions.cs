@@ -17,6 +17,20 @@ using Remote = Microsoft.Azure.RemoteRendering;
 public static class RemoteEntityExtensions
 {
     /// <summary>
+    /// Get the first game object in the heirarchy this entity.
+    /// </summary>
+    public static GameObject GetExistingParentGameObject(this Entity entity)
+    {
+        GameObject result = null;
+        while (result == null && entity != null && entity.Valid)
+        {
+            result = entity.GetExistingGameObject();
+            entity = entity.Parent;
+        }
+        return result;
+    }
+
+    /// <summary>
     /// This is a "no exception" version of QueryLocalBoundsAsync(). This will catch exceptions and return a default result.
     /// </summary>
     public static async Task<Bounds> SafeQueryLocalBoundsAsync(this Remote.Entity entity)
@@ -196,41 +210,38 @@ public static class RemoteEntityExtensions
     }
 
     /// <summary>
-    /// This creates a "snapshot" of an entity's global positions and rotation. This includes the entity's entire hierarchy.
+    /// This creates a "snapshot" of an entity's global positions and rotation. Result is a flattened, depth-first list of root's hierarchy.
     /// </summary>
-    public static EntityTransform CreateTransformSnapshot(this Entity root)
+    public static IEnumerable<EntitySnapshot> CreateSnapshot(this Entity root)
     {
         if (root == null)
         {
             return null;
         }
 
-        return CreateTransformSnapshotImpl(root, null);
+        List<EntitySnapshot> result = new List<EntitySnapshot>();
+        CreateSnapshotImpl(root, null, result);
+        return result;
     }
 
     /// <summary>
     /// This creates a "snapshot" of an entity's global positions and rotation. This includes the entity's entire hierarchy.
     /// </summary>
-    private static EntityTransform CreateTransformSnapshotImpl(this Entity entity, EntityTransform parent)
+    private static void CreateSnapshotImpl(this Entity entity, EntitySnapshot root, List<EntitySnapshot> results)
     {
-        if (entity == null)
+        if (entity == null || !entity.Valid)
         {
-            return null;
+            return;
         }
 
-        EntityTransform entityTranform = new EntityTransform(entity, parent);
+        EntitySnapshot parent = new EntitySnapshot(entity, root);
+        results.Add(parent);
 
         var children = entity.Children;
         foreach (var child in children)
         {
-            var childTransform = CreateTransformSnapshotImpl(child, entityTranform);
-            if (childTransform != null)
-            {
-                entityTranform.Children.Add(childTransform);
-            }
+            CreateSnapshotImpl(child, parent, results);
         }
-
-        return entityTranform;
     }
 
     /// <summary>
@@ -357,28 +368,72 @@ public static class RemoteEntityExtensions
 /// <summary>
 /// A "snapshot" of an entity's global positions and rotation.
 /// </summary>
-public class EntityTransform
+public class EntitySnapshot
 {
-    public Entity Entity { get; private set; }
+    private bool _matricesInitialized;
+    private UnityEngine.Matrix4x4 _toWorld;
+    private UnityEngine.Matrix4x4 _toLocal;
+    private WeakReference<EntitySnapshot> _parent;
 
-    public UnityEngine.Matrix4x4 ToWorld { get; private set; }
-
-    public UnityEngine.Matrix4x4 ToLocal { get; private set; }
-
-    public List<EntityTransform> Children { get; } = new List<EntityTransform>();
-
-    public EntityTransform Parent { get; }
-
-    public EntityTransform(Entity entity, EntityTransform parent)
+    public EntitySnapshot(Entity entity, EntitySnapshot parent)
     {
-        var toWorld = UnityEngine.Matrix4x4.TRS(entity.Position.toUnityPos(), entity.Rotation.toUnity(), entity.Scale.toUnity());
+        Entity = entity;
+        LocalPosition = entity.Position.toUnityPos();
+        LocalRotation = entity.Rotation.toUnity();
+        LocalScale = entity.Scale.toUnity();
+        _parent = new WeakReference<EntitySnapshot>(parent);
+    }
+
+    public Vector3 LocalPosition { get; }
+
+    public UnityEngine.Quaternion LocalRotation { get; }
+
+    public Vector3 LocalScale { get; }
+
+    public Entity Entity { get; }
+
+    public EntitySnapshot Parent
+    {
+        get
+        {
+            EntitySnapshot parent = null;
+            _parent?.TryGetTarget(out parent);
+            return parent;
+        }
+    }
+
+    public UnityEngine.Matrix4x4 ToWorld
+    {
+        get
+        {
+            InitializeMatrices();
+            return _toWorld;
+        }
+    }
+
+    public UnityEngine.Matrix4x4 ToLocal
+    {
+        get
+        {
+            InitializeMatrices();
+            return _toLocal;
+        }
+    }
+
+    private void InitializeMatrices()
+    {
+        if (_matricesInitialized)
+        {
+            return;
+        }
+
+        _toWorld = UnityEngine.Matrix4x4.TRS(LocalPosition, LocalRotation, LocalScale);
+        var parent = Parent;
         if (parent != null)
         {
-            toWorld = parent.ToWorld * toWorld;
+            _toWorld = parent.ToWorld * _toWorld;
         }
-        Entity = entity;
-        ToWorld = toWorld;
-        ToLocal = toWorld.inverse;
-        Parent = parent;
+        _toLocal = _toWorld.inverse;
+        _matricesInitialized = true;
     }
 }

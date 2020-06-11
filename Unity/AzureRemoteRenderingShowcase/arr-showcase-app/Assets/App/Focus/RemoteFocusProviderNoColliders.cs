@@ -55,7 +55,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
         private readonly Dictionary<GameObject, int> _localFocusExits = new Dictionary<GameObject, int>();
         private readonly RayCastTasks _remoteRayCasts = new RayCastTasks(_raycastMaxCacheSize);
 
-        private static RayCastHit _invalidRemoteResult = new RayCastHit() { HitObject = 0 };
+        private static RayCastHit _invalidRemoteResult = new RayCastHit() { HitObject = null };
         private static RayCastHit[] _invalidRemoteResults = new RayCastHit[1] { _invalidRemoteResult };
 
         /// <summary>
@@ -674,7 +674,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
 
                     foreach (var rayResult in rayResults)
                     {
-                        if (rayResult.HitObject != 0)
+                        if (rayResult.HitObject != null)
                         {
                             sortedHits.Add(rayResult);
                         }
@@ -883,7 +883,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 {
                     DistanceToHit = _committed.RemoteResult.DistanceToHit,
                     HitNormal = _committed.RemoteResult.HitNormal,
-                    HitObject = overrideTarget.InteropId,
+                    HitObject = overrideTarget,
                     HitPosition = _committed.RemoteResult.HitPosition,
                 };
                 _override.TargetEntity = overrideTarget;

@@ -109,7 +109,9 @@ public class SubMenuController : MonoBehaviour
     {
         for (int i = 1; i < menuContainers.Length; ++i)
         {
-            SetCollidersForContainer(i, false);
+            GameObject container = menuContainers[i];
+            SetCollidersForContainer(container, false);
+            SetSubMenuActiveForContainer(container, false);
         }
     }
     #endregion MonoBehavior Methods
@@ -127,9 +129,22 @@ public class SubMenuController : MonoBehaviour
     #region Private Methods
     private IEnumerator GoToMenuRoutine(int index)
     {
-        if (index != _activeIndex)
+        if (menuContainers == null ||
+            index < 0 ||
+            index >= menuContainers.Length)
         {
-            SetCollidersForContainer(_activeIndex, false);
+            yield break;
+        }
+
+
+        GameObject firstContainer = menuContainers[0];
+        GameObject oldContainer = menuContainers[_activeIndex];
+        GameObject newContainer = menuContainers[index];
+
+        if (oldContainer != newContainer)
+        {
+            SetCollidersForContainer(oldContainer, false);
+            SetSubMenuActiveForContainer(oldContainer, false);
         }
 
         yield return new WaitForSeconds(transitionDelay);
@@ -148,8 +163,8 @@ public class SubMenuController : MonoBehaviour
                 if (time > 0f)
                 {
                     time -= Time.deltaTime;
-                    menuContainers[0].transform.localPosition = Vector3.Lerp(activePosition, offscreenLeftPosition, movementCurve.Evaluate(time / transitionTime));
-                    menuContainers[_activeIndex].transform.localPosition = Vector3.Lerp(offscreenRightPosition, activePosition, movementCurve.Evaluate(time / transitionTime));
+                    firstContainer.transform.localPosition = Vector3.Lerp(activePosition, offscreenLeftPosition, movementCurve.Evaluate(time / transitionTime));
+                    oldContainer.transform.localPosition = Vector3.Lerp(offscreenRightPosition, activePosition, movementCurve.Evaluate(time / transitionTime));
                 }
                 else
                 {
@@ -162,8 +177,8 @@ public class SubMenuController : MonoBehaviour
                 if (time < transitionTime)
                 {
                     time += Time.deltaTime;
-                    menuContainers[0].transform.localPosition = Vector3.Lerp(activePosition, offscreenLeftPosition, movementCurve.Evaluate(time / transitionTime));
-                    menuContainers[index].transform.localPosition = Vector3.Lerp(offscreenRightPosition, activePosition, movementCurve.Evaluate(time / transitionTime));
+                    firstContainer.transform.localPosition = Vector3.Lerp(activePosition, offscreenLeftPosition, movementCurve.Evaluate(time / transitionTime));
+                    newContainer.transform.localPosition = Vector3.Lerp(offscreenRightPosition, activePosition, movementCurve.Evaluate(time / transitionTime));
                 }
                 else
                 {
@@ -175,17 +190,33 @@ public class SubMenuController : MonoBehaviour
         }
 
         // enable collision
-        SetCollidersForContainer(index, true);
-        menuContainers[_activeIndex].SetActive(false);
+        SetSubMenuActiveForContainer(newContainer, true);
+        SetCollidersForContainer(newContainer, true);
+        oldContainer.SetActive(false);
         _activeIndex = index;
     }
 
-    private void SetCollidersForContainer(int containerIndex, bool shouldCollide)
+    private void SetCollidersForContainer(GameObject container, bool shouldCollide)
     {
-        Collider[] colliders = menuContainers[containerIndex].GetComponentsInChildren<Collider>();
+        Collider[] colliders = container.GetComponentsInChildren<Collider>(includeInactive: true);
         foreach (Collider collider in colliders)
         {
             collider.enabled = shouldCollide;
+        }
+    }
+    private void SetSubMenuActiveForContainer(GameObject container, bool active)
+    {
+        SubMenu[] subMenus = container.GetComponentsInChildren<SubMenu>(includeInactive: true);
+        foreach (SubMenu subMenu in subMenus)
+        {
+            if (active)
+            {
+                subMenu.OnActivated();
+            }
+            else
+            {
+                subMenu.OnDeactivated();
+            }
         }
     }
     #endregion Private Methods

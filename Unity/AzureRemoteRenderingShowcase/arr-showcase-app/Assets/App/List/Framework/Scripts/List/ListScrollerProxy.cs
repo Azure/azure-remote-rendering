@@ -73,20 +73,54 @@ public class ListScrollerProxy : MonoBehaviour
     #region MonoBehavior Functions
     private void OnEnable()
     {
-        _initialScrollerGoal = scroller?.Goal ?? 0;
-        listSlider?.OnValueUpdated.AddListener(OnListSliderValueUpdated);
-        dragValue?.OnInteractionStarted.AddListener(OnDragValueInteractionStarted);
-        dragValue?.OnInteractionEnded.AddListener(OnDragValueInteractionEnded);
-        dragValue?.OnValueUpdated.AddListener(OnDragValueUpdated);
+        if (scroller != null)
+        {
+            _initialScrollerGoal = scroller.Goal;
+        }
+        else
+        {
+            _initialScrollerGoal = 0;
+        }
+
+        if (listSlider != null)
+        {
+            listSlider.OnValueUpdated.AddListener(OnListSliderValueUpdated);
+        }
+
+        if (dragValue != null)
+        {
+            dragValue.OnInteractionStarted.AddListener(OnDragValueInteractionStarted);
+            dragValue.OnInteractionEnded.AddListener(OnDragValueInteractionEnded);
+            dragValue.OnValueUpdated.AddListener(OnDragValueUpdated);
+        }
+
+        if (scroller != null)
+        {
+            scroller.SizeChanges.AddListener(OnScrollerSizeChanged);
+        }
+
         CommitScrollerGoal(_initialScrollerGoal);
+        OnScrollerSizeChanged();
     }
 
     private void OnDisable()
     {
-        listSlider?.OnValueUpdated.RemoveListener(OnListSliderValueUpdated);
-        dragValue?.OnInteractionStarted.RemoveListener(OnDragValueInteractionStarted);
-        dragValue?.OnInteractionEnded.AddListener(OnDragValueInteractionEnded);
-        dragValue?.OnValueUpdated.RemoveListener(OnDragValueUpdated);
+        if (listSlider != null)
+        {
+            listSlider.OnValueUpdated.RemoveListener(OnListSliderValueUpdated);
+        }
+
+        if (dragValue != null)
+        {
+            dragValue.OnInteractionStarted.RemoveListener(OnDragValueInteractionStarted);
+            dragValue.OnInteractionEnded.RemoveListener(OnDragValueInteractionEnded);
+            dragValue.OnValueUpdated.RemoveListener(OnDragValueUpdated);
+        }
+
+        if (scroller != null)
+        {
+            scroller.SizeChanges.RemoveListener(OnScrollerSizeChanged);
+        }
     }
 
     private void Update()
@@ -133,6 +167,15 @@ public class ListScrollerProxy : MonoBehaviour
     private void OnListSliderValueUpdated(SliderEventData eventData)
     {
         CommitScrollerGoal(eventData.NewValue);
+    }
+
+    private void OnScrollerSizeChanged()
+    {
+        bool canScroll = scroller != null && scroller.PageCount > 1;
+        if (listSlider != null)
+        {
+            listSlider.gameObject.SetActive(canScroll);
+        }
     }
 
     private void ApplyDragMomentum()

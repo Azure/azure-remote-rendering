@@ -126,6 +126,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Load and set cube map
         /// </summary>
-        Task SetLighting(RemoteLightingData remoteLightingData);
+        Task SetLighting(string url);
     }
 }

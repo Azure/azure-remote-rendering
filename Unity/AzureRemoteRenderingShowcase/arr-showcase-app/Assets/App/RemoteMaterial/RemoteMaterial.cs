@@ -7,61 +7,13 @@ using UnityEngine;
 
 using Remote = Microsoft.Azure.RemoteRendering;
 
-[Flags]
-public enum RemotePbrMaterialFlags
-{
-    /// The material is transparent (alpha-blended), where the level of transparency is defined by albedo colors' alpha and optionally vertex colors' alpha.
-    TransparentMaterial = 1,
-
-    ///  Use/ignore the vertex color (if provided by the mesh). Needs to be enabled so that PbrMaterial.PbrVertexColorMode/PbrMaterial.PbrVertexAlphaMode has any effect.
-    UseVertexColor = 2,
-
-    /// The material is rendered double-sided, otherwise back faces are culled.
-    DoubleSided = 4,
-
-    /// Enables specular highlights for this material.
-    SpecularEnabled = 8,
-
-    /// Enables hard cut-outs on a per-pixel basis based on the alpha value being below a threshold. This works for opaque materials as well.
-    AlphaClipped = 16,
-
-    /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
-    /// on see-through devices like Hololens but has less GPU cost associated with it.
-    FadeToBlack = 32
-};
-
-[Flags]
-public enum RemoteColorMaterialFlags
-{
-    /// Use/ignore the vertex color if provided by the mesh.
-    UseVertexColor = 1,
-
-    /// The material is rendered double-sided, otherwise back faces are culled.
-    DoubleSided = 2,
-
-    /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
-    /// on see-through devices like Hololens but has less GPU cost associated with it.
-    FadeToBlack = 4,
-
-    /// Enables hard cut-outs on a per-pixel basis based on the alpha value being below a threshold. This works for opaque materials as well.
-    AlphaClipped = 8
-};
-
-[CreateAssetMenu(fileName = "RemoteMaterial", menuName = "Remoting/Material", order = 1)]
 [Serializable]
-public class RemoteMaterial : ScriptableObject
+public class RemoteMaterial
 {
-    public static RemoteMaterial Default()
-    {
-        var result = new RemoteMaterial();
-        result.name = "Default";
-        result.IsDefault = true;
-        return result;
-    }
-
-    internal bool IsDefault { get; private set; }
-
     [Header("General Settings")]
+
+    [Tooltip("The display name of the material.")]
+    public string Name = null;
 
     [Tooltip("The type of the material.")]
     public MaterialType Type = MaterialType.Pbr;
@@ -108,7 +60,6 @@ public class RemoteMaterial : ScriptableObject
     public string NormalMapUrl;
 
     [Tooltip("The pbr material's flags")]
-    [EnumFlag]
     public RemotePbrMaterialFlags PbrFlags = RemotePbrMaterialFlags.DoubleSided | RemotePbrMaterialFlags.SpecularEnabled;
 
     [Tooltip("This function has no effect if the mesh does not provide vertex colors or if the UseVertexColor flag is not set.")]
@@ -124,20 +75,125 @@ public class RemoteMaterial : ScriptableObject
     [Header("Color Settings")]
 
     [Tooltip("The color material's color flags")]
-    [EnumFlag]
     public RemoteColorMaterialFlags ColorFlags = RemoteColorMaterialFlags.DoubleSided;
 
     [Tooltip("The color material's transparency mode")]
     public ColorTransparencyMode ColorTransparencyMode = ColorTransparencyMode.Opaque;
 
     [Tooltip("This scalar defines how much the mesh's vertex color mixes into the final color. If 0.0, the vertex color does not contribute at all, if 1.0 it will be fully multiplied with the albedo color.")]
-    [UnityEngine.Range(0, 1)]
+    [Range(0, 1)]
     public float VertexMix;
 
-    [Header("Local Settings")]
+    #region Public Functions
+    public override bool Equals(object other)
+    {
+        if (!(other is RemoteMaterial) || other == null)
+        {
+            return false;
+        }
 
-    public UnityEngine.Material LocalMaterial = null;
+        RemoteMaterial remoteMaterial = (RemoteMaterial)other;
+        return this.AlbedoColor == remoteMaterial.AlbedoColor &&
+            this.AlbedoTextureUrl == remoteMaterial.AlbedoTextureUrl &&
+            this.AlphaClipThreshold == remoteMaterial.AlphaClipThreshold &&
+            this.AOMapUrl == remoteMaterial.AOMapUrl &&
+            this.AOScale == remoteMaterial.AOScale &&
+            this.ColorFlags == remoteMaterial.ColorFlags &&
+            this.ColorTransparencyMode == remoteMaterial.ColorTransparencyMode &&
+            this.Name == remoteMaterial.Name &&
+            this.FadeOut == remoteMaterial.FadeOut &&
+            this.Metalness == remoteMaterial.Metalness &&
+            this.MetalnessMapUrl == remoteMaterial.MetalnessMapUrl &&
+            this.NormalMapUrl == remoteMaterial.NormalMapUrl &&
+            this.PbrFlags == remoteMaterial.PbrFlags &&
+            this.Roughness == remoteMaterial.Roughness &&
+            this.RoughnessMapUrl == remoteMaterial.RoughnessMapUrl &&
+            this.TexCoordOffset == remoteMaterial.TexCoordOffset &&
+            this.TexCoordScale == remoteMaterial.TexCoordScale &&
+            this.Type == remoteMaterial.Type &&
+            this.VertexAlphaMode == remoteMaterial.VertexAlphaMode &&
+            this.VertexMix == remoteMaterial.VertexMix;
+    }
+
+    public override int GetHashCode()
+    {
+        return this.AlbedoColor.GetHashCode() ^
+            GetHashCode(this.AlbedoTextureUrl) ^
+            this.AlphaClipThreshold.GetHashCode() ^
+            GetHashCode(AOMapUrl) ^
+            this.AOScale.GetHashCode() ^
+            this.ColorFlags.GetHashCode() ^
+            this.ColorTransparencyMode.GetHashCode() ^
+            GetHashCode(this.Name) ^
+            this.FadeOut.GetHashCode() ^
+            this.Metalness.GetHashCode() ^
+            GetHashCode(this.MetalnessMapUrl) ^
+            GetHashCode(this.NormalMapUrl) ^
+            this.PbrFlags.GetHashCode() ^
+            this.Roughness.GetHashCode() ^
+            GetHashCode(this.RoughnessMapUrl) ^
+            this.TexCoordOffset.GetHashCode() ^
+            this.TexCoordScale.GetHashCode() ^
+            this.Type.GetHashCode() ^
+            this.VertexAlphaMode.GetHashCode() ^
+            this.VertexMix.GetHashCode();
+    }
+    #endregion Public Functions
+
+    #region Private Functions
+    private int GetHashCode(string value)
+    {
+        if (value == null)
+        {
+            return string.Empty.GetHashCode();
+        }
+        else
+        {
+            return value.GetHashCode();
+        }
+    }
+    #endregion Private Functions
 }
+
+[Flags]
+public enum RemotePbrMaterialFlags
+{
+    /// The material is transparent (alpha-blended), where the level of transparency is defined by albedo colors' alpha and optionally vertex colors' alpha.
+    TransparentMaterial = 1,
+
+    ///  Use/ignore the vertex color (if provided by the mesh). Needs to be enabled so that PbrMaterial.PbrVertexColorMode/PbrMaterial.PbrVertexAlphaMode has any effect.
+    UseVertexColor = 2,
+
+    /// The material is rendered double-sided, otherwise back faces are culled.
+    DoubleSided = 4,
+
+    /// Enables specular highlights for this material.
+    SpecularEnabled = 8,
+
+    /// Enables hard cut-outs on a per-pixel basis based on the alpha value being below a threshold. This works for opaque materials as well.
+    AlphaClipped = 16,
+
+    /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
+    /// on see-through devices like Hololens but has less GPU cost associated with it.
+    FadeToBlack = 32
+};
+
+[Flags]
+public enum RemoteColorMaterialFlags
+{
+    /// Use/ignore the vertex color if provided by the mesh.
+    UseVertexColor = 1,
+
+    /// The material is rendered double-sided, otherwise back faces are culled.
+    DoubleSided = 2,
+
+    /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
+    /// on see-through devices like Hololens but has less GPU cost associated with it.
+    FadeToBlack = 4,
+
+    /// Enables hard cut-outs on a per-pixel basis based on the alpha value being below a threshold. This works for opaque materials as well.
+    AlphaClipped = 8
+};
 
 public static class RemoteMaterialFlagsExtensions
 {

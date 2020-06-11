@@ -7,6 +7,8 @@
         <xs:element type="RemoteRenderingServiceAccountData" name="Account" minOccurs="0" />
         <xs:element type="RemoteRenderingServiceStorageAccountData" name="Storage" minOccurs="0" />
         <xs:element type="RemoteRenderingServiceSessionData" name="Session" minOccurs="0" />
+        <xs:element type="SharingAccountData" name="Sharing" minOccurs="0" />
+        <xs:element type="AzureSptatialAnchorAccountData" name="Anchor" minOccurs="0" />
       </xs:all>
     </xs:complexType>
   </xs:element>
@@ -56,6 +58,21 @@
       <xs:element type="xs:boolean" name="AutoRenewLease" minOccurs="0" />
       <xs:element type="xs:boolean" name="AutoReconnect" minOccurs="0" />
       <xs:element type="xs:float" name="AutoReconnectRate" minOccurs="0" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="SharingAccountData">
+    <xs:all>
+      <xs:element type="xs:string" name="AccountId" minOccurs="0"/>
+      <xs:element type="GUID" name="PhotonRealtimeId" minOccurs="0"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="AzureSptatialAnchorAccountData">
+    <xs:all>
+      <xs:element type="GUID" name="AccountId" minOccurs="0"/>
+      <xs:element type="GUID" name="AnchorAccountId" minOccurs="0" />
+      <xs:element type="xs:string" name="AnchorAccountKey" minOccurs="0" />
     </xs:all>
   </xs:complexType>
   <!-- End Type Defines -->

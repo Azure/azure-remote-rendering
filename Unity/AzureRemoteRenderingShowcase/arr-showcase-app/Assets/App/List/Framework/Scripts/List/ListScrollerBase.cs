@@ -3,12 +3,27 @@
 
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// A list component that can scroll a list container so to reveal more list items.
 /// </summary>
 public abstract class ListScrollerBase : MonoBehaviour
 {
+    #region Serialize Fields
+    [Header("List Scroller Translate Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when the list scroller sizes have been updated.")]
+    private UnityEvent sizeChanged = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the list scroller sizes have been updated.
+    /// </summary>
+    public UnityEvent SizeChanges => sizeChanged;
+    #endregion
+
+    #region Public Properties
     /// <summary>
     /// Get the visible index range.
     /// </summary>
@@ -48,12 +63,16 @@ public abstract class ListScrollerBase : MonoBehaviour
     /// Snap the goal and the current scroll position to a value from 0.0 to 1.0.
     /// </summary>
     public abstract void SnapTo(float progress);
+    #endregion Public Properties
 
+    #region Public Functions
     /// <summary>
     /// Set and update the scroll area size.
     /// </summary>
-    public virtual void SetScrollSize(Vector2 listSize)
+    public void SetScrollSize(Vector2 listSize)
     {
+        OnSetScrollSize(listSize);
+        sizeChanged?.Invoke();
     }
 
     /// <summary>
@@ -97,4 +116,12 @@ public abstract class ListScrollerBase : MonoBehaviour
                 throw new System.NotSupportedException();
         }
     }
+    #endregion Public Functions
+
+    #region Protected Functions
+    /// <summary>
+    /// Handle the setting of list size and update the scroll area size.
+    /// </summary>
+    protected abstract void OnSetScrollSize(Vector2 listSize);
+    #endregion Protected Functions
 }

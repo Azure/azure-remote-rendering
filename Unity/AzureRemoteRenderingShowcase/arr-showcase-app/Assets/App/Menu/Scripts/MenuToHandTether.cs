@@ -86,6 +86,11 @@ public class MenuToHandTether : MonoBehaviour
 
     private void Update()
     {
+        if (_lineRenderer == null)
+        {
+            return;
+        }
+
         if (menuAnchor)
         {
             _lineRenderer.SetPosition(0, menuAnchor.transform.position);
@@ -111,10 +116,13 @@ public class MenuToHandTether : MonoBehaviour
 
     public void ResetLine()
     {
-        _currentTime = fadeTime + 1f;
-        _lineRenderer.startWidth = 0f;
-        _lineRenderer.endWidth = 0f;
-        _lineRenderer.material.color = Color.clear;
+        if (_lineRenderer != null)
+        {
+            _currentTime = fadeTime + 1f;
+            _lineRenderer.startWidth = 0f;
+            _lineRenderer.endWidth = 0f;
+            _lineRenderer.material.color = Color.clear;
+        }
     }
     #endregion Public Functions
 }

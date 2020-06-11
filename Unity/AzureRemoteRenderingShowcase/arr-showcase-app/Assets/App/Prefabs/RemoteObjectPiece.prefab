@@ -9,16 +9,19 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4816955586682293095}
+  - component: {fileID: 1628170220131008680}
   - component: {fileID: 727125191008420309}
   - component: {fileID: 4816955586682293092}
   - component: {fileID: 2336985525574003437}
+  - component: {fileID: 1698918445462718379}
+  - component: {fileID: 4617393529754944333}
   m_Layer: 0
   m_Name: RemoteObjectPiece
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4816955586682293095
 Transform:
   m_ObjectHideFlags: 0
@@ -33,6 +36,28 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1628170220131008680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4816955586682293093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b29b054ee4b525d4b9ec6e522d95cdf5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  movable: {fileID: 4816955586682293095}
+  manipulation: {fileID: 4816955586682293092}
+  placement: {fileID: 0}
+  onTarget: {fileID: 0}
+  moving:
+    m_PersistentCalls:
+      m_Calls: []
+  moved:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!114 &727125191008420309
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,3 +259,32 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &1698918445462718379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4816955586682293093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e882df65880e8e49aa6e06b6698d1db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  type: 1
+  label: 
+--- !u!114 &4617393529754944333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4816955586682293093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 377f1cb6f2e5bf046a4eb503ae8e00a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableLiveMovement: 1
+  target: {fileID: 1698918445462718379}
+  movable: {fileID: 1628170220131008680}

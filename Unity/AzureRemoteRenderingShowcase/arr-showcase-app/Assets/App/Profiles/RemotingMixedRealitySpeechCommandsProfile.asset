@@ -289,3 +289,31 @@ MonoBehaviour:
       id: 0
       description: None
       axisConstraint: 0
+  - localizationKey: 
+    keyword: Showcase Start Presenting
+    keyCode: 286
+    action:
+      id: 0
+      description: None
+      axisConstraint: 0
+  - localizationKey: 
+    keyword: Showcase Start Collaborating
+    keyCode: 287
+    action:
+      id: 0
+      description: None
+      axisConstraint: 0
+  - localizationKey: 
+    keyword: Showcase Stop Presenting
+    keyCode: 288
+    action:
+      id: 0
+      description: None
+      axisConstraint: 0
+  - localizationKey: 
+    keyword: Showcase All Players Move Stage
+    keyCode: 289
+    action:
+      id: 0
+      description: None
+      axisConstraint: 0

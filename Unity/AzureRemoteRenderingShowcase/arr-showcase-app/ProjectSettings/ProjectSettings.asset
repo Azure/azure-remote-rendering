@@ -610,12 +610,12 @@ PlayerSettings:
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
   metroPackageName: Azure.Remote.Rendering.Showcase
-  metroPackageVersion: 1.0.274.0
+  metroPackageVersion: 1.0.363.0
   metroCertificatePath: Assets/WSATestCertificate.pfx
   metroCertificatePassword: 
   metroCertificateSubject: Microsoft
   metroCertificateIssuer: Microsoft
-  metroCertificateNotAfter: 000c988008f5d601
+  metroCertificateNotAfter: 003cb4459a2ed701
   metroApplicationDescription: Azure Remote Rendering Showcase
   wsaImages:
     65636: Assets/AppIcons/StoreLogo.scale-100.png

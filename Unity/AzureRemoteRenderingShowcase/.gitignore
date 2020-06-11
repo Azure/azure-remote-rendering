@@ -45,3 +45,24 @@ sysinfo.txt
 
 # Make sure to include the pacakge manifest
 !**/[Pp]ackages/manifest.json
+
+# Add in NuGet for Unity file
+!**/[Aa]ssets/NuGet/**
+!**/[Aa]ssets/packages.config
+!**/[Aa]ssets/packages.config.meta
+
+# Prevent some NuGet Stuff
+**/[Aa]ssets/Packages
+**/[Aa]ssets/Packages.meta
+**/[Aa]ssets/[Pp]lugins
+**/[Aa]ssets/[Pp]lugins.meta
+
+# Prevent Photon Assets being tracked. These should be added manually
+**/[Aa]ssets/[Pp]hoton
+**/[Aa]ssets/[Pp]hoton.meta
+
+# Ignore spatial anchor things
+**/[Aa]ssets/[Rr]esources/SpatialAnchorConfig.asset
+**/[Aa]ssets/[Rr]esources/SpatialAnchorConfig.asset.meta
+**/[Aa]ssets/[Rr]esources
+**/[Aa]ssets/[Rr]esources.meta

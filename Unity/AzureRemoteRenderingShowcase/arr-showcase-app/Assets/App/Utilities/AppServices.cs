@@ -60,6 +60,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return GetService<IAppNotificationService>();
             }
         }
+
+        public static ISharingService SharingService
+        {
+            get
+            {
+                return GetService<ISharingService>();
+            }
+        }
+
+        public static IAnchoringService AnchoringService
+        {
+            get
+            {
+                return GetService<IAnchoringService>();
+            }
+        }
         #endregion Public Properties
 
         #region Private Methods

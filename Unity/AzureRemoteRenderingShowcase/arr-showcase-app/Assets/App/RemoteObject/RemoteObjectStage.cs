@@ -1,55 +1,26 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.Azure.RemoteRendering;
-using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Extensions;
-using Microsoft.MixedReality.Toolkit.Utilities;
-using System.Threading.Tasks;
+using System;
 using UnityEngine;
-using UnityEngine.XR.WSA;
+using UnityEngine.Events;
 
 public class RemoteObjectStage : MonoBehaviour
 {
-    private ObjectPlacement _stagedObjectsContainerPlacement;
-    private bool _isLocked;
+    private bool _moving;
+    private ObjectPlacement _stagesContainerPlacement;
+    private MovableObject _stagesMovableObject;
 
     #region Serialized Fields
     [Header("General Settings")]
 
     [SerializeField]
-    [Tooltip("The initial position offset.")]
-    private Vector3 initialPositionOffset = new Vector3(0, 0, 2);
-
-    /// <summary>
-    /// The initial position offset.
-    /// </summary>
-    public Vector3 InitialPositionOffset
-    {
-        get => initialPositionOffset;
-        set => initialPositionOffset = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The anchored stage. Objects in here will be anchored to this transform. If null, will default to this transform.")]
-    private Transform stagedArea = null;
-
-    /// <summary>
-    /// The anchor stage container. Objects in here will be anchored to this transform. 
-    /// If null, will default to this.
-    /// </summary>
-    public Transform StagedArea
-    {
-        get => stagedArea;
-        set => stagedArea = value;
-    }
-
-    [SerializeField]
-    [Tooltip("Staged items will be placed in this container, this should be child of stagedArea. If null, a container will be made for you.")]
+    [Tooltip("Staged items will be placed in this container. If null, a container will be made for you.")]
     private GameObject stagedObjectsContainer;
 
     /// <summary>
-    /// Staged items will be placed in this container, this should be child of stagedArea. If null, a container will be made for you.
+    /// Staged items will be placed in this container. If null, a container will be made for you.
     /// </summary>
     public GameObject StagedObjectsContainer
     {
@@ -58,25 +29,11 @@ public class RemoteObjectStage : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("The unanchor container. Objects in here will have to set their own anchors. If null, nothing can be unstaged.")]
-    private Transform unstagedArea = null;
-
-    /// <summary>
-    /// The unanchor area. Objects in here will have to set their own anchors.
-    /// If null, objects can't can be unstaged.
-    /// </summary>
-    public Transform UnstagedArea
-    {
-        get => unstagedArea;
-        set => unstagedArea = value;
-    }
-
-    [SerializeField]
-    [Tooltip("Unstaged items will be placed in this container, this should be child of stagedArea. If null, a container will be made for you.")]
+    [Tooltip("Unstaged items will be placed in this container. If null, a container will be made for you.")]
     private GameObject unstagedObjectsContainer;
 
     /// <summary>
-    /// Unstaged items will be placed in this container, this should be child of stagedArea. If null, a container will be made for you.
+    /// Unstaged items will be placed in this container. If null, a container will be made for you.
     /// </summary>
     public GameObject UnstagedObjectsContainer
     {
@@ -98,21 +55,8 @@ public class RemoteObjectStage : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("Clear stage when disconnected.")]
-    private bool clearOnDisconnect = false;
-
-    /// <summary>
-    /// Clear stage when disconnected.
-    /// </summary>
-    public bool ClearOnDisconnect
-    {
-        get => clearOnDisconnect;
-        set => clearOnDisconnect = value;
-    }
-
-    [SerializeField]
     [Tooltip("The offset applied to staged objects.  This is this offset from the stage origin.")]
-    private Vector3 stagedAreaOffset = new Vector3(0, 0.3f, 0);
+    private Vector3 stagedAreaOffset = new Vector3(0, 0.1f, 0);
 
     /// <summary>
     /// he offset applied to staged objects.  This is this offset from the stage origin.
@@ -138,42 +82,38 @@ public class RemoteObjectStage : MonoBehaviour
         set => remoteObjectPrefab = value;
     }
 
+    [Header("Events")]
+
     [SerializeField]
-    [Tooltip("Remote object collections will be loaded into this prefab.")]
-    private GameObject remoteObjectCollectionPrefab = null;
+    [Tooltip("Event raised when the staged object has changed.")]
+    private UnityEvent<RemoteObject> stagedObjectChanged = new RemoteObjectStageEvent();
 
     /// <summary>
-    /// Remote object collections will be loaded into this prefab.
+    /// Event raised when the staged object has changed.
     /// </summary>
-    public GameObject RemoteObjectCollectionPrefab
-    {
-        get => remoteObjectCollectionPrefab;
-        set => remoteObjectCollectionPrefab = value;
-    }
+    public UnityEvent<RemoteObject> StagedObjectChanged => stagedObjectChanged;
+
+    [SerializeField]
+    [Tooltip("Event raised when the stage has created a new object.")]
+    private UnityEvent<RemoteObject> objectCreated = new RemoteObjectStageEvent();
+
+    /// <summary>
+    /// Event raised when the stage has created a new object.
+    /// </summary>
+    public UnityEvent<RemoteObject> ObjectCreated => objectCreated;
+
+    [SerializeField]
+    [Tooltip("Event raised when the stage visual changes visibility. This is only raised with visibility changes via IsStageVisible.Set()")]
+    private UnityEvent<bool> stageVisualVisibilityChanged = new RemoteObjectStageVisibilityEvent();
+
+    /// <summary>
+    /// Event raised when the stage visual changes visibility. This is only raised with visibility changes via IsStageVisible.Set()
+    /// </summary>
+    public UnityEvent<bool> StageVisualVisibilityChanged => stageVisualVisibilityChanged;
+
     #endregion Serialized Fields
 
     #region Public Properties
-    /// <summary>
-    /// Is the current stage locked.
-    /// </summary>
-    public bool IsLocked
-    {
-        get => _isLocked;
-
-        set
-        {
-            _isLocked = true;
-            if (_isLocked)
-            {
-                LockStage();
-            }
-            else
-            {
-                UnlockStage();
-            }
-        }
-    }
-
     /// <summary>
     /// Get or set if the stage visual is visible
     /// </summary>
@@ -185,10 +125,25 @@ public class RemoteObjectStage : MonoBehaviour
         {
             if (stageVisual != null)
             {
+                bool oldValue = stageVisual.gameObject.activeInHierarchy;
                 stageVisual.gameObject.SetActive(value);
+                if (stageVisual.gameObject.activeInHierarchy != oldValue)
+                {
+                    stageVisualVisibilityChanged?.Invoke(stageVisual.gameObject.activeInHierarchy);
+                }
             }
         }
+    }
 
+    /// <summary>
+    /// Get the currently staged object.
+    /// </summary>
+    public RemoteObject StagedObject
+    {
+        get
+        {
+            return stagedObjectsContainer?.GetComponentInChildren<RemoteObject>(true);
+        }
     }
     #endregion Public Properties
 
@@ -202,103 +157,128 @@ public class RemoteObjectStage : MonoBehaviour
 
     public async void MoveStage()
     {
-        if (_stagedObjectsContainerPlacement != null)
+        if (_stagesContainerPlacement != null)
         {
             IsStageVisible = true;
-
-            UnlockStage();
-            await _stagedObjectsContainerPlacement.StartPlacement();
-            LockStage();
+            await _stagesContainerPlacement.StartPlacement();
         }
     }
 
-    private void LockStage()
+    /// <summary>
+    /// Clear the stage area
+    /// </summary>
+    public void ClearStage()
     {
-        stagedArea.EnsureComponent<WorldAnchor>();
+        ClearContainer(stagedObjectsContainer);
     }
 
-    private void UnlockStage()
+    /// <summary>
+    /// Stage the given object. This will delete the old staged object
+    /// </summary>
+    public void StageObject(RemoteObject remoteObject, bool reposition)
     {
-        var worldAnchor = stagedArea.GetComponent<WorldAnchor>();
-        if (worldAnchor != null)
-        {
-            Component.DestroyImmediate(worldAnchor);
-        }
-    }
-
-    public void Load(RemoteItemBase item)
-    {
-        EnsureContainers();
-        GameObject container = IsStageVisible || unstagedObjectsContainer == null ? 
-            stagedObjectsContainer : 
-            unstagedObjectsContainer;
-
-        if (container == null)
+        if (stagedObjectsContainer == null ||
+            remoteObject == null)
         {
             return;
         }
 
-        bool stagedObject = container == stagedObjectsContainer;
-
-        // only allow one staged item
-        if (stagedObject)
+        if (!remoteObject.transform.IsChildOf(stagedObjectsContainer.transform))
         {
             ClearContainer(stagedObjectsContainer);
+            remoteObject.transform.SetParent(stagedObjectsContainer.transform, true);
+
+            StagedObjectChanged?.Invoke(remoteObject);
         }
 
-        Vector3 groundPoint = stageVisual.position + stagedAreaOffset;
+        if (reposition)
+        {
+            MoveObjectAnchorToStage(remoteObject.GetComponent<MovableAnchor>());
+        }
+    }
+
+    /// <summary>
+    /// Move this object to the unstaged area
+    /// </summary>
+    public void UnstageObject(RemoteObject remoteObject, bool reposition)
+    {
+        if (unstagedObjectsContainer == null ||
+            remoteObject == null)
+        {
+            return;
+        }
+
+        if (!remoteObject.transform.IsChildOf(unstagedObjectsContainer.transform))
+        {
+            remoteObject.transform.SetParent(unstagedObjectsContainer.transform, true);
+        }
+
+        if (reposition)
+        {
+            remoteObject.GetComponent<ObjectPlacement>()?.StartPlacement();
+        }
+    }
+
+    /// <summary>
+    /// Load a new object from model data.
+    /// </summary>
+    public RemoteObject Load(RemoteItemBase item)
+    {
+        EnsureContainers();
+        bool staged = IsStageVisible;
+        return Load(item, staged, reposition: true);
+    }
+
+    /// <summary>
+    /// Load a new object from model data.
+    /// </summary>
+    public RemoteObject Load(
+        RemoteItemBase item,
+        bool staged,
+        bool reposition,
+        Action<RemoteObject> initailizeAction = null)
+    {
+        EnsureContainers();
         RemoteObject remoteObject = RemoteObjectHelper.Load(
             item,
             remoteObjectPrefab,
-            container.transform,
-            (RemoteObject initializeRemoteObject) =>
-            {
-                if (!stagedObject)
-                {
-                    initializeRemoteObject.IsAnchored = true;
-                    initializeRemoteObject.GetComponent<ObjectPlacement>()?.StartPlacement();
-                }
-            });
+            unstagedObjectsContainer.transform,
+            initailizeAction);
+
+        if (staged)
+        {
+            StageObject(remoteObject, reposition);
+        }
+        else
+        {
+            UnstageObject(remoteObject, reposition);
+        }
+
+        return remoteObject;
     }
     #endregion Public Methods
 
     #region MonoBehavior Methods
     private void Awake()
     {
-        if (stagedArea == null)
-        {
-            stagedArea = transform;
-        }
-
-        _stagedObjectsContainerPlacement = stagedArea.GetComponent<ObjectPlacement>();
-        if (_stagedObjectsContainerPlacement != null)
-        {
-            _stagedObjectsContainerPlacement.OnPlacing.AddListener(OnPlacementStarted);
-            _stagedObjectsContainerPlacement.OnPlaced.AddListener(OnPlacementStopped);
-        }
-
         EnsureContainers();
-        PlaceInFront();
-        IsLocked = true;
 
-        if (AppServices.RemoteRendering != null)
+        _stagesContainerPlacement = GetComponent<ObjectPlacement>();
+        _stagesMovableObject = GetComponent<MovableObject>();
+        if (_stagesMovableObject != null)
         {
-            AppServices.RemoteRendering.StatusChanged += RemoteRendering_StatusChanged;
+            _stagesMovableObject.Moving.AddListener(OnMovingStarted);
+            _stagesMovableObject.Moved.AddListener(OnMovingStopped);
         }
     }
 
     private void OnDestroy()
     {
-        if (AppServices.RemoteRendering != null)
+        if (_stagesMovableObject != null)
         {
-            AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
-        }
-
-        if (_stagedObjectsContainerPlacement != null)
-        {
-            _stagedObjectsContainerPlacement.OnPlacing.RemoveListener(OnPlacementStarted);
-            _stagedObjectsContainerPlacement.OnPlaced.RemoveListener(OnPlacementStopped);
-            _stagedObjectsContainerPlacement = null;
+            _stagesMovableObject.Moving.RemoveListener(OnMovingStarted);
+            _stagesMovableObject.Moved.RemoveListener(OnMovingStopped);
+            _stagesMovableObject = null;
         }
     }
     #endregion MonoBehavior Methods
@@ -306,69 +286,119 @@ public class RemoteObjectStage : MonoBehaviour
     #region Private Methods
     private void ClearContainer(GameObject container)
     {
+        if (container == null)
+        {
+            return;
+        }
+
         int childern = container.transform.childCount;
         for (int i = 0; i < childern; i++)
         {
-            GameObject.Destroy(container.transform.GetChild(i).gameObject);
+            Destroy(container.transform.GetChild(i).gameObject);
         }
     }
 
     private void EnsureContainers()
     {
-        if (stagedObjectsContainer == null && stagedArea != null)
+        if (stagedObjectsContainer == null)
         {
             stagedObjectsContainer = new GameObject();
-            stagedObjectsContainer.transform.SetParent(stagedArea, false);
+            stagedObjectsContainer.transform.SetParent(transform, false);
             stagedObjectsContainer.name = $"{name} Staged Container";
         }
 
-        if (unstagedObjectsContainer == null && unstagedArea != null)
+        if (unstagedObjectsContainer == null)
         {
             unstagedObjectsContainer = new GameObject();
-            unstagedObjectsContainer.transform.SetParent(unstagedArea, false);
+            unstagedObjectsContainer.transform.SetParent(transform, false);
             unstagedObjectsContainer.name = $"{name} Unstaged Container";
         }
     }
 
-    private void PlaceInFront(bool applyAnchor = true)
+    private void OnMovingStarted()
     {
-        UnlockStage();
-
-        if (CameraCache.Main != null)
+        if (!_moving)
         {
-            Transform camera = CameraCache.Main.transform;
-            transform.position = camera.position +
-                (camera.forward * Vector3.Dot(Vector3.forward, initialPositionOffset)) +
-                (camera.up * Vector3.Dot(Vector3.up, initialPositionOffset)) +
-                (camera.right * Vector3.Dot(Vector3.right, initialPositionOffset));
-        }
-
-        if (applyAnchor && _isLocked)
-        {
-            LockStage();
+            _moving = true;
+            IsStageVisible = true;
+            SetStagedObjectEnablement(false);
         }
     }
 
-    private void OnPlacementStarted()
+    private void OnMovingStopped()
     {
-        IsStageVisible = true;
-        PlaceInFront(false);
-    }
-
-    private void OnPlacementStopped()
-    {
-        if (_isLocked)
+        if (_moving)
         {
-            LockStage();
+            _moving = false;
+            SetStagedObjectEnablement(true);
+            ResetObjectAnchors();
         }
     }
-    private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs args)
+
+    private void SetStagedObjectEnablement(bool isEnabled)
     {
-        if (clearOnDisconnect &&
-            args.OldStatus == RemoteRenderingServiceStatus.SessionReadyAndConnected)
+        var stagedObject = StagedObject;
+        if (stagedObject != null)
         {
-            ClearContainer();
+            stagedObject.IsEnabled = isEnabled;
+        }
+    }
+
+    private bool IsStagedObject(Transform value)
+    {
+        return value != null &&
+            stagedObjectsContainer != null &&
+            value != transform &&
+            value != stageVisual &&
+            value.IsChildOf(stagedObjectsContainer.transform);
+    }
+
+    private void MoveObjectAnchorToStage(MovableAnchor toStage)
+    {
+        if (toStage != null)
+        {
+            toStage.LocalMoveAnchor(stagedAreaOffset, Quaternion.identity);
+        }
+    }
+
+    private void ResetObjectAnchors()
+    {
+        MovableAnchor[] anchors = GetComponentsInChildren<MovableAnchor>();
+        if (anchors != null)
+        {
+            int count = anchors.Length;
+            for (int i = 0; i < count; i++)
+            {
+                MovableAnchor anchor = anchors[i];
+                Debug.Assert(i != 0 || anchor.gameObject == gameObject, "For resetting all object anchors to work, the root anchor needs to be resetted first.");
+                if (IsStagedObject(anchor.transform))
+                {
+                    MoveObjectAnchorToStage(anchor);
+                }
+                else
+                {
+                    anchor.ResetAnchor();
+                }
+            }
         }
     }
     #endregion Private Methods
+
+    #region Public Classes
+    /// <summary>
+    /// A event type raised by the remote object stage.
+    /// </summary>
+    [Serializable]
+    private class RemoteObjectStageEvent : UnityEvent<RemoteObject>
+    {
+    }
+
+    /// <summary>
+    /// A event type raised by the remote object stage, when visibility changes.
+    /// </summary>
+    [Serializable]
+    private class RemoteObjectStageVisibilityEvent : UnityEvent<bool>
+    {
+    }
+    #endregion Public Classes
 }

@@ -29,6 +29,23 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
         }
 
+        /// <summary>
+        /// Get if there are models currently being loaded.
+        /// </summary>
+        public bool IsLoading { get; private set; }
+
+
+        /// <summary>
+        /// Event raised when loading of models has started.
+        /// </summary>
+        public event Action<IRemoteObjectFactoryService> LoadStarted;
+
+
+        /// <summary>
+        /// Event raised when loading of models has completed.
+        /// </summary>
+        public event Action<IRemoteObjectFactoryService> LoadCompleted;
+
         public RemoteObjectFactoryService(string name, uint priority, BaseMixedRealityProfile profile) : base(name, priority, profile)
         {
             _remoteObjectFactoryServiceProfile = profile as RemoteObjectFactoryServiceProfile;
@@ -46,8 +63,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 AppServices.RemoteRendering.StatusChanged += RemoteRendering_StatusChanged;
             }
-        }
 
+            _progress.ProgressChanged += ProgressChanged;
+            _progress.Completed += ProgressCompleted;
+        }
 
         public override void Destroy()
         {
@@ -56,6 +75,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
             }
+
+            _progress.ProgressChanged -= ProgressChanged;
+            _progress.Completed -= ProgressCompleted;
         }
 
         public ModelProgressStatus Load(RemoteModel model, Entity parent)
@@ -160,5 +182,23 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 _progress.Clear();
             }
         }
-	}
+
+        private void ProgressCompleted(object sender, ProgressTaskChangeArgs args)
+        {
+            if (IsLoading)
+            {
+                IsLoading = false;
+                LoadCompleted?.Invoke(this);
+            }
+        }
+
+        private void ProgressChanged(object sender, ProgressTaskChangeArgs args)
+        {
+            if (!IsLoading && args.NewValue > 0.0f && args.NewValue < 1.0f)
+            {
+                IsLoading = true;
+                LoadStarted?.Invoke(this);
+            }
+        }
+    }
 }

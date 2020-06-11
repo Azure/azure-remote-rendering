@@ -12,15 +12,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.XR.WSA;
+using UnityEngine.Events;
 
 public class RemoteObject : MonoBehaviour
 {
     private TaskCompletionSource<bool> _loadingTaskSource;
-    private bool _visible = true;
+    private bool _visibleModel = true;
     private bool _enabled = true;
     private bool _started = false;
-    private bool _isLocked = false;
     private bool _destroyed = false;
 
     #region Serialized Fields
@@ -43,8 +42,26 @@ public class RemoteObject : MonoBehaviour
                 Unload(true);
                 data = value;
                 Load();
+
+                if (_started)
+                {
+                    dataChanged?.Invoke(data);
+                }
             }
         }
+    }
+
+    [SerializeField]
+    [Tooltip("This is the root transform where all dynamically create objects will be placed.")]
+    private Transform root = null;
+
+    /// <summary>
+    /// This is the root transform where all dynamically create objects will be placed.
+    /// </summary>
+    public Transform Root
+    {
+        get => root;
+        set => root = value;
     }
  
     [SerializeField]
@@ -76,28 +93,49 @@ public class RemoteObject : MonoBehaviour
     [Header("Events")]
 
     [SerializeField]
+    [Tooltip("Invoked when model data has changed.")]
+    private RemoteObjectDataChangedEvent dataChanged = new RemoteObjectDataChangedEvent();
+
+    /// <summary>
+    /// Invoked when model data has changed.
+    /// </summary>
+    public RemoteObjectDataChangedEvent DataChanged => dataChanged;
+
+    [SerializeField]
     [Tooltip("Invoked when model is loaded")]
     private RemoteObjectLoadedEvent loaded = new RemoteObjectLoadedEvent();
 
     /// <summary>
     /// Invoked when model is loaded.
     /// </summary>
-    public RemoteObjectLoadedEvent Loaded
-    {
-        get => loaded;
-    }
+    public RemoteObjectLoadedEvent Loaded => loaded;
 
     [SerializeField]
-    [Tooltip("Invoked when loading progress changes.")]
-    private RemoteObjectLoadingProgressEvent loadingProgressChanged = new RemoteObjectLoadingProgressEvent();
+    [Tooltip("Invoked when the user deletes the object.")]
+    private RemoteObjectDeletedEvent deleted = new RemoteObjectDeletedEvent();
 
     /// <summary>
-    /// Invoked when loading progress changes.
+    /// Invoked when the user deletes the object.
     /// </summary>
-    public RemoteObjectLoadingProgressEvent LoadingProgressChanged
-    {
-        get => loadingProgressChanged;
-    }
+    public RemoteObjectDeletedEvent Deleted => deleted;
+
+    [SerializeField]
+    [Tooltip("Event raised when remote object is disabled.")]
+    private UnityEvent objectDisabled = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when remote object is disabled.
+    /// </summary>
+    public UnityEvent ObjectDisabled => objectDisabled;
+
+    [SerializeField]
+    [Tooltip("Event raised when the remote object has been enabled or disabled.")]
+    private UnityEvent<bool> isEnabledChanged = new RemoteObjectEnabledChangedEvent();
+
+    /// <summary>
+    /// Event raised when the remote object has been enabled or disabled.
+    /// </summary>
+    public UnityEvent<bool> IsEnabledChanged => isEnabledChanged;
     #endregion Serialized Fields
 
     #region Public Properties
@@ -111,13 +149,32 @@ public class RemoteObject : MonoBehaviour
     /// </summary>
     public bool IsVisible
     {
-        get => _visible;
+        get => _visibleModel;
 
         set
         {
-            _visible = value;
+            _visibleModel = value;
             UpdatePlaceholderVisibility();
             UpdateContainerVisibility(Data, MainContainer);
+        }
+    }
+
+    /// <summary>
+    /// Set or set if the placeholder can be shown.
+    /// </summary>
+    public bool IsEnabled
+    {
+        get => _enabled;
+
+        set
+        {
+            if (_enabled != value)
+            {
+                _enabled = value;
+                UpdatePlaceholderVisibility();
+                UpdateContainerVisibility(Data, MainContainer);
+                isEnabledChanged?.Invoke(value);
+            }
         }
     }
 
@@ -130,28 +187,11 @@ public class RemoteObject : MonoBehaviour
     /// Get if the remote entity is loading
     /// </summary>
     public bool IsLoading => _loadingTaskSource != null && !_loadingTaskSource.Task.IsCompleted;
-
+ 
     /// <summary>
-    /// Get and set if the object is currently anchored and locked
+    /// Get the currently loaded remote entity
     /// </summary>
-    public bool IsAnchored
-    {
-        get => _isLocked;
-
-        set
-        {
-            _isLocked = value;
-            if (_isLocked)
-            {
-                LockObject();
-            }
-            else
-            {
-                UnlockObject();
-            }
-        }
-    }
-
+    public Entity Entity { get => RemoteContainer?.Entity; }
     #endregion Public Properties
 
     #region Private Properties
@@ -173,21 +213,6 @@ public class RemoteObject : MonoBehaviour
 
     #region Public Methods
     /// <summary>
-    /// Set if the object can be allowed to move even when locked. 
-    /// </summary>
-    public void AllowMovement(bool value)
-    {
-        if (value)
-        {
-            UnlockObject();
-        }
-        else if (_isLocked)
-        {
-            LockObject();
-        }
-    }
-
-    /// <summary>
     /// Destroy this game object
     /// </summary>
     public void Destroy()
@@ -199,6 +224,11 @@ public class RemoteObject : MonoBehaviour
     #region MonoBehavior Methods
     private void Start()
     {
+        if (Root == null)
+        {
+            Root = transform;
+        }
+
         if (AppServices.RemoteRendering != null)
         {
             AppServices.RemoteRendering.StatusChanged += 
@@ -207,6 +237,11 @@ public class RemoteObject : MonoBehaviour
 
         _started = true;
         Load();
+
+        if (data != null)
+        {
+            dataChanged?.Invoke(data);
+        }
     }
 
     private void OnEnable()
@@ -227,6 +262,8 @@ public class RemoteObject : MonoBehaviour
         var oldLoadTaskSource = _loadingTaskSource;
         _loadingTaskSource = null;
         oldLoadTaskSource?.TrySetResult(false);
+        
+        deleted?.Invoke(new RemoteObjectDeletedEventData(this));
     }
     #endregion MonoBehavior Methods
 
@@ -278,14 +315,14 @@ public class RemoteObject : MonoBehaviour
 
         // Cache the task source for validating loading status after async operations
         Debug.Assert(_loadingTaskSource == null, "There shouldn't be an active loading task.");
-        var loadingTaskSournce = _loadingTaskSource = new TaskCompletionSource<bool>();
+        var loadingTaskSource = _loadingTaskSource = new TaskCompletionSource<bool>();
 
         // Show placeholder visual
         UpdatePlaceholderVisibility();
 
         try
         {
-            await LoadWorker(machine, item, loadingTaskSournce.Task);
+            await LoadWorker(machine, item, loadingTaskSource.Task);
         }
         catch (Exception ex)
         {
@@ -295,10 +332,10 @@ public class RemoteObject : MonoBehaviour
         }
 
         // If still loading, continue
-        if (!loadingTaskSournce.Task.IsCompleted)
+        if (!loadingTaskSource.Task.IsCompleted)
         {
             // Notify listeners that load has completed
-            loadingTaskSournce.TrySetResult(true);
+            loadingTaskSource.TrySetResult(true);
 
             // Hide placeholder
             UpdatePlaceholderVisibility();
@@ -317,7 +354,7 @@ public class RemoteObject : MonoBehaviour
     private async Task LoadWorker(IRemoteRenderingMachine machine, RemoteItemBase item, Task loadingTask)
     {
         // Is this item showable?
-        _enabled = item.Enabled;
+        IsEnabled = item.Enabled;
 
         // Set local name first
         name = GetName(item);
@@ -432,12 +469,12 @@ public class RemoteObject : MonoBehaviour
         DestroyRemoteContainer(RemoteContainer);
         RemoteContainer = null;
 
-        // Detroy local stuff if need. Typically this is only done id model data changed
+        // Destroy local stuff if need. Typically this is only done id model data changed
         if (unloadLocal)
         {
             DestroyLocalContainer(LocalContainer);
             LocalContainer = null;
-        }            
+        }
 
         // Create a new task for the next load
         var oldLoadingTaskSource = _loadingTaskSource;
@@ -879,7 +916,7 @@ public class RemoteObject : MonoBehaviour
         }
 
         GameObject transformObject = new GameObject($"{name} (Container)");
-        transformObject.transform.SetParent(transform, false);
+        transformObject.transform.SetParent(root, false);
         MainContainer = transformObject.transform;
     }
 
@@ -1080,12 +1117,12 @@ public class RemoteObject : MonoBehaviour
 
         // Only show remote if done loading
         var remoteObject = container.GetComponentInChildren<RemoteEntitySyncObject>(includeInactive: true);
-        bool remoteVisible = _visible && _enabled && remoteObject != null && remoteObject.IsEntityValid && remoteObject.Entity.Children.Count > 0 && !IsLoading;
+        bool remoteVisible = _visibleModel && IsEnabled && remoteObject != null && remoteObject.IsEntityValid && remoteObject.Entity.Children.Count > 0 && !IsLoading;
         SetRemoteEntityVisibility(item, remoteObject, remoteVisible);
 
         // Only show load if remote is not visible
         var localRenderers = container.GetComponentsInChildren<Renderer>(includeInactive: true);
-        bool localVisible = _visible && _enabled && localRenderers != null && localRenderers.Length > 0 && !remoteVisible;
+        bool localVisible = _visibleModel && IsEnabled && localRenderers != null && localRenderers.Length > 0 && !remoteVisible;
         SetLocalRendererVisibility(localRenderers, localVisible);
     }
 
@@ -1094,7 +1131,8 @@ public class RemoteObject : MonoBehaviour
         if (placeholder != null &&
             placeholder.gameObject != null)
         {
-            bool showPlaceholder = !_visible || (!IsLoaded && LocalContainer == null);
+            // show placeholder if model is not visible or not loaded, and only show if this object is enabled.
+            bool showPlaceholder = (IsEnabled) && (!_visibleModel || (!IsLoaded && LocalContainer == null));
             if (showPlaceholder)
             {
                 placeholder.gameObject.SetActive(true);
@@ -1131,19 +1169,13 @@ public class RemoteObject : MonoBehaviour
             collider.enabled = visible && (item != null && !item.HasColliders);
         }
     }
+    #endregion Private functions
 
-    private void LockObject()
-    {
-        gameObject.EnsureComponent<WorldAnchor>();
-    }
-
-    private void UnlockObject()
-    {
-        var worldAnchor = GetComponent<WorldAnchor>();
-        if (worldAnchor != null)
-        {
-            Component.DestroyImmediate(worldAnchor);
-        }
-    }
-    #endregion
+    #region Private Classes
+    /// <summary>
+    /// An event used to pass along enablement changes.
+    /// </summary>
+    private class RemoteObjectEnabledChangedEvent : UnityEvent<bool>
+    { }
+    #endregion Private Classes
 }

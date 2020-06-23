@@ -12,6 +12,8 @@ This repository contains the following folders:
 * Scripts - This folder contains PowerShell scripts for interacting with the service (e.g. converting assets or launching rendering servers).
 * Tools - This folder contains auxiliary utilities for working with Remote Rendering (e.g. tracing profiles to gather tracing information).
 
+Another useful open-source tool which uses the C++ ARR SDK is Azure Remote Rendering Asset Tool (ARRT). This desktop application can be used to upload, convert and remotely render 3D models, using Azure Remote Rendering. Find the source code and binary releases on the [Azure Remote Rendering Asset Tool GitHub repository](https://github.com/Azure/azure-remote-rendering-asset-tool).
+
 # Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

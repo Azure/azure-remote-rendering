@@ -444,6 +444,7 @@ if ($null -ne $convertedAssetLocation) {
     
     if ($UseContainerSas) {
         # now retrieve the converted model SAS URI - you will need to call the ARR SDK API with a URL to your model to load a model in your application
-        GenerateOutputmodelSASUrl $convertedAssetLocation $config.assetConversionSettings.storageContext.BlobEndPoint $config.assetConversionSettings.storageContext
+        $sasUrl = GenerateOutputmodelSASUrl $convertedAssetLocation $config.assetConversionSettings.storageContext.BlobEndPoint $config.assetConversionSettings.storageContext
+        WriteInformation("model SAS URI: $sasUrl")
     }
 }

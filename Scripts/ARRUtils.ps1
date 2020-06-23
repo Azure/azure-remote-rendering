@@ -508,7 +508,6 @@ function GenerateOutputmodelSASUrl($convertedAssets, [string]$blobEndPoint, $sto
 
     if ($null -ne $blobSASUri) {
         WriteSuccess("Successfully generated model SAS URI")
-        WriteInformation("model SAS URI: $blobSASUri")
         return $blobSASUri
     }
     else {

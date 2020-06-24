@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5963987801345380943
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5966918555308329975}
+  - component: {fileID: 5963987801345380944}
+  m_Layer: 0
+  m_Name: MousePointerWithAutoHide
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5966918555308329975
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5963987801345380943}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0.17, y: 0.17, z: 0.17}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5963987801345380944
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5963987801345380943}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f93acc554d1dc44d82b7a7e32de9b26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  handedness: 1
+  destroyOnSourceLost: 1
+  useSourcePoseData: 0
+  poseAction:
+    id: 4
+    description: Pointer Pose
+    axisConstraint: 7
+  cursorPrefab: {fileID: 8576008928122596742, guid: 9b55fdd512125844db96fa1473f9b3ab,
+    type: 3}
+  disableCursorOnStart: 1
+  setCursorVisibilityOnSourceDetected: 0
+  raycastOrigin: {fileID: 0}
+  activeHoldAction:
+    id: 0
+    description: None
+    axisConstraint: 0
+  pointerAction:
+    id: 1
+    description: Select
+    axisConstraint: 2
+  requiresHoldAction: 0
+  requiresActionBeforeEnabling: 1
+  overrideGlobalPointerExtent: 0
+  pointerExtent: 10
+  defaultPointerExtent: 10
+  sphereCastRadius: 0.1
+  showSystemCursor: 0
+  hideCursorWhenInactive: 1
+  movementThresholdToUnHide: 0.5
+  hideTimeout: 3

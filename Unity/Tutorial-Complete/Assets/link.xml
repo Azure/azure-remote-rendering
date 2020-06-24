@@ -1,0 +1,7 @@
+<linker>
+	<assembly fullname="Microsoft.Identity.Client" preserve="all"/>
+	<assembly fullname="System.Runtime.Serialization" preserve="all"/>
+	<assembly fullname="System.Core">
+		<type fullname="System.Linq.Expressions.Interpreter.LightLambda" preserve="all" />
+	</assembly>
+</linker>

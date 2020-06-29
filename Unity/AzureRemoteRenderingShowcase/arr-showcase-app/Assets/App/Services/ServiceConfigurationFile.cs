@@ -205,6 +205,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return Account != null  &&
                     (Account.ShouldSerializeAccountDomains() ||
+                     Account.ShouldSerializeAccountDomainLabels() ||
                      Account.ShouldSerializeAccountId() ||
                      Account.ShouldSerializeAccountKey());
             }
@@ -297,14 +298,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return new RemoteRendingAccount()
                 {
                     AccountDomains = AccountDomains,
+                    AccountDomainLabels = AccountDomainLabels,
                     AccountId = AccountId,
                     AccountKey = AccountKey
                 };
             }
 
-            [Tooltip("The list Azure remote rendering account domain supported by this account. The first entry is the perferred one.")]
+            [Tooltip("The list Azure remote rendering account domain supported by this account. The first entry is the preferred one.")]
             [XmlArrayItem("AccountDomain")]
             public string[] AccountDomains;
+
+            [Tooltip("The labels used to refer to the respective account domains in the UI.")]
+            [XmlArrayItem("AccountDomainLabel")]
+            public string[] AccountDomainLabels;
 
             [Tooltip("The default Azure remote rendering account id to use.")]
             public string AccountId;
@@ -313,6 +319,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public string AccountKey;
 
             public bool ShouldSerializeAccountDomains() { return AccountDomains != null && AccountDomains.Length > 0; }
+
+            public bool ShouldSerializeAccountDomainLabels() { return AccountDomainLabels != null && AccountDomainLabels.Length > 0; }
 
             public bool ShouldSerializeAccountId()
             {

@@ -259,6 +259,21 @@ public class HandMenuHooks : MonoBehaviour
         set => debugMenuText = value;
     }
 
+    [Header("Session Configuration Buttons & Parts")]
+
+    [SerializeField]
+    [Tooltip("The button to forget the saved session.")]
+    private Interactable forgetSessionButtonLogic = null;
+
+    /// <summary>
+    /// The button to forget the saved session.
+    /// </summary>
+    public Interactable ForgetSessionButtonLogic
+    {
+        get => forgetSessionButtonLogic;
+        set => forgetSessionButtonLogic = value;
+    }
+
     [Header("Sharing Buttons & Parts")]
 
     [SerializeField]
@@ -356,6 +371,7 @@ public class HandMenuHooks : MonoBehaviour
         revertButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.Reset); });
         startSessionButtonLogic.OnClick.AddListener(delegate { StartAndConnectSession(); });
         stopSessionButtonLogic.OnClick.AddListener(delegate { StopSession(); });
+        forgetSessionButtonLogic.OnClick.AddListener(delegate { ForgetSession(); });
         toolsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Tools); });
         modelsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Models); });
         sessionButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Session); });
@@ -497,6 +513,11 @@ public class HandMenuHooks : MonoBehaviour
     private async void StopSession()
     {
         await _remoteRenderingService?.StopAll();
+    }
+
+    private async void ForgetSession()
+    {
+        await _remoteRenderingService?.ClearAll();
     }
 
     private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs args)

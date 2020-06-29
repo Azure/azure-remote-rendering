@@ -91,9 +91,15 @@ public class SessionRegionButton : ClickableButton
     {
         UpdateLabelText();
     }
+
     protected override void Start()
     {
         base.Start();
+    }
+
+    protected void OnEnable()
+    {
+        UpdateDomainAndLocation();
         UpdateLabelText();
     }
 
@@ -113,7 +119,24 @@ public class SessionRegionButton : ClickableButton
     #region Private Methods
     private void UpdateLabelText()
     {
-        LabelText = locationName;
+        LabelText = LocationName;
+    }
+
+    private void UpdateDomainAndLocation()
+    {
+        var loadedProfile = AppServices.RemoteRendering?.LoadedProfile;
+        if (loadedProfile != null)
+        {
+            int domainIndex = (int)location;
+            if (loadedProfile.AccountDomains.Length > domainIndex)
+            {
+                _domain = loadedProfile.AccountDomains[domainIndex] ?? _domain;
+            }
+            if (loadedProfile.AccountDomainLabels.Length > domainIndex)
+            {
+                LocationName = loadedProfile.AccountDomainLabels[domainIndex] ?? LocationName;
+            }
+        }
     }
     #endregion Private Methods
 }

@@ -40,6 +40,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [Tooltip("The default Azure remote rendering account domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string[] AccountDomains = { "westus2.mixedreality.azure.com", "westeurope.mixedreality.azure.com", "eastus.mixedreality.azure.com", "southeastasia.mixedreality.azure.com" };
 
+        [Tooltip("The default labels for the Azure remote rendering account domains.")]
+        public string[] AccountDomainLabels = { "West US 2", "West Europe", "East US", "Southeast Asia" };
+
         [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountId = Guid.Empty.ToString();
 

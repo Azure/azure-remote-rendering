@@ -2,7 +2,7 @@
   "accountSettings": {
     "arrAccountId": "<fill in the account ID from the Azure Portal>",
     "arrAccountKey": "<fill in the account key from the Azure Portal>",
-    "region": "<select from available regions: eastus2, westeurope, westus2, southeastasia>"
+    "region": "<select from available regions: eastus, westeurope, westus2, southeastasia>"
   },
   "renderingSessionSettings": {
     "vmSize": "<standard or premium>",

@@ -30,6 +30,7 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [ex
 | Auto Renew Lease | If true and the app is connected, the app will attempt to extend the ARR session lease before it expires. |
 | Auto Reconnect | If true, the app will attempt to auto reconnect after a disconnection. |
 | Auto Reconnect Rate | The rate, in seconds, in which the app will attempt to reconnect after a disconnection. |
+| Always Include Default Models | If true, the model list will contain the default models, even when using an override file or a storage account. |
 
 <br/>
 

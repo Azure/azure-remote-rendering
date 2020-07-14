@@ -5,12 +5,13 @@ using Microsoft.Azure.Storage;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
 /// This populates the model menu with a list of Azure Remote Rendering (ARR) models. The source of this data can 
-/// orginate from one of the following locations. This class will attempt to load data starting with #1. If #1 fails,
+/// originate from one of the following locations. This class will attempt to load data starting with #1. If #1 fails,
 /// it'll try #2 and soon on.
 ///
 /// 1. An override file placed in the app's local state directory. This file is an index, where each entry points to
@@ -19,7 +20,7 @@ using UnityEngine;
 /// 2. An Azure storage container. All ARR models in this container are added to the model menu. If the container has a
 ///    models.xml index file, the files referenced by this index also added to the model menu.
 ///
-/// 3. A remote index file, specified via an URL. Each entry points to ARR model. If this remmote index file is used,
+/// 3. A remote index file, specified via an URL. Each entry points to ARR model. If this remote index file is used,
 ///    all models referenced by it are added to the model menu.
 ///
 /// 4. A fallback file placed in the app's local state directory. This file is an index, where each entry points to
@@ -152,6 +153,8 @@ public class RemoteObjectListLoader : MonoBehaviour
     private async void LoadData()
     {
         RemoteModelFile fileData = await TryLoadFromOverride();
+        var includeDefaultModels = AppServices.RemoteRendering?.LoadedProfile?.AlwaysIncludeDefaultModels ?? false;
+
         if (DataEmpty(fileData) && useAzureContainerQuery)
         {
             fileData = await TryLoadFromAzureContainer();
@@ -162,17 +165,31 @@ public class RemoteObjectListLoader : MonoBehaviour
             fileData = await TryLoadFromCloud();
         }
 
-        if (DataEmpty(fileData))
+        RemoteModelFile fallbackData = null;
+        var includeFallback = DataEmpty(fileData) || includeDefaultModels;
+        if (includeFallback)
         {
-            fileData = await TryLoadFromFallback();
+            fallbackData = await TryLoadFromFallback();
         }
 
-        if (DataEmpty(fileData))
+        if (includeFallback && DataEmpty(fallbackData))
         {
             // Save fallback data to file, so consumers see a sample of the file format
             if (TryLoadFromFallbackData(out fileData))
             {
                 await TrySave(fileData);
+            }
+        }
+
+        if (includeFallback)
+        {
+            if (DataEmpty(fileData))
+            {
+                fileData = fallbackData;
+            }
+            else
+            {
+                fileData.Containers = fileData.Containers.Concat(fallbackData.Containers).ToArray();
             }
         }
 

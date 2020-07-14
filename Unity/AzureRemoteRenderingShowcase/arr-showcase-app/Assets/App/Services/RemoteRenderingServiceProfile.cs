@@ -35,6 +35,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [Tooltip("The rate, in seconds, in which the app will attempt to reconnect after a disconnection.")]
         public float AutoReconnectRate = 15.0f;
 
+        [Tooltip("If true, the model list will contain the default models, even when using an override file or a storage account.")]
+        public bool AlwaysIncludeDefaultModels = false;
+
         [Header("Remote Rendering Account Settings")]
 
         [Tooltip("The default Azure remote rendering account domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]

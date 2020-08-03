@@ -117,19 +117,20 @@ public class RemoteObjectReset : MonoBehaviour
     #region Private Methods
     private void CaptureInitialStateOnce()
     {
-        RemoteEntitySyncObject syncObject = null;
+        RemoteObject remoteObject = null;
         if (root != null)
         {
-            syncObject = root.GetComponent<RemoteEntitySyncObject>();
+            RemoteEntitySyncObject syncObject = root.GetComponent<RemoteEntitySyncObject>();
+            remoteObject = syncObject.GetComponentInParent<RemoteObject>();
         }
 
-        if (syncObject == null || !syncObject.IsEntityValid)
+        if (remoteObject == null)
         {
             _originalState = null;
         }
         else
         {
-            _originalState = syncObject.Entity.CreateSnapshot();
+            _originalState = remoteObject.TransformSnapshot;
         }
     }
     #endregion Private Methods

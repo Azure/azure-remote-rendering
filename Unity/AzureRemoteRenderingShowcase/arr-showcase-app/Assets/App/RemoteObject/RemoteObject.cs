@@ -10,6 +10,7 @@ using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
@@ -21,6 +22,7 @@ public class RemoteObject : MonoBehaviour
     private bool _enabled = true;
     private bool _started = false;
     private bool _destroyed = false;
+    private List<EntitySnapshot> _transformSnapshot = null;
 
     #region Serialized Fields
     [Header("General Settings")]
@@ -192,6 +194,16 @@ public class RemoteObject : MonoBehaviour
     /// Get the currently loaded remote entity
     /// </summary>
     public Entity Entity { get => RemoteContainer?.Entity; }
+
+    /// <summary>
+    /// A snapshot of the a loaded model's entity transforms. Used as a base for animations like explode.
+    /// </summary>
+    public List<EntitySnapshot> TransformSnapshot
+    {
+        get => _transformSnapshot;
+        set => _transformSnapshot = value;
+    }
+
     #endregion Public Properties
 
     #region Private Properties
@@ -346,7 +358,7 @@ public class RemoteObject : MonoBehaviour
             // Raise event if loaded
             if (IsLoaded)
             {
-                loaded?.Invoke(new RemoteObjectLoadedEventData(RemoteContainer));
+                loaded?.Invoke(new RemoteObjectLoadedEventData(RemoteContainer, _transformSnapshot));
             }
         }
     }
@@ -579,7 +591,7 @@ public class RemoteObject : MonoBehaviour
         }
 
         // Load children
-        List<Task<Entity>> loadingItems = new List<Task<Entity>>();
+        List<Task<LoadModelResult>> loadingItems = new List<Task<LoadModelResult>>();
         if (modelWithChildren.Items != null)
         {
             foreach (var item in modelWithChildren.Items)
@@ -594,11 +606,62 @@ public class RemoteObject : MonoBehaviour
         // Wait for the items to finish loading
         if (loadingItems.Count > 0)
         {
-            await Task.WhenAll(loadingItems);
+            var results = await Task.WhenAll(loadingItems);
+
+            _transformSnapshot = null;
+            var remoteParentSnapshot = new EntitySnapshot(remoteParent, null);
+            List<Task<List<EntitySnapshot>>> snapshotItems = new List<Task<List<EntitySnapshot>>>();
+            foreach (LoadModelResult result in results)
+            {
+                if (result != null)
+                {
+                    snapshotItems.Add(CreateTransformSnapshot(result, remoteParentSnapshot));
+                }
+            }
+
+            var snapshots = await Task.WhenAll(snapshotItems);
+            // one slot for root snapshot
+            var capacity = 1;
+            foreach (List<EntitySnapshot> snapshotList in snapshots)
+            {
+                capacity += snapshotList.Count;
+            }
+            var transformSnapshot = new List<EntitySnapshot>(capacity);
+            foreach (List<EntitySnapshot> snapshotList in snapshots)
+            {
+                transformSnapshot.AddRange(snapshotList);
+            }
+            _transformSnapshot = transformSnapshot;
         }
     }
 
-    private async Task<Entity> LoadRemoteModel(IRemoteRenderingMachine machine, RemoteModel model, Entity remoteParent)
+    private Task<List<EntitySnapshot>> CreateTransformSnapshot(LoadModelResult result, EntitySnapshot parent)
+    {
+        // run calculations on background thread
+        return Task.Run(() =>
+        {
+            var entities = result.GetLoadedObjectsOfType(ObjectType.Entity);
+            var entityCount = entities.Count;
+            var snapshotList = new List<EntitySnapshot>(entityCount);
+            var entityToEntitySnapshot = new Hashtable(parent != null ? entityCount + 1 : entityCount);
+            if (parent != null)
+            {
+                entityToEntitySnapshot[parent.Entity] = parent;
+            }
+
+            foreach (var e in entities)
+            {
+                var current = e as Entity;
+                var currentParent = entityToEntitySnapshot[current.Parent] as EntitySnapshot;
+                var entitySnapshot = new EntitySnapshot(current, currentParent);
+                entityToEntitySnapshot[current] = entitySnapshot;
+                snapshotList.Add(entitySnapshot);
+            }
+            return snapshotList;
+        });
+    }
+
+    private async Task<LoadModelResult> LoadRemoteModel(IRemoteRenderingMachine machine, RemoteModel model, Entity remoteParent)
     {
         if (machine == null || model == null || remoteParent == null)
         {
@@ -640,7 +703,7 @@ public class RemoteObject : MonoBehaviour
             entityGameObject.GetComponent<RemoteEntitySyncObject>()?.SyncToRemote();
         }
 
-        return result?.Root;
+        return result;
     }
 
     private async Task LoadRemoteLights(IRemoteRenderingMachine machine, RemoteItemBase model, Entity remoteParent)

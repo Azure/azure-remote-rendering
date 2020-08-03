@@ -120,14 +120,8 @@ public class RemoteObjectExplode : MonoBehaviour
             return null;
         }
 
-        // first attempt to reuse the snap shots for the "reset" object.
-        // ortherwise create a new snap shot
-        RemoteObjectReset reset = root.GetComponentInParent<RemoteObjectReset>();
-        IEnumerable<EntitySnapshot> snapshots = reset?.OriginalState;
-        if (snapshots == null)
-        {
-            snapshots = root.Entity.CreateSnapshot();
-        }
+        RemoteObject remoteObject = root.GetComponentInParent<RemoteObject>();
+        IEnumerable<EntitySnapshot> snapshots = remoteObject?.TransformSnapshot;
 
         return CreateExplodeData(snapshots);
     }

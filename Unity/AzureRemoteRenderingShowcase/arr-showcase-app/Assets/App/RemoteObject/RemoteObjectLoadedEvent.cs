@@ -4,6 +4,7 @@
 using Microsoft.Azure.RemoteRendering.Unity;
 using UnityEngine.Events;
 using System;
+using System.Collections.Generic;
 
 [Serializable]
 public class RemoteObjectLoadedEvent : UnityEvent<RemoteObjectLoadedEventData>
@@ -12,13 +13,15 @@ public class RemoteObjectLoadedEvent : UnityEvent<RemoteObjectLoadedEventData>
 
 public class RemoteObjectLoadedEventData
 {
-    public RemoteObjectLoadedEventData(RemoteEntitySyncObject syncObject)
+    public RemoteObjectLoadedEventData(RemoteEntitySyncObject syncObject, List<EntitySnapshot> snapshot)
     {
         SyncObject = syncObject;
+        Snapshot = snapshot;
     }
 
     #region Public Properties
     public RemoteEntitySyncObject SyncObject { get; }
+    public List<EntitySnapshot> Snapshot { get; }
     #endregion Public Properties
 }
 

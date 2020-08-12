@@ -185,6 +185,7 @@ namespace HolographicApp
         float m_modelLoadingProgress = 0.f;
         bool m_modelLoadFinished = false;
         bool m_needsStatusUpdate = true;
+        double m_timeAtLastRESTCall = 0;
 
         // Status text:
         double m_lastTime = -1;

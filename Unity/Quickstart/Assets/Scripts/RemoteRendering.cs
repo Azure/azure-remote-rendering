@@ -178,7 +178,7 @@ public class RemoteRendering : MonoBehaviour
         arrService.CurrentActiveSession?.Actions.Update();
     }
 
-    private async void LoadModel()
+    private async Task LoadModel()
     {
         // create a root object to parent a loaded model to
         Entity modelEntity = arrService.CurrentActiveSession.Actions.CreateEntity();
@@ -325,7 +325,9 @@ public class RemoteRendering : MonoBehaviour
 
             if (arrService.CurrentActiveSession.IsConnected)
             {
-                LoadModel();
+                // We load the model in a fire and forget manner,
+                // so we ignore the returned task object.
+                _ = LoadModel();
             }
             else
             {

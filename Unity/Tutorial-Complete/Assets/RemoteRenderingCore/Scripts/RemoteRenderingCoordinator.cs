@@ -359,18 +359,6 @@ public class RemoteRenderingCoordinator : MonoBehaviour
             modelGameObject.name = parent.name + "_Entity";
         }
 
-#if UNITY_WSA
-        //Anchor the model in the world, prefer anchoring parent if there is one
-        if (parent != null)
-        {
-            parent.gameObject.AddComponent<WorldAnchor>();
-        }
-        else
-        {
-            modelGameObject.AddComponent<WorldAnchor>();
-        }
-#endif
-
         //Load a model that will be parented to the entity
         var loadModelParams = new LoadModelFromSASParams(modelPath, modelEntity);
         var loadModelAsync = ARRSessionService.CurrentActiveSession.Actions.LoadModelFromSASAsync(loadModelParams);
@@ -407,18 +395,6 @@ public class RemoteRenderingCoordinator : MonoBehaviour
             modelGameObject.transform.SetParent(parent, false);
             modelGameObject.name = parent.name + "_Entity";
         }
-
-#if UNITY_WSA
-        //Anchor the model in the world, prefer anchoring parent if there is one
-        if (parent != null)
-        {
-            parent.gameObject.AddComponent<WorldAnchor>();
-        }
-        else
-        {
-            modelGameObject.AddComponent<WorldAnchor>();
-        }
-#endif
 
         //Load a model that will be parented to the entity
         var loadModelParams = new LoadModelParams($"{storageAccountName}.blob.core.windows.net", blobName, modelPath, modelEntity);

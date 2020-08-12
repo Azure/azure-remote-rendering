@@ -210,6 +210,41 @@ public static class RemoteEntityExtensions
     }
 
     /// <summary>
+    /// This creates a "snapshot" of an entity's global positions and rotation. Result is a flattened, depth-first list of root's hierarchy.
+    /// </summary>
+    public static IEnumerable<EntitySnapshot> CreateSnapshot(this Entity root)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        List<EntitySnapshot> result = new List<EntitySnapshot>();
+        CreateSnapshotImpl(root, null, result);
+        return result;
+    }
+
+    /// <summary>
+    /// This creates a "snapshot" of an entity's global positions and rotation. This includes the entity's entire hierarchy.
+    /// </summary>
+    private static void CreateSnapshotImpl(this Entity entity, EntitySnapshot root, List<EntitySnapshot> results)
+    {
+        if (entity == null || !entity.Valid)
+        {
+            return;
+        }
+
+        EntitySnapshot parent = new EntitySnapshot(entity, root);
+        results.Add(parent);
+
+        var children = entity.Children;
+        foreach (var child in children)
+        {
+            CreateSnapshotImpl(child, parent, results);
+        }
+    }
+
+    /// <summary>
     /// Replace all mesh materials with the given material.
     /// </summary>
     public static void ReplaceMaterials(this Remote.Entity entity, Remote.Material material)

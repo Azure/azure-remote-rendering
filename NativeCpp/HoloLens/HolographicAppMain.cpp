@@ -278,48 +278,56 @@ HolographicFrame HolographicAppMain::Update()
         // Tick the client to receive messages
         m_api->Update();
 
-        // query session status periodically until we reach 'session started'
-        if (!m_sessionStarted && m_sessionPropertiesAsync == nullptr)
+        if (!m_sessionStarted)
         {
-            if (auto propAsync = m_session->GetPropertiesAsync())
-            {
-                m_sessionPropertiesAsync = *propAsync;
-                m_sessionPropertiesAsync->Completed([this](const RR::ApiHandle<RR::SessionPropertiesAsync>& async)
-                    {
-                        if (auto res = async->Result())
-                        {
-                            switch (res->Status)
-                            {
-                            case RR::RenderingSessionStatus::Ready:
-                            {
-                                // The following is async, but we'll get notifications via OnConnectionStatusChanged
-                                m_sessionStarted = true;
-                                SetNewState(AppConnectionStatus::Connecting, nullptr);
-                                RR::ConnectToRuntimeParams init;
-                                init.ignoreCertificateValidation = false;
-                                init.mode = RR::ServiceRenderMode::Default;
-                                m_session->ConnectToRuntime(init);
-                            }
-                            break;
-                            case RR::RenderingSessionStatus::Error:
-                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session error");
-                                break;
-                            case RR::RenderingSessionStatus::Stopped:
-                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session stopped");
-                                break;
-                            case RR::RenderingSessionStatus::Expired:
-                                SetNewState(AppConnectionStatus::ConnectionFailed, "Session expired");
-                                break;
-                            }
+            // Important: To avoid server-side throttling of the requests, we should call GetPropertiesAsync very infrequently:
+            const double delayBetweenRESTCalls = 10.0;
 
-                        }
-                        else
+            m_needsStatusUpdate = true; // Info text should update more frequently
+
+            // query session status periodically until we reach 'session started'
+            if (m_sessionPropertiesAsync == nullptr && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > delayBetweenRESTCalls)
+            {
+                m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
+                if (auto propAsync = m_session->GetPropertiesAsync())
+                {
+                    m_sessionPropertiesAsync = *propAsync;
+                    m_sessionPropertiesAsync->Completed([this](const RR::ApiHandle<RR::SessionPropertiesAsync>& async)
                         {
-                            SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
-                        }
-                        m_sessionPropertiesAsync = nullptr; // next try
-                        m_needsStatusUpdate = true;
-                    });
+                            if (auto res = async->Result())
+                            {
+                                switch (res->Status)
+                                {
+                                case RR::RenderingSessionStatus::Ready:
+                                {
+                                    // The following is async, but we'll get notifications via OnConnectionStatusChanged
+                                    m_sessionStarted = true;
+                                    SetNewState(AppConnectionStatus::Connecting, nullptr);
+                                    RR::ConnectToRuntimeParams init;
+                                    init.ignoreCertificateValidation = false;
+                                    init.mode = RR::ServiceRenderMode::Default;
+                                    m_session->ConnectToRuntime(init);
+                                }
+                                break;
+                                case RR::RenderingSessionStatus::Error:
+                                    SetNewState(AppConnectionStatus::ConnectionFailed, "Session error");
+                                    break;
+                                case RR::RenderingSessionStatus::Stopped:
+                                    SetNewState(AppConnectionStatus::ConnectionFailed, "Session stopped");
+                                    break;
+                                case RR::RenderingSessionStatus::Expired:
+                                    SetNewState(AppConnectionStatus::ConnectionFailed, "Session expired");
+                                    break;
+                                }
+
+                            }
+                            else
+                            {
+                                SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
+                            }
+                            m_sessionPropertiesAsync = nullptr; // next try
+                        });
+                }
             }
         }
 
@@ -562,7 +570,7 @@ void HolographicAppMain::SetNewSession(RR::ApiHandle<RR::AzureSession> newSessio
 {
     SetNewState(AppConnectionStatus::StartingSession, nullptr);
 
-    m_sessionStartingTime = m_timer.GetTotalSeconds();
+    m_sessionStartingTime = m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
     m_session = newSession;
     m_api = m_session->Actions();
     m_graphicsBinding = m_session->GetGraphicsBinding().as<RR::GraphicsBindingWmrD3d11>();

@@ -9,19 +9,23 @@ using UnityEngine.Events;
 
 public class RemoteRenderedModel : BaseRemoteRenderedModel
 {
-    [SerializeField]
-    [Tooltip("The friendly name for this model")]
-    private string modelDisplayName;
-    [SerializeField]
-    [Tooltip("The URI for this model")]
-    private string modelPath;
-
     public bool AutomaticallyLoad = true;
 
     private ModelState currentModelState = ModelState.NotReady;
 
+    [SerializeField]
+    [Tooltip("The friendly name for this model")]
+    private string modelDisplayName;
     public override string ModelDisplayName { get => modelDisplayName; set => modelDisplayName = value; }
-    public override string ModelPath { get => modelPath; set => modelPath = value; }
+
+    [SerializeField]
+    [Tooltip("The URI for this model")]
+    private string modelPath;
+    public override string ModelPath
+    {
+        get => modelPath.Trim();
+        set => modelPath = value;
+    }
 
     public override ModelState CurrentModelState
     {

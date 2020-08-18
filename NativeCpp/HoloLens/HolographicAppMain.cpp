@@ -8,6 +8,12 @@
 #include <xlocbuf>
 #include <codecvt>
 
+#ifdef USE_REMOTE_RENDERING
+#include <AzureRemoteRendering.inl>
+#include <RemoteRenderingExtensions.h>
+#include <windows.perception.spatial.h>
+#endif
+
 using namespace HolographicApp;
 using namespace concurrency;
 using namespace Microsoft::WRL;
@@ -18,12 +24,6 @@ using namespace winrt::Windows::Graphics::Holographic;
 using namespace winrt::Windows::Graphics::DirectX::Direct3D11;
 using namespace winrt::Windows::Perception::Spatial;
 using namespace winrt::Windows::UI::Input::Spatial;
-
-#ifdef USE_REMOTE_RENDERING
-#include <AzureRemoteRendering.inl>
-#include <RemoteRenderingExtensions.h>
-#endif
-
 
 // Loads and initializes application assets when the application is loaded.
 HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> const& deviceResources) :
@@ -344,6 +344,14 @@ HolographicFrame HolographicAppMain::Update()
         UpdateStatusText();
     }
 
+    if (m_needsCoordinateSystemUpdate && m_stationaryReferenceFrame && m_graphicsBinding)
+    {
+        // Set the coordinate system once. This must be called again whenever the coordinate system changes.
+        winrt::com_ptr<ABI::Windows::Perception::Spatial::ISpatialCoordinateSystem> ptr{ m_stationaryReferenceFrame.CoordinateSystem().as<ABI::Windows::Perception::Spatial::ISpatialCoordinateSystem>() };
+        m_graphicsBinding->UpdateUserCoordinateSystem(ptr.get());
+        m_needsCoordinateSystemUpdate = false;
+    }
+
     double currTime = m_timer.GetTotalSeconds();
     float deltaTimeInSeconds = (m_lastTime < 0) ? 0.f : (float)(currTime - m_lastTime);
     m_lastTime = currTime;
@@ -451,6 +459,27 @@ HolographicFrame HolographicAppMain::Update()
 #endif
         }
     }
+
+#ifdef USE_REMOTE_RENDERING
+    if (m_isConnected)
+    {
+        // Any near/far plane values of your choosing.
+        constexpr float fNear = 0.1f;
+        constexpr float fFar = 10.0f;
+        for (HolographicCameraPose const& cameraPose : prediction.CameraPoses())
+        {
+            // Set near and far to the holographic camera as normal
+            cameraPose.HolographicCamera().SetNearPlaneDistance(fNear);
+            cameraPose.HolographicCamera().SetFarPlaneDistance(fFar);
+        }
+
+        // The API to inform the server always requires near < far. Depth buffer data will be converted locally to match what is set on the HolographicCamera.
+        auto settings = *m_api->CameraSettings();
+        settings->NearPlane(std::min(fNear, fFar));
+        settings->FarPlane(std::max(fNear, fFar));
+        settings->EnableDepth(true);
+    }
+#endif
 
     // The holographic frame will be used to get up-to-date view and projection matrices and
     // to present the swap chain.

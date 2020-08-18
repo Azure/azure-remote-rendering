@@ -11,17 +11,41 @@ using UnityEngine;
 
 public class AADAuthentication : BaseARRAuthentication
 {
-    public string accountDomain;
+    [SerializeField]
+    private string accountDomain;
+    public string AccountDomain
+    {
+        get => accountDomain.Trim();
+        set => accountDomain = value;
+    }
 
-    public string activeDirectoryApplicationClientID;
+    [SerializeField]
+    private string activeDirectoryApplicationClientID;
+    public string ActiveDirectoryApplicationClientID
+    {
+        get => activeDirectoryApplicationClientID.Trim();
+        set => activeDirectoryApplicationClientID = value;
+    }
 
-    public string azureTenantID;
+    [SerializeField]
+    private string azureTenantID;
+    public string AzureTenantID
+    {
+        get => azureTenantID.Trim();
+        set => azureTenantID = value;
+    }
 
-    public string azureRemoteRenderingAccountID;
+    [SerializeField]
+    private string azureRemoteRenderingAccountID;
+    public string AzureRemoteRenderingAccountID
+    {
+        get => azureRemoteRenderingAccountID.Trim();
+        set => azureRemoteRenderingAccountID = value;
+    }
 
     public override event Action<string> AuthenticationInstructions;
 
-    string authority => "https://login.microsoftonline.com/" + azureTenantID;
+    string authority => "https://login.microsoftonline.com/" + AzureTenantID;
 
     string redirect_uri = "https://login.microsoftonline.com/common/oauth2/nativeclient";
 
@@ -42,7 +66,7 @@ public class AADAuthentication : BaseARRAuthentication
 
             var AD_Token = result.AccessToken;
 
-            return await Task.FromResult(new AzureFrontendAccountInfo(accountDomain, azureRemoteRenderingAccountID, "", AD_Token, ""));
+            return await Task.FromResult(new AzureFrontendAccountInfo(AccountDomain, AzureRemoteRenderingAccountID, "", AD_Token, ""));
         }
         else
         {
@@ -66,7 +90,7 @@ public class AADAuthentication : BaseARRAuthentication
 
     public override async Task<AuthenticationResult> TryLogin()
     {
-        var clientApplication = PublicClientApplicationBuilder.Create(activeDirectoryApplicationClientID).WithAuthority(authority).WithRedirectUri(redirect_uri).Build();
+        var clientApplication = PublicClientApplicationBuilder.Create(ActiveDirectoryApplicationClientID).WithAuthority(authority).WithRedirectUri(redirect_uri).Build();
         AuthenticationResult result = null;
         try
         {

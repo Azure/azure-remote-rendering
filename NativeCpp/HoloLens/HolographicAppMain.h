@@ -10,13 +10,13 @@
 //
 #define DRAW_SAMPLE_CONTENT
 
-#include "Common\DeviceResources.h"
-#include "Common\StepTimer.h"
-#include "Content\StatusDisplay.h"
+#include "Common/DeviceResources.h"
+#include "Common/StepTimer.h"
+#include "Content/StatusDisplay.h"
 
 #ifdef DRAW_SAMPLE_CONTENT
-#include "Content\SpinningCubeRenderer.h"
-#include "Content\SpatialInputHandler.h"
+#include "Content/SpinningCubeRenderer.h"
+#include "Content/SpatialInputHandler.h"
 #endif
 
 #ifdef USE_REMOTE_RENDERING
@@ -55,7 +55,7 @@ namespace HolographicApp
         void SetHolographicSpace(winrt::Windows::Graphics::Holographic::HolographicSpace const& holographicSpace);
 
         // Starts the holographic frame and updates the content.
-        winrt::Windows::Graphics::Holographic::HolographicFrame Update();
+        winrt::Windows::Graphics::Holographic::HolographicFrame Update(winrt::Windows::Graphics::Holographic::HolographicFrame const& previousFrame);
 
         // Renders holograms, including world-locked content.
         bool Render(winrt::Windows::Graphics::Holographic::HolographicFrame const& holographicFrame);
@@ -160,6 +160,8 @@ namespace HolographicApp
 
         // Cache whether or not the HolographicCameraRenderingParameters.CommitDirect3D11DepthBuffer() method can be called.
         bool                                                        m_canCommitDirect3D11DepthBuffer = false;
+        // Cache whether or not the HolographicFrame.WaitForNextFrameReady() method can be called.
+        bool                                                        m_canUseWaitForNextFrameReadyAPI = false;
 
 #ifdef USE_REMOTE_RENDERING
         // Session related:

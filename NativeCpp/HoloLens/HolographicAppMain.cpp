@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "HolographicAppMain.h"
-#include "Common\DirectXHelper.h"
+#include "Common/DirectXHelper.h"
 
 #include <windows.graphics.directx.direct3d11.interop.h>
 
@@ -24,6 +24,7 @@ using namespace winrt::Windows::Graphics::Holographic;
 using namespace winrt::Windows::Graphics::DirectX::Direct3D11;
 using namespace winrt::Windows::Perception::Spatial;
 using namespace winrt::Windows::UI::Input::Spatial;
+using namespace winrt::Windows::Foundation::Metadata;
 
 // Loads and initializes application assets when the application is loaded.
 HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> const& deviceResources) :
@@ -84,9 +85,9 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
             auto createSessionAsync = *m_frontEnd->CreateNewRenderingSessionAsync(init);
             createSessionAsync->Completed([&](auto handler)
                 {
-                    if (handler->Result())
+                    if (handler->GetStatus() == RR::Result::Success)
                     {
-                        SetNewSession(*handler->Result());
+                        SetNewSession(handler->GetResult());
                     }
                     else
                     {
@@ -111,12 +112,10 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
         OnGamepadAdded(nullptr, gamepad);
     }
 
-    m_canGetHolographicDisplayForCamera = winrt::Windows::Foundation::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Holographic.HolographicCamera", L"Display");
-    m_canGetDefaultHolographicDisplay = winrt::Windows::Foundation::Metadata::ApiInformation::IsMethodPresent(L"Windows.Graphics.Holographic.HolographicDisplay", L"GetDefault");
-
-#ifdef USE_REMOTE_RENDERING
-    m_canCommitDirect3D11DepthBuffer = winrt::Windows::Foundation::Metadata::ApiInformation::IsMethodPresent(L"Windows.Graphics.Holographic.HolographicCameraRenderingParameters", L"CommitDirect3D11DepthBuffer");
-#endif
+    m_canGetHolographicDisplayForCamera = ApiInformation::IsPropertyPresent(winrt::name_of<HolographicCamera>(), L"Display");
+    m_canGetDefaultHolographicDisplay = ApiInformation::IsMethodPresent(winrt::name_of<HolographicDisplay>(), L"GetDefault");
+    m_canCommitDirect3D11DepthBuffer = ApiInformation::IsMethodPresent(winrt::name_of<HolographicCameraRenderingParameters>(), L"CommitDirect3D11DepthBuffer");
+    m_canUseWaitForNextFrameReadyAPI = ApiInformation::IsMethodPresent(winrt::name_of<HolographicSpace>(), L"WaitForNextFrameReady");
 
     if (m_canGetDefaultHolographicDisplay)
     {
@@ -266,11 +265,9 @@ HolographicAppMain::~HolographicAppMain()
 }
 
 // Updates the application state once per frame.
-HolographicFrame HolographicAppMain::Update()
+HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFrame)
 {
-    // Before doing the timer update, there is some work to do per-frame
-    // to maintain holographic rendering. First, we will get information
-    // about the current frame.
+    // TODO: Put CPU work that does not depend on the HolographicCameraPose here.
 
 #ifdef USE_REMOTE_RENDERING
     if (m_session != nullptr)
@@ -294,9 +291,10 @@ HolographicFrame HolographicAppMain::Update()
                     m_sessionPropertiesAsync = *propAsync;
                     m_sessionPropertiesAsync->Completed([this](const RR::ApiHandle<RR::SessionPropertiesAsync>& async)
                         {
-                            if (auto res = async->Result())
+                        if (async->GetStatus() == RR::Result::Success)
                             {
-                                switch (res->Status)
+                            auto res = async->GetResult();
+                            switch (res.Status)
                                 {
                                 case RR::RenderingSessionStatus::Ready:
                                 {
@@ -357,6 +355,38 @@ HolographicFrame HolographicAppMain::Update()
     m_lastTime = currTime;
 
 #endif
+
+    // Apps should wait for the optimal time to begin pose-dependent work.
+    // The platform will automatically adjust the wakeup time to get
+    // the lowest possible latency at high frame rates. For manual
+    // control over latency, use the WaitForNextFrameReadyWithHeadStart 
+    // API.
+    // WaitForNextFrameReady and WaitForNextFrameReadyWithHeadStart are the
+    // preferred frame synchronization APIs for Windows Mixed Reality. When 
+    // running on older versions of the OS that do not include support for
+    // these APIs, your app can use the WaitForFrameToFinish API for similar 
+    // (but not as optimal) behavior.
+    if (m_canUseWaitForNextFrameReadyAPI)
+    {
+        try
+        {
+            m_holographicSpace.WaitForNextFrameReady();
+        }
+        catch (winrt::hresult_not_implemented const& /*ex*/)
+        {
+            // Catch a specific case where WaitForNextFrameReady() is present but not implemented
+            // and default back to WaitForFrameToFinish() in that case.
+            m_canUseWaitForNextFrameReadyAPI = false;
+        }
+    }
+    else if (previousFrame)
+    {
+        previousFrame.WaitForFrameToFinish();
+    }
+
+    // Before doing the timer update, there is some work to do per-frame
+    // to maintain holographic rendering. First, we will get information
+    // about the current frame.
 
     // The HolographicFrame has information that the app needs in order
     // to update and render the current frame. The app begins each new
@@ -431,33 +461,32 @@ HolographicFrame HolographicAppMain::Update()
 #endif
     });
 
-    if (!m_canCommitDirect3D11DepthBuffer)
+    // On HoloLens 2, the platform can achieve better image stabilization results if it has
+    // a stabilization plane and a depth buffer.
+    // Note that the SetFocusPoint API includes an override which takes velocity as a 
+    // parameter. This is recommended for stabilizing holograms in motion.
+    for (HolographicCameraPose const& cameraPose : prediction.CameraPoses())
     {
-        // On versions of the platform that do not support the CommitDirect3D11DepthBuffer API, we can control
-        // image stabilization by setting a focus point with optional plane normal and velocity.
-        for (HolographicCameraPose const& cameraPose : prediction.CameraPoses())
-        {
 #ifdef DRAW_SAMPLE_CONTENT
-            // The HolographicCameraRenderingParameters class provides access to set
-            // the image stabilization parameters.
-            HolographicCameraRenderingParameters renderingParameters = holographicFrame.GetRenderingParameters(cameraPose);
+        // The HolographicCameraRenderingParameters class provides access to set
+        // the image stabilization parameters.
+        HolographicCameraRenderingParameters renderingParameters = holographicFrame.GetRenderingParameters(cameraPose);
 
-            // SetFocusPoint informs the system about a specific point in your scene to
-            // prioritize for image stabilization. The focus point is set independently
-                // for each holographic camera. When setting the focus point, put it on or 
-                // near content that the user is looking at.
-                // In this example, we put the focus point at the center of the sample hologram.
-                // You can also set the relative velocity and facing of the stabilization
-                // plane using overloads of this method.
-            if (m_stationaryReferenceFrame != nullptr)
-            {
-                renderingParameters.SetFocusPoint(
-                    m_stationaryReferenceFrame.CoordinateSystem(),
-                    m_spinningCubeRenderer->GetPosition()
-                );
-            }
-#endif
+        // SetFocusPoint informs the system about a specific point in your scene to
+        // prioritize for image stabilization. The focus point is set independently
+        // for each holographic camera. When setting the focus point, put it on or 
+        // near content that the user is looking at.
+        // In this example, we put the focus point at the center of the sample hologram.
+        // You can also set the relative velocity and facing of the stabilization
+        // plane using overloads of this method.
+        if (m_stationaryReferenceFrame != nullptr)
+        {
+            renderingParameters.SetFocusPoint(
+                m_stationaryReferenceFrame.CoordinateSystem(),
+                m_spinningCubeRenderer->GetPosition()
+            );
         }
+#endif
     }
 
 #ifdef USE_REMOTE_RENDERING
@@ -474,10 +503,9 @@ HolographicFrame HolographicAppMain::Update()
         }
 
         // The API to inform the server always requires near < far. Depth buffer data will be converted locally to match what is set on the HolographicCamera.
-        auto settings = *m_api->CameraSettings();
-        settings->NearPlane(std::min(fNear, fFar));
-        settings->FarPlane(std::max(fNear, fFar));
-        settings->EnableDepth(true);
+        auto settings = m_api->GetCameraSettings();
+        settings->SetNearAndFarPlane(std::min(fNear, fFar), std::max(fNear, fFar));
+        settings->SetEnableDepth(true);
     }
 #endif
 
@@ -502,7 +530,7 @@ void HolographicApp::HolographicAppMain::StartModelLoading()
         m_loadModelAsync = *loadModel;
         m_loadModelAsync->Completed([this](const RR::ApiHandle<RR::LoadModelAsync>& async)
         {
-            m_modelLoadResult = *async->Status();
+            m_modelLoadResult = async->GetStatus();
             m_modelLoadFinished = true; // successful if m_modelLoadResult==RR::Result::Success
             m_loadModelAsync = nullptr;
         });
@@ -811,7 +839,7 @@ void HolographicAppMain::OnLocatabilityChanged(SpatialLocator const& sender, win
     case SpatialLocatability::Unavailable:
         // Holograms cannot be rendered.
     {
-        winrt::hstring message = L"Warning! Positional tracking is " + std::to_wstring(int(sender.Locatability())) + L".\n";
+        winrt::hstring message(L"Warning! Positional tracking is " + std::to_wstring(int(sender.Locatability())) + L".\n");
         OutputDebugStringW(message.data());
     }
     break;

@@ -22,7 +22,7 @@ namespace DX
         void HandleDeviceLost();
         void RegisterDeviceNotify(IDeviceNotify* deviceNotify);
         void Trim();
-        void Present(winrt::Windows::Graphics::Holographic::HolographicFrame frame);
+        void Present(winrt::Windows::Graphics::Holographic::HolographicFrame const& frame);
 
         // Public methods related to holographic devices.
         void SetHolographicSpace(winrt::Windows::Graphics::Holographic::HolographicSpace space);

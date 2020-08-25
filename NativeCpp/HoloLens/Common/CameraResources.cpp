@@ -1,7 +1,7 @@
 #include "pch.h"
 
 #include "CameraResources.h"
-#include "Common\DirectXHelper.h"
+#include "Common/DirectXHelper.h"
 #include "DeviceResources.h"
 
 using namespace DirectX;

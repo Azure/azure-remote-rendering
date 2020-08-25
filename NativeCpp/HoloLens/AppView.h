@@ -1,13 +1,12 @@
 #pragma once
 
-#include "Common\DeviceResources.h"
+#include "Common/DeviceResources.h"
 #include "HolographicAppMain.h"
-
 
 namespace HolographicApp
 {
     // IFrameworkView class. Connects the app with the Windows shell and handles application lifecycle events.
-    class AppView sealed : public winrt::implements<AppView, winrt::Windows::ApplicationModel::Core::IFrameworkView>
+    class AppView : public winrt::implements<AppView, winrt::Windows::ApplicationModel::Core::IFrameworkView>
     {
     public:
         // IFrameworkView methods.
@@ -19,7 +18,6 @@ namespace HolographicApp
 
     protected:
         // Application lifecycle event handlers.
-        void OnLaunched(winrt::Windows::ApplicationModel::Activation::LaunchActivatedEventArgs const& args);
         void OnViewActivated(winrt::Windows::ApplicationModel::Core::CoreApplicationView const& sender, winrt::Windows::ApplicationModel::Activation::IActivatedEventArgs const& args);
         void OnSuspending(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::ApplicationModel::SuspendingEventArgs const& args);
         void OnResuming(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::Foundation::IInspectable const& args);
@@ -51,13 +49,10 @@ namespace HolographicApp
         winrt::Windows::Graphics::Holographic::HolographicSpace m_holographicSpace = nullptr;
     };
 
-    class AppViewSource sealed : public winrt::implements<AppViewSource, winrt::Windows::ApplicationModel::Core::IFrameworkViewSource>
+    class AppViewSource : public winrt::implements<AppViewSource, winrt::Windows::ApplicationModel::Core::IFrameworkViewSource>
     {
     public:
         // IFrameworkViewSource method.
         winrt::Windows::ApplicationModel::Core::IFrameworkView CreateView();
-
-    private:
-        AppView holographicView;
     };
 }

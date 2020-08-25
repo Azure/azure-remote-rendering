@@ -12,12 +12,10 @@ using namespace winrt::Windows::Foundation;
 using namespace winrt::Windows::Graphics::Holographic;
 using namespace winrt::Windows::UI::Core;
 
-
 // The main function bootstraps into the IFrameworkView.
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 {
-    winrt::init_apartment();
-    CoreApplication::Run(AppViewSource());
+    CoreApplication::Run(winrt::make<AppViewSource>());
     return 0;
 }
 
@@ -25,9 +23,8 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 
 IFrameworkView AppViewSource::CreateView()
 {
-    return holographicView;
+    return winrt::make<AppView>();
 }
-
 
 // IFrameworkView methods
 
@@ -88,20 +85,24 @@ void AppView::Load(winrt::hstring const& entryPoint)
 // update, draw, and present loop, and it also oversees window message processing.
 void AppView::Run()
 {
+    HolographicFrame previousFrame { nullptr };
+
     while (!m_windowClosed)
     {
         if (m_windowVisible && (m_holographicSpace != nullptr))
         {
             CoreWindow::GetForCurrentThread().Dispatcher().ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
 
-            HolographicFrame holographicFrame = m_main->Update();
+            HolographicFrame currentFrame = m_main->Update(previousFrame);
 
-            if (m_main->Render(holographicFrame))
+            if (m_main->Render(currentFrame))
             {
                 // The holographic frame has an API that presents the swap chain for each
                 // holographic camera.
-                m_deviceResources->Present(holographicFrame);
+                m_deviceResources->Present(currentFrame);
             }
+
+            previousFrame = currentFrame;
         }
         else
         {
@@ -114,6 +115,8 @@ void AppView::Run()
 // class is torn down while the app is in the foreground, for example if the Run method exits.
 void AppView::Uninitialize()
 {
+    m_holographicSpace = nullptr;
+
     m_main.reset();
     m_deviceResources.reset();
 
@@ -130,21 +133,19 @@ void AppView::Uninitialize()
 
 // Application lifecycle event handlers
 
-// Called when the app is prelaunched. Use this method to load resources ahead of time
-// and enable faster launch times.
-void AppView::OnLaunched(LaunchActivatedEventArgs const& args)
-{
-    if (args.PrelaunchActivated())
-    {
-        //
-        // TODO: Insert code to preload resources here.
-        //
-    }
-}
-
 // Called when the app view is activated. Activates the app's CoreWindow.
 void AppView::OnViewActivated(CoreApplicationView const& sender, IActivatedEventArgs const& args)
 {
+    if (args.Kind() == ActivationKind::Launch)
+    {
+        const LaunchActivatedEventArgs launchArgs { args.as<LaunchActivatedEventArgs>() };
+        if (launchArgs.PrelaunchActivated())
+        {
+            // Opt-out of Prelaunch.
+            CoreApplication::Exit();
+        }
+    }
+
     // Run() won't start until the CoreWindow is activated.
     sender.CoreWindow().Activate();
 }
@@ -159,7 +160,10 @@ void AppView::OnSuspending(winrt::Windows::Foundation::IInspectable const& sende
 
     create_task([this, deferral]()
     {
-        m_deviceResources->Trim();
+        if (m_deviceResources != nullptr)
+        {
+            m_deviceResources->Trim();
+        }
 
         if (m_main != nullptr)
         {
@@ -223,4 +227,3 @@ void AppView::OnPointerPressed(CoreWindow const& sender, PointerEventArgs const&
         m_main->OnPointerPressed();
     }
 }
-

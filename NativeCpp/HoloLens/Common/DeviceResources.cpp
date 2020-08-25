@@ -198,7 +198,7 @@ void DX::DeviceResources::CreateDeviceResources()
     winrt::com_ptr<::IInspectable> object;
     winrt::check_hresult(CreateDirect3D11DeviceFromDXGIDevice(
         dxgiDevice.Get(),
-        winrt::put_abi(object)));
+        reinterpret_cast<IInspectable**>(winrt::put_abi(object))));
     m_d3dInteropDevice = object.as<IDirect3DDevice>();
 
     // Cache the DXGI adapter.
@@ -297,22 +297,24 @@ void DX::DeviceResources::RegisterDeviceNotify(DX::IDeviceNotify* deviceNotify)
 // is entering an idle state and that temporary buffers can be reclaimed for use by other apps.
 void DX::DeviceResources::Trim()
 {
-    m_d3dContext->ClearState();
+    if (m_d3dContext != nullptr)
+    {
+        m_d3dContext->ClearState();
+    }
 
-    ComPtr<IDXGIDevice3> dxgiDevice;
-    winrt::check_hresult(m_d3dDevice.As(&dxgiDevice));
-    dxgiDevice->Trim();
+    if (m_d3dDevice != nullptr)
+    {
+        ComPtr<IDXGIDevice3> dxgiDevice;
+        winrt::check_hresult(m_d3dDevice.As(&dxgiDevice));
+        dxgiDevice->Trim();
+    }
 }
 
 // Present the contents of the swap chain to the screen.
 // Locks the set of holographic camera resources until the function exits.
-void DX::DeviceResources::Present(HolographicFrame frame)
+void DX::DeviceResources::Present(HolographicFrame const& frame)
 {
-    // By default, this API waits for the frame to finish before it returns.
-    // Holographic apps should wait for the previous frame to finish before
-    // starting work on a new frame. This allows for better results from
-    // holographic frame predictions.
-    HolographicFramePresentResult presentResult = frame.PresentUsingCurrentPrediction();
+    HolographicFramePresentResult presentResult = frame.PresentUsingCurrentPrediction(HolographicFramePresentWaitBehavior::DoNotWaitForFrameToFinish);
 
     // The PresentUsingCurrentPrediction API will detect when the graphics device
     // changes or becomes invalid. When this happens, it is considered a Direct3D

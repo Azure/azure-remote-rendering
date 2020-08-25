@@ -128,13 +128,15 @@ public class SessionRegionButton : ClickableButton
         if (loadedProfile != null)
         {
             int domainIndex = (int)location;
-            if (loadedProfile.AccountDomains.Length > domainIndex)
+            if (domainIndex < loadedProfile.AccountDomains.Length && domainIndex < loadedProfile.AccountDomainLabels.Length)
             {
                 _domain = loadedProfile.AccountDomains[domainIndex] ?? _domain;
-            }
-            if (loadedProfile.AccountDomainLabels.Length > domainIndex)
-            {
                 LocationName = loadedProfile.AccountDomainLabels[domainIndex] ?? LocationName;
+            }
+            else
+            {
+                // Disable this button.
+                gameObject.SetActive(false);
             }
         }
     }

@@ -23,8 +23,8 @@ public class SessionRegionButton : ClickableButton
         // Do not change the order of these enum values.
         // Changing the order will break assets in Unity scenes.
         westus2,
-        westeurope,
         eastus,
+        westeurope,
         southeastasia
     };
 
@@ -89,6 +89,7 @@ public class SessionRegionButton : ClickableButton
     #region MonoBehavior Methods
     private void OnValidate()
     {
+        UpdateDomainAndLocation();
         UpdateLabelText();
     }
 
@@ -128,13 +129,15 @@ public class SessionRegionButton : ClickableButton
         if (loadedProfile != null)
         {
             int domainIndex = (int)location;
-            if (loadedProfile.AccountDomains.Length > domainIndex)
+            if (domainIndex < loadedProfile.AccountDomains.Length && domainIndex < loadedProfile.AccountDomainLabels.Length)
             {
                 _domain = loadedProfile.AccountDomains[domainIndex] ?? _domain;
-            }
-            if (loadedProfile.AccountDomainLabels.Length > domainIndex)
-            {
                 LocationName = loadedProfile.AccountDomainLabels[domainIndex] ?? LocationName;
+            }
+            else
+            {
+                // Disable this button.
+                gameObject.SetActive(false);
             }
         }
     }

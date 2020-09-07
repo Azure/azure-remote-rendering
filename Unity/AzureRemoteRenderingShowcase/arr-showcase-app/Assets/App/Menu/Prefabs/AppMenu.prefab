@@ -31852,8 +31852,8 @@ Transform:
   - {fileID: 5219116589714135698}
   - {fileID: 6893831031618943855}
   - {fileID: 4715988963368530849}
-  - {fileID: 2079908912607614257}
   - {fileID: 2054837081568995883}
+  - {fileID: 2079908912607614257}
   - {fileID: 5140920557766383119}
   - {fileID: 4734599685365967971}
   - {fileID: 4030307431011779612}
@@ -38551,7 +38551,7 @@ PrefabInstance:
     - target: {fileID: 6221049381580680387, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
       propertyPath: location
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6221049381580680387, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
@@ -40025,7 +40025,7 @@ PrefabInstance:
     - target: {fileID: 6221049381580680387, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
       propertyPath: location
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6221049381580680387, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
@@ -40070,7 +40070,7 @@ PrefabInstance:
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
       propertyPath: m_RootOrder
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
@@ -40115,7 +40115,7 @@ PrefabInstance:
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.0000000037252903
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
@@ -40150,7 +40150,7 @@ PrefabInstance:
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}
       propertyPath: m_RootOrder
-      value: 4
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6837964132493333457, guid: 23da5f5a13d3ddc46915b95e72c855b8,
         type: 3}

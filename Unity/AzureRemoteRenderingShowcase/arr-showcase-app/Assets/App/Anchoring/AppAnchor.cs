@@ -344,7 +344,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     UnityAnchor.Destroy(cloudNativeAnchor.gameObject);
                 }
 
-                if (deleteCloud && cloudNativeAnchor.CloudAnchor != null)
+                if (deleteCloud && cloudNativeAnchor.CloudAnchor != null && !string.IsNullOrEmpty(cloudNativeAnchor.CloudAnchor.Identifier))
                 {
                     AppServices.AnchoringService.Delete(cloudNativeAnchor.CloudAnchor);
                 }

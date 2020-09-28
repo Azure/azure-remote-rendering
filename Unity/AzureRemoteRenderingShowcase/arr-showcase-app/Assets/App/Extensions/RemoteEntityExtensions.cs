@@ -44,7 +44,7 @@ public static class RemoteEntityExtensions
         }
         catch (Exception ex)
         {
-            UnityEngine.Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to get bounds of remote object. Reason: {ex.Message}");
+            UnityEngine.Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Failed to get bounds of remote object. Reason: {ex.Message}");
         }
 
         return result;
@@ -104,38 +104,14 @@ public static class RemoteEntityExtensions
             return;
         }
 
-        // Clear the hidden flag, or add it to the overrides
         var component = entity.EnsureComponentOfType<HierarchicalStateOverrideComponent>();
-        var newFlags = component.Flags & ~HierarchicalStates.Hidden & ~HierarchicalStates.DisableCollision;
-        if (!value)
-        {
-            newFlags |= (HierarchicalStates.Hidden | HierarchicalStates.DisableCollision);
-        }
 
-        // Ensure remote is up-to-date
-        if (component.Flags != newFlags)
-        {
-            component.Flags = newFlags;
-        }
+        component.HiddenState = value ? HierarchicalEnableState.InheritFromParent : HierarchicalEnableState.ForceOn;
+        component.DisableCollisionState = value ? HierarchicalEnableState.InheritFromParent : HierarchicalEnableState.ForceOn;
     }
 
     /// <summary>
-    /// Get the visibility override
-    /// </summary>
-    public static bool GetVisibilityOverride(this Remote.Entity entity)
-    {
-        if (entity == null || !entity.Valid)
-        {
-            return false;
-        }
-
-        var component = entity.EnsureComponentOfType<HierarchicalStateOverrideComponent>();
-        bool hidden = (component.Flags & HierarchicalStates.Hidden) == HierarchicalStates.Hidden;
-        return !hidden;
-    }
-
-    /// <summary>
-    /// Set the collider enablement override
+    /// Set the collider enable override
     /// </summary>
     public static void SetColliderEnabledOverride(this Remote.Entity entity, bool enable)
     {
@@ -144,23 +120,20 @@ public static class RemoteEntityExtensions
             return;
         }
 
-        // Clear the hidden flag, or add it to the overrides
         var component = entity.EnsureComponentOfType<HierarchicalStateOverrideComponent>();
-        var newFlags = component.Flags & ~HierarchicalStates.DisableCollision;
-        if (!enable)
-        {
-            newFlags |= HierarchicalStates.DisableCollision;
-        }
 
-        // Ensure remote is up-to-date
-        if (component.Flags != newFlags)
+        if (enable)
         {
-            component.Flags = newFlags;
+            component.DisableCollisionState = HierarchicalEnableState.InheritFromParent;
+        }
+        else
+        {
+            component.DisableCollisionState = HierarchicalEnableState.ForceOn;
         }
     }
 
     /// <summary>
-    /// Get the collider enablement override. True if entity's colliders are enabled, false otherwise.
+    /// Get the collider enable override. True if entity's colliders are enabled, false otherwise.
     /// </summary>
     public static bool GetColliderEnabledOverride(this Remote.Entity entity)
     {
@@ -170,13 +143,13 @@ public static class RemoteEntityExtensions
         }
 
         var component = entity.EnsureComponentOfType<HierarchicalStateOverrideComponent>();
-        bool disabled = (component.Flags & HierarchicalStates.DisableCollision) == HierarchicalStates.DisableCollision;
-        return !disabled;
+
+        return component.DisableCollisionState == HierarchicalEnableState.InheritFromParent;
     }
 
     /// <summary>
     /// Find all matching entities by a regex pattern. This entity's and all children's names will be tested against 
-    /// the given regest pattern.
+    /// the given regex pattern.
     /// </summary>
     public static Remote.Entity[] FindAllByPattern(this Remote.Entity entity, string pattern)
     {
@@ -190,7 +163,7 @@ public static class RemoteEntityExtensions
         }
         catch (Exception)
         {
-            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Invalid regex pattern '{pattern}' given to FindAllByPattern.");
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Invalid regex pattern '{pattern}' given to FindAllByPattern.");
         }
 
         if (regex != null)
@@ -249,7 +222,7 @@ public static class RemoteEntityExtensions
     /// </summary>
     public static void ReplaceMaterials(this Remote.Entity entity, Remote.Material material)
     {
-        IEnumerable<Remote.MeshComponent> meshComponents = 
+        IEnumerable<Remote.MeshComponent> meshComponents =
             entity?.FindComponentsOfType<MeshComponent>();
 
         foreach (var mesh in meshComponents)
@@ -260,12 +233,12 @@ public static class RemoteEntityExtensions
                 mesh.SetMaterial(i, material);
             }
         }
-    } 
+    }
 
     /// <summary>
     /// Find the Azure Remote Rendering components of a given type on the given entity.
     /// </summary>
-    public static IEnumerable<T> FindComponentsOfType<T>(this Remote.Entity entity) 
+    public static IEnumerable<T> FindComponentsOfType<T>(this Remote.Entity entity)
         where T : ComponentBase
     {
         if (entity == null)

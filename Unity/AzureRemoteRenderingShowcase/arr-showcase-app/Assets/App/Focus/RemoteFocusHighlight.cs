@@ -207,25 +207,30 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
                 continue;
             }
 
-            HierarchicalStates originalFlag = overrides.Flags;
-            HierarchicalStates newFlag = originalFlag & ~(HierarchicalStates.Selected | HierarchicalStates.UseTintColor);
+            overrides.SelectedState = HierarchicalEnableState.InheritFromParent;
+            overrides.UseTintColorState = HierarchicalEnableState.InheritFromParent;
 
             if (entry.Value)
             {
                 _highlighting.Add(entry.Key);
-                newFlag |= GetHighlightFlag(entry.Key, highlightSettings);
+                var flags = GetHighlightFlag(entry.Key, highlightSettings);
+
+                if ((flags & HierarchicalStates.Selected) != 0)
+                {
+                    overrides.SelectedState = HierarchicalEnableState.ForceOn;
+                }
+
+                if ((flags & HierarchicalStates.UseTintColor) != 0)
+                {
+                    overrides.UseTintColorState = HierarchicalEnableState.ForceOn;
+                }
             }
             else
             {
                 _highlighting.Remove(entry.Key);
             }
 
-            if (originalFlag != newFlag)
-            {
-                overrides.Flags = newFlag;
-            }
-
-            if ((newFlag & HierarchicalStates.UseTintColor) == HierarchicalStates.UseTintColor &&
+            if (overrides.UseTintColorState == HierarchicalEnableState.ForceOn &&
                 (overrides.TintColor.bytes != tintColor.bytes))
             {
                 overrides.TintColor = tintColor;
@@ -248,8 +253,8 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
 
         HashSet<uint> pointerIds = null;
         _entityIdSelectedCounts.TryGetValue(entity, out pointerIds);
-        
-        if (selected) 
+
+        if (selected)
         {
             if (pointerIds == null)
             {

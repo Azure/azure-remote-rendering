@@ -90,9 +90,9 @@ MeshCollider:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
-  serializedVersion: 3
+  serializedVersion: 4
   m_Convex: 0
-  m_CookingOptions: 14
+  m_CookingOptions: 30
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &179538187159158634
 GameObject:
@@ -295,6 +295,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -652,9 +653,6 @@ MonoBehaviour:
   VoiceCommand: Select
   voiceRequiresFocus: 1
   profiles:
-  - Target: {fileID: 0}
-    Themes:
-    - {fileID: 11400000, guid: 0c4c73f326f602744bdcfff481fd6f20, type: 2}
   - Target: {fileID: 6626671688422173544}
     Themes:
     - {fileID: 11400000, guid: 8f8cfb3041153fa45bccb6d664a563ec, type: 2}

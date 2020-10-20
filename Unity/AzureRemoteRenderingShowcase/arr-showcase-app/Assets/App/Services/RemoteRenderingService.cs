@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using App.Authentication;
 using UnityEngine;
 
 #if !UNITY_EDITOR && WINDOWS_UWP
@@ -43,10 +44,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public RemoteRenderingService(string name, uint priority, BaseMixedRealityProfile profile) : base(name, priority, profile)
         {
-            LoadedProfile = profile as RemoteRenderingServiceProfile;
+            LoadedProfile = profile as BaseRemoteRenderingServiceProfile;
             if (LoadedProfile == null)
             {
-                LoadedProfile = ScriptableObject.CreateInstance<RemoteRenderingServiceProfile>();
+                //Default to a new dev profile if no profile is available
+                LoadedProfile = ScriptableObject.CreateInstance<RemoteRenderingServiceDevelopmentProfile>();
             }
         }
 
@@ -109,7 +111,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Get the loaded profile. This is the profile object that also includes overrides from the various override files, as well as the default values.
         /// </summary>
-        public RemoteRenderingServiceProfile LoadedProfile { get; private set; }
+        public BaseRemoteRenderingServiceProfile LoadedProfile { get; private set; }
         #endregion IRemoteRenderingService Properties
 
         #region IRemoteRenderingService Events
@@ -211,7 +213,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public async Task ReloadProfile()
         {
-            LoadedProfile = await RemoteRenderingServiceProfileLoader.Load(ConfigurationProfile as RemoteRenderingServiceProfile);
+            LoadedProfile = await RemoteRenderingServiceProfileLoader.Load(ConfigurationProfile as BaseRemoteRenderingServiceProfile);
         }
 
         /// <summary>
@@ -276,7 +278,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             AzureFrontend frontend = null;
             try
             {
-                frontend = GetFrontend();
+                frontend = await GetFrontend();
             }
             catch (Exception ex)
             {
@@ -331,9 +333,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Connect to a known session id. Once created connect must be called on the machine.
         /// </summary>
-        public Task<IRemoteRenderingMachine> Open(string id, string domain)
+        public async Task<IRemoteRenderingMachine> Open(string id, string domain)
         {
-            return Task.FromResult<IRemoteRenderingMachine>(AddMachine(GetFrontend(domain).OpenRenderingSession(id)));
+            var frontEnd = await GetFrontend(domain);
+            return await Task.FromResult<IRemoteRenderingMachine>(AddMachine(frontEnd.OpenRenderingSession(id)));
         }
 
         /// <summary>
@@ -453,7 +456,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         #endregion BaseExtensionService Methods
 
         #region Private Methods
-        private AzureFrontend GetFrontend(string domain = null)
+        private async Task<AzureFrontend> GetFrontend(string domain = null)
         {
             if (string.IsNullOrEmpty(domain))
             {
@@ -466,14 +469,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 DestroyFrontend();
                 ValidateFrontendConfiguration();
 
-                _arrFrontend = new AzureFrontend(new AzureFrontendAccountInfo()
-                {
-                    AccessToken = string.Empty,
-                    AccountDomain = domain.Trim(),
-                    AccountId = LoadedProfile.AccountId.Trim(),
-                    AccountKey = LoadedProfile.AccountKey.Trim(),
-                    AuthenticationToken = string.Empty,
-                });
+                _arrFrontend = await LoadedProfile.GetFrontend(domain);
             }
 
             return _arrFrontend;
@@ -486,18 +482,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             string error = null;
 
-            if (string.IsNullOrEmpty(LoadedProfile.AccountId))
-            {
-                error = "Azure Remote Rendering account id hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
-            }
-            else if (string.IsNullOrEmpty(LoadedProfile.AccountKey))
-            {
-                error = "Azure Remote Rendering account key hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
-            }
-            else if (string.IsNullOrEmpty(LoadedProfile.PreferredDomain))
-            {
-                error = "Azure Remote Rendering account domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
-            }
+            LoadedProfile.ValidateProfile(out error);
 
             if (error != null)
             {
@@ -677,10 +662,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void InitializeStorage()
         {
-            _storage.Initialize(
-                LoadedProfile.StorageAccountName,
-                LoadedProfile.StorageAccountKey,
-                LoadedProfile.StorageModelContainer);
+            _storage.Initialize(LoadedProfile.StorageAccountData);
         }
 
         private void InitializeEditor()
@@ -945,19 +927,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         private class RemoteRenderingStorage : IRemoteRenderingStorage
         {
             private TaskCompletionSource<bool> _initialized = new TaskCompletionSource<bool>();
-            private string _storageAccountName = null;
-            private string _storageAccountKey = null;
-            private string _defaultContainer = null;
+            private IRemoteRenderingStorageAccountData _storageAccountData;
             private const string _modelExtension = ".arrAsset";
             private const string _modelIndexName = "models.xml";
             private static readonly Vector3 _minModelSize = new Vector3(0.5f, 0.5f, 0.5f);
             private static readonly Vector3 _maxModelSize = new Vector3(1.0f, 1.0f, 1.0f);
 
-            public void Initialize(string storageAccountName, string storageAccountKey, string defaultContainer)
+            public void Initialize(IRemoteRenderingStorageAccountData storageAccountData)
             {
-                _storageAccountName = storageAccountName;
-                _storageAccountKey = storageAccountKey;
-                _defaultContainer = defaultContainer;
+                _storageAccountData = storageAccountData;
                 _initialized.TrySetResult(true);
             }
 
@@ -976,32 +954,30 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                 if (string.IsNullOrEmpty(containerName))
                 {
-                    containerName = _defaultContainer;
+                    containerName = _storageAccountData.DefaultContainer;
                 }
 
-                if (string.IsNullOrEmpty(_storageAccountName) ||
-                    string.IsNullOrEmpty(_storageAccountKey) ||
-                    string.IsNullOrEmpty(containerName))
+                if (!_storageAccountData.IsValid())
                 {
                     return null;
                 }
 
                 return await Task.Run(() =>
                 {
-                    return QueryModelsBackgroundWorker(_storageAccountName, _storageAccountKey, containerName);
+                    return QueryModelsBackgroundWorker(_storageAccountData);
                 });
             }
 
             /// <summary>
             /// Query an Azure container for all Azure Remote Rendering models. This uses the configured storage account id and key.
             /// </summary>
-            /// <param name="containerName">
-            /// The name of the container to query. If null or empty, the default container name is used.
+            /// <param name="storageAccountData">
+            /// The account data used to retrieve models from storage
             /// </param>
             /// <returns>
             /// A list of remote model containers that represent the ARR models within the given container.
             /// </returns>
-            private static async Task<RemoteContainer[]> QueryModelsBackgroundWorker(string storageAccountName, string storageAccountKey, string containerName)
+            private static async Task<RemoteContainer[]> QueryModelsBackgroundWorker(IRemoteRenderingStorageAccountData storageAccountData)
             {
                 List<RemoteContainer> remoteModelContainers = new List<RemoteContainer>();
                 string nextMarker = null;
@@ -1010,9 +986,21 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 do
                 {
                     EnumerationResults enumerationResults = null;
+                    string authData = await storageAccountData.GetAuthData();
                     try
                     {
-                        enumerationResults = await ContainerHelper.Query(storageAccountName, storageAccountKey, containerName, nextMarker);
+                        if(storageAccountData.AuthType == AuthenticationType.AccessToken)
+                        {
+                            string modelFolder = null;
+                            if(storageAccountData.ModelPathByUsername) modelFolder = AADAuth.SelectedAccount.Username;
+                            enumerationResults = await ContainerHelper.QueryWithAccessToken(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
+                        }
+                        else
+                        {
+                            string modelFolder = null;
+                            if(storageAccountData.ModelPathByUsername) modelFolder = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
+                            enumerationResults = await ContainerHelper.QueryWithAccountKey(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1029,7 +1017,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                                 remoteModelContainers.Add(modelContainer);
                             }
 
-                            RemoteModelFile indexFile = await ToModelIndex(storageAccountName, storageAccountKey, enumerationResults.Container, blob);
+                            RemoteModelFile indexFile = await ToModelIndex(storageAccountData, authData, enumerationResults.Container, blob);
                             if (indexFile != null)
                             {
                                 AppendContainer(remoteModelContainers, indexFile);
@@ -1099,7 +1087,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Convert blob to model index file, if possible.
             /// </summary>
-            private static async Task<RemoteModelFile> ToModelIndex(string storageAccountName, string storageAccountKey, string containter, Blob blob)
+            private static async Task<RemoteModelFile> ToModelIndex(IRemoteRenderingStorageAccountData storageAccountData, string authData, string overrideContainer, Blob blob)
             {
                 if (blob == null || blob.Name == null)
                 {
@@ -1113,11 +1101,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                string blobUrl = $"{containter}/{blobName}";
+                string blobUrl = $"{overrideContainer}/{blobName}";
                 RemoteModelFile fileData = null;
                 try
                 {
-                    fileData = await AzureStorageHelper.Get<RemoteModelFile>(blobUrl, storageAccountName, storageAccountKey);
+                    if (storageAccountData.AuthType == AuthenticationType.AccessToken)
+                        fileData = await AzureStorageHelper.GetWithAccessToken<RemoteModelFile>(blobUrl, storageAccountData.StorageAccountName, authData);
+                    else
+                        fileData = await AzureStorageHelper.GetWithAccountKey<RemoteModelFile>(blobUrl, storageAccountData.StorageAccountName, authData);
                 }
                 catch (Exception ex)
                 {
@@ -1158,7 +1149,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Create a new machine wrapper from an AzureSession
             /// </summary>
-            public RemoteRenderingMachine(AzureSession arrSession, RemoteRenderingServiceProfile profile)
+            public RemoteRenderingMachine(AzureSession arrSession, IRemoteRenderingServiceProfile profile)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
                 _properties = new RemoteRenderingSessionProperties(_arrSession);
@@ -1297,12 +1288,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                 try
                 {
-                    Value = await _arrSession.GetPropertiesAsync().AsTask();
                     LastUpdated = DateTime.UtcNow;
+                    Value = await _arrSession.GetPropertiesAsync().AsTask();
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}");
+                    Debug.LogFormat(LogType.Warning, LogOption.None, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}");
                 }
 
                 return Value;
@@ -1886,6 +1877,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         // This will throttle the update 
                         await _properties.TryUpdate();
+
+                        if(_properties.Value.Status == RenderingSessionStatus.Error || _properties.Value.Status == RenderingSessionStatus.Expired)
+                        {
+                            return false;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -2088,8 +2084,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 else
                 {
                     return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
-                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountName}.blob.core.windows.net",
-                        AppServices.RemoteRendering.LoadedProfile.StorageModelContainer,
+                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
+                        AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
                         parent));
                 }
@@ -2118,8 +2114,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 else
                 {
                     return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
-                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountName}.blob.core.windows.net",
-                        AppServices.RemoteRendering.LoadedProfile.StorageModelContainer,
+                        $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
+                        AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
                         parent)).AsTask();
                 }

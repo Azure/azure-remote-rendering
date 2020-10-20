@@ -46,6 +46,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         #endregion Public Properties
 
         #region Public Functions
+        
         public Task<FileData> LoadMerged()
         {
             StartLoad();
@@ -195,9 +196,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [XmlRoot(ElementName = "Configuration")]
         public class FileData
         {
-            public RemoteRendingAccount Account;
+            public bool IsDevelopmentProfileData = true;
+
+            public RemoteRenderingAccount Account;
             public StorageAccount Storage;
-            public RemoteRendingSession Session;
+            public RemoteRenderingSession Session;
             public SharingAccount Sharing;
             public AnchorAccount Anchor;
 
@@ -238,11 +241,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         [Serializable]
-        public class RemoteRendingSession
+        public class RemoteRenderingSession
         {
-            public RemoteRendingSession Copy()
+            public RemoteRenderingSession Copy()
             {
-                return new RemoteRendingSession()
+                return new RemoteRenderingSession()
                 {
                     AutoReconnect = AutoReconnect,
                     AutoReconnectRate = AutoReconnectRate,
@@ -291,11 +294,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         [Serializable]
-        public class RemoteRendingAccount
+        public class RemoteRenderingAccount
         {
-            public RemoteRendingAccount Copy()
+            public RemoteRenderingAccount Copy()
             {
-                return new RemoteRendingAccount()
+                return new RemoteRenderingAccount()
                 {
                     AccountDomains = AccountDomains,
                     AccountDomainLabels = AccountDomainLabels,
@@ -315,8 +318,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             [Tooltip("The default Azure remote rendering account id to use.")]
             public string AccountId;
 
+            //Used in development
             [Tooltip("The default Azure remote rendering account key to use.")]
             public string AccountKey;
+
+            //Used in production
+            [Tooltip("The Azure Active Directory Application ID to use.")]
+            public string AppId;
 
             public bool ShouldSerializeAccountDomains() { return AccountDomains != null && AccountDomains.Length > 0; }
 
@@ -329,6 +337,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
             public bool ShouldSerializeAccountKey() { return !string.IsNullOrEmpty(AccountKey); }
+
+            public bool ShouldSerializeAppId()
+            {
+                Guid id = Guid.Empty;
+                return Guid.TryParse(AppId, out id) && id != Guid.Empty;
+            }
         }
 
         [Serializable]
@@ -360,6 +374,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public bool ShouldSerializeStorageModelContainer() { return !string.IsNullOrEmpty(StorageModelContainer); }
         }
 
+        [Serializable]
         public class SharingAccount
         {
             public SharingAccount Copy()
@@ -376,6 +391,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public bool ShouldSerializePhotonRealtimeId() { return !string.IsNullOrEmpty(PhotonRealtimeId); }
         }
 
+        [Serializable]
         public class AnchorAccount
         {
             public AnchorAccount Copy()

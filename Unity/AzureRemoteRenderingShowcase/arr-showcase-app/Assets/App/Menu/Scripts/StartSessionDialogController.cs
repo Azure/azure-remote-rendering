@@ -3,6 +3,8 @@
 
 using Microsoft.MixedReality.Toolkit.Extensions;
 using System.Collections;
+using System.Threading.Tasks;
+using HoloToolkit.Unity;
 using UnityEngine;
 
 /// <summary>
@@ -10,7 +12,7 @@ using UnityEngine;
 /// </summary>
 public class StartSessionDialogController : MonoBehaviour
 {
-    private float _startDelay = 5.0f;
+    private int _startDelay = 5000;
 
     #region Serialized Fields
     [SerializeField]
@@ -28,27 +30,19 @@ public class StartSessionDialogController : MonoBehaviour
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
-    private void Start()
-    {
-        StartCoroutine(DelayedStart());
-    }
-
-    private void OnDestroy()
-    {
-        AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
-    }
-    #endregion MonoBehavior Functions
-
-    #region Private Functions
+    
     /// <summary>
     /// Delay showing the dialog slightly.
     /// </summary>
-    private IEnumerator DelayedStart()
+    private async void Start()
     {
         if (_startDelay > 0)
         {
-            yield return new WaitForSeconds(_startDelay);
+            await Task.Delay(_startDelay);
         }
+
+        // Wait for microphone permission dialog to close
+        await MicrophoneHelper.GetMicrophoneStatus();
 
         AppServices.RemoteRendering.StatusChanged += RemoteRendering_StatusChanged;
         if (dialogPrefab == null || AppServices.RemoteRendering == null)
@@ -59,10 +53,15 @@ public class StartSessionDialogController : MonoBehaviour
         {
             CheckRemoteRenderingStatus();
         }
-
-        yield break;
     }
 
+    private void OnDestroy()
+    {
+        AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
+    }
+    #endregion MonoBehavior Functions
+
+    #region Private Functions
     private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs e)
     {
         CheckRemoteRenderingStatus();
@@ -97,7 +96,7 @@ public class StartSessionDialogController : MonoBehaviour
             return;
         }
 
-        bool startSession = false;
+        AppDialog.AppDialogResult startSession;
         GameObject dialogObject = null;
         try
         {
@@ -112,7 +111,7 @@ public class StartSessionDialogController : MonoBehaviour
             }
         }
 
-        if (startSession)
+        if (startSession == AppDialog.AppDialogResult.Ok)
         {
             CreateAndConnect();
         }

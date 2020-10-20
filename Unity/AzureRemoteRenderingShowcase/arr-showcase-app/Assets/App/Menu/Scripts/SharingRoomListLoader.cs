@@ -4,6 +4,7 @@
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class SharingRoomListLoader : MonoBehaviour
@@ -15,6 +16,10 @@ public class SharingRoomListLoader : MonoBehaviour
     [Tooltip("The list target for the loaded data.")]
     private ListItemRepeater target = null;
 
+    [SerializeField]
+    [Tooltip("Text mesh pro text showing no rooms are available.")]
+    private TextMeshPro noRoomsText = null;
+    
     /// <summary>
     /// The list target for the loaded data.
     /// </summary>
@@ -69,6 +74,7 @@ public class SharingRoomListLoader : MonoBehaviour
         }
 
         ApplyData(objectData);
+        noRoomsText.gameObject.SetActive(count == 0);
     }
 
     private void ApplyData(List<object> objectData)

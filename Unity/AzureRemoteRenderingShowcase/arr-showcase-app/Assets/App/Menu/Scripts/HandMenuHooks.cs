@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication;
 using Microsoft.MixedReality.Toolkit.UI;
@@ -17,6 +18,7 @@ public class HandMenuHooks : MonoBehaviour
     private ISharingService _sharingService;
     private IAnchoringService _anchoringService;
     private Coroutine _updatePlayerCount;
+    private bool _sessionFirstConnect;
 
     #region Serialized Fields
     [Header("Primary Buttons")]
@@ -184,6 +186,7 @@ public class HandMenuHooks : MonoBehaviour
     [SerializeField]
     [Tooltip("The button to be used to open a new web browser to the current Azure Remote Rendering session's 'Inspector' page.")]
     private Interactable webInspectorButtonLogic = null;
+    private InteractableEnabledHelper webInspectorButtonHelper = null;
 
     /// <summary>
     /// The button to be used to open a new web browser to the current Azure Remote Rendering session's 'Inspector' page.
@@ -195,11 +198,15 @@ public class HandMenuHooks : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("The text mesh displaying the current session status (Starting, Ready, Stopped, Expired, Failure, ect.).")]
+    [Tooltip("The text mesh displaying the current session status (Starting, Ready, Stopped, Expired, Failure, etc.).")]
     private TextMeshPro sessionStatusText = null;
 
+    [SerializeField]
+    [Tooltip("The alternate text mesh displaying the current session status (Starting, Ready, Stopped, Expired, Failure, etc.).")]
+    private TextMeshPro sessionStatusTextAlt = null;
+    
     /// <summary>
-    /// The text mesh displaying the current session's status (Starting, Ready, Stopped, Expired, Failure, ect.).
+    /// The text mesh displaying the current session's status (Starting, Ready, Stopped, Expired, Failure, etc.).
     /// </summary>
     public TextMeshPro SessionStatusText
     {
@@ -208,11 +215,11 @@ public class HandMenuHooks : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("The text mesh displaying the current session's region (West US, West Eurpore, ect.).")]
+    [Tooltip("The text mesh displaying the current session's region (West US, West Europe, etc.).")]
     private TextMeshPro sessionRegionText = null;
 
     /// <summary>
-    /// The text mesh displaying the current session's region (West US, West Eurpore, ect.).
+    /// The text mesh displaying the current session's region (West US, West Europe, etc.).
     /// </summary>
     public TextMeshPro SessionRegionText
     {
@@ -288,6 +295,19 @@ public class HandMenuHooks : MonoBehaviour
         get => createAndJoinRoomButtonLogic;
         set => createAndJoinRoomButtonLogic = value;
     }
+    
+    [SerializeField]
+    [Tooltip("The button to be used to leave a sharing room.")]
+    private Interactable leaveRoomButtonLogic = null;
+
+    /// <summary>
+    /// The button to be used to leave a sharing room.
+    /// </summary>
+    public Interactable LeaveRoomButtonLogic
+    {
+        get => LeaveRoomButtonLogic;
+        set => LeaveRoomButtonLogic = value;
+    }
 
     [SerializeField]
     [Tooltip("The button to be used to update the list of available rooms.")]
@@ -348,16 +368,35 @@ public class HandMenuHooks : MonoBehaviour
     private NotificationBarController notificationBar = null;
 
     /// <summary>
-    /// he text mesh displaying various application notifications.
+    /// The text mesh displaying various application notifications.
     /// </summary>
     public NotificationBarController NotificationBar
     {
         get => notificationBar;
         set => notificationBar = value;
     }
+    
+    [SerializeField]
+    [Tooltip("The icon object displaying which tool is currently selected.")]
+    private PointerToolIcon pointerToolIcon = null;
+
+    /// <summary>
+    /// The icon object displaying which tool is currently selected.
+    /// </summary>
+    public PointerToolIcon PointerToolIcon
+    {
+        get => pointerToolIcon;
+        set => pointerToolIcon = value;
+    }
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
+
+    private void Awake()
+    {
+        webInspectorButtonHelper = webInspectorButtonLogic.GetComponent<InteractableEnabledHelper>();
+    }
+
     /// <summary>
     /// Initialize all the buttons click listners and various other menu states.
     /// </summary>
@@ -377,14 +416,21 @@ public class HandMenuHooks : MonoBehaviour
         sessionButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Session); });
         statsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Stats); });
         webInspectorButtonLogic.OnClick.AddListener(delegate { _remoteRenderingService?.PrimaryMachine?.Session.OpenWebInspector(); });
-        createAndJoinRoomButtonLogic.OnClick.AddListener(delegate { _sharingService?.CreateAndJoinRoom(); });
-        updateRoomsButtonLogic.OnClick.AddListener(delegate { _sharingService?.LeaveRoom(); });
+        createAndJoinRoomButtonLogic.OnClick.AddListener(delegate
+        {
+            ClearMenu();
+            _sharingService?.CreateAndJoinRoom();
+        });
+        leaveRoomButtonLogic.OnClick.AddListener(delegate { _sharingService?.LeaveRoom(); });
 
         _remoteRenderingService = AppServices.RemoteRendering;
         if (_remoteRenderingService != null)
         {
             _remoteRenderingService.StatusChanged += RemoteRendering_StatusChanged;
             UpdateNotifcationsAndSessionButtons();
+            // Hide web inspector on non debug profile builds
+            if(_remoteRenderingService.LoadedProfile.AuthType == AuthenticationType.AccessToken)
+                webInspectorButtonLogic.gameObject.SetActive(false);
         }
 
         _sharingService = AppServices.SharingService;
@@ -490,11 +536,15 @@ public class HandMenuHooks : MonoBehaviour
     }
 
     /// <summary>
-    /// Set the pointer to a praticular tool.
+    /// Set the pointer to a particular tool. If a tool is already selected, set the selection to manipulate.
     /// </summary>
     /// <param name="pointerMode"></param>
     public void SetPointerMode(PointerMode pointerMode)
     {
+        if(AppServices.PointerStateService.Mode == pointerMode)
+        {
+            pointerMode = PointerMode.Manipulate;
+        }
         AppServices.PointerStateService.Mode = pointerMode;
     }
     #endregion Public Functions
@@ -533,6 +583,7 @@ public class HandMenuHooks : MonoBehaviour
         }
 
         bool showStartSessionButton = true;
+        bool showWebInspectorButton = false;
         bool shouldHideNotification = false;
         switch (_remoteRenderingService.Status)
         {
@@ -548,6 +599,13 @@ public class HandMenuHooks : MonoBehaviour
                 sessionStatusText.text = "Connected";
                 notificationBar.SetScrollableNotification(3f, "Session connected.");
                 showStartSessionButton = false;
+                showWebInspectorButton = _remoteRenderingService.LoadedProfile.AuthType == AuthenticationType.AccountKey;
+                // Switch to session menu if not already there, and prevent calling this twice
+                if(!_sessionFirstConnect && !sessionButtonLogic.GetComponent<ToggleObject>().TargetObject.activeInHierarchy)
+                {
+                    SetMenuState(MenuState.Session);
+                    _sessionFirstConnect = true;
+                }
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnecting:
                 sessionStatusText.text = "Connecting";
@@ -560,7 +618,7 @@ public class HandMenuHooks : MonoBehaviour
                 break;
             case RemoteRenderingServiceStatus.SessionStarting:
                 sessionStatusText.text = "Starting";
-                notificationBar.SetNotification(-1f, 0.3f, new string[] { "Starting the session.", "Starting the session..", "Starting the session..." });
+                notificationBar.SetNotification(-1f, 0.3f, new string[] { "Starting the session. This may take a few minutes.", "Starting the session. This may take a few minutes..", "Starting the session. This may take a few minutes..." });
                 showStartSessionButton = false;
                 break;
             case RemoteRenderingServiceStatus.SessionError:
@@ -586,6 +644,9 @@ public class HandMenuHooks : MonoBehaviour
                 break;
         }
 
+        // Update alternate session status text
+        sessionStatusTextAlt.text = sessionStatusText.text;
+
         // force anchor states to override the last message
         shouldHideNotification &= !TrySendingNotificationAreaWithAnchorInformation();
 
@@ -607,8 +668,16 @@ public class HandMenuHooks : MonoBehaviour
                 "None" : _remoteRenderingService.PrimaryMachine.Session.Size.ToString();
         }
 
+        // Clear session first connect state
+        if(_remoteRenderingService.Status != RemoteRenderingServiceStatus.SessionReadyAndConnected)
+        {
+            _sessionFirstConnect = false;
+        }
+        
         startSessionButtonLogic.gameObject.SetActive(showStartSessionButton);
         stopSessionButtonLogic.gameObject.SetActive(!showStartSessionButton);
+        
+        webInspectorButtonHelper.IsEnabled = showWebInspectorButton;
     }
 
     /// <summary>
@@ -669,12 +738,21 @@ public class HandMenuHooks : MonoBehaviour
         if (sharingRoomText != null)
         {
             sharingRoomText.text = joinedRoom ? _sharingService.CurrentRoom.Name : "None";
+            if(joinedRoom)
+            {
+                int count = _sharingService.Players?.Count ?? 0;
+                notificationBar.SetScrollableNotification(3f, $"Joined Shared {_sharingService.CurrentRoom.Name} with {count} users.");
+            }
         }
 
         if (sharingStatusText != null && _sharingService != null)
         {
             sharingStatusText.text = _sharingService.IsConnected ? "Connected" : "Disconnected";
         }
+        
+        createAndJoinRoomButtonLogic.gameObject.SetActive(!joinedRoom);
+        updateRoomsButtonLogic.gameObject.SetActive(!joinedRoom);
+        leaveRoomButtonLogic.gameObject.SetActive(joinedRoom);
     }
 
     private void InvalidateSharingPlayerCount()
@@ -703,16 +781,37 @@ public class HandMenuHooks : MonoBehaviour
         // sets toggle state of menu objects.
         // if menu is currently open, hitting button again will turn it off.
         ToggleObject toggleLogic = toolsButtonLogic.GetComponent<ToggleObject>();
-        toggleLogic.SetObjectActive((state == MenuState.Tools) && !toggleLogic.TargetObject.activeInHierarchy);
+        if(state == MenuState.Tools && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
+        toggleLogic.SetObjectActive(state == MenuState.Tools);
 
         toggleLogic = modelsButtonLogic.GetComponent<ToggleObject>();
-        toggleLogic.SetObjectActive((state == MenuState.Models) && !toggleLogic.TargetObject.activeInHierarchy);
+        if(state == MenuState.Models && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
+        toggleLogic.SetObjectActive(state == MenuState.Models);
 
         toggleLogic = sessionButtonLogic.GetComponent<ToggleObject>();
-        toggleLogic.SetObjectActive((state == MenuState.Session) && !toggleLogic.TargetObject.activeInHierarchy);
+        if(state == MenuState.Session && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
+        toggleLogic.SetObjectActive(state == MenuState.Session);
 
         toggleLogic = statsButtonLogic.GetComponent<ToggleObject>();
-        toggleLogic.SetObjectActive((state == MenuState.Stats) && !toggleLogic.TargetObject.activeInHierarchy);
+        if(state == MenuState.Stats && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
+        toggleLogic.SetObjectActive(state == MenuState.Stats);
+
+        pointerToolIcon.HandMenuStateShow = state == MenuState.Tools || state == MenuState.None;
+        
+        switch (state)
+        {
+            case MenuState.Tools:
+                break;
+            case MenuState.Models:
+                RemoteObjectListLoader.RefreshLists();
+                break;
+            case MenuState.Session:
+                break;
+            case MenuState.Stats:
+                break;
+            case MenuState.None:
+                break;
+        }
     }
 
     private void AnchoringService_ActiveSearchesCountChanged(IAnchoringService sender, AnchoringServiceSearchingArgs searchingArgs)

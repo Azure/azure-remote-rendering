@@ -21,6 +21,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             _service = service ?? throw new ArgumentNullException("Sharing service can't be null");
             PlayerId = playerId;
             IsLocal = isLocal;
+            // Start with an invalid pose until one is received from the server
+            _pose = new Pose(Vector3.positiveInfinity, Quaternion.identity);
         }
 
         #region ISharingServicePlayer Properties

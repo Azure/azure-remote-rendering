@@ -38,6 +38,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         private string _pendingRoomName = null;
         private string _appIdChat = null;
         private string _appIdRealtime = null;
+        private float _timeSinceRoomUpdate;
         private SortedDictionary<string, PhotonSharingRoom> _rooms = new SortedDictionary<string, PhotonSharingRoom>();
         private Dictionary<int, Player> _players = new Dictionary<int, Player>();
         private BufferPool _bufferPool = new BufferPool();
@@ -61,6 +62,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             _roomNameFormat = settingsProfile.RoomNameFormat;
             _verboseLogging = settingsProfile.VerboseLogging;
             _appIdRealtime = settingsProfile.PhotonRealtimeId;
+
             LogVerbose("PhotonSharingProvider()");
 
             if (string.IsNullOrEmpty(_roomNameFormat) ||
@@ -250,6 +252,16 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             {
                 ConnectToPhoton();
             }
+
+            if(PhotonNetwork.IsConnected && CurrentRoom == null)
+            {
+                _timeSinceRoomUpdate += Time.deltaTime;
+                if(_timeSinceRoomUpdate > 10f)
+                {
+                    _timeSinceRoomUpdate = 0f;
+                    UpdateRooms();
+                }
+            }
         }
 
         /// <summary>
@@ -273,6 +285,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         /// </summary>
         public void LeaveRoom()
         {
+            LogVerbose("LeaveRoom()");
             LeavePhotonRoom();
         }
 
@@ -291,7 +304,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         {
             if (IsConnected)
             {
-                PhotonNetwork.RaiseEvent(_playerPoseCode, pose, RaiseEventOptions.Default, SendOptions.SendReliable);
+                PhotonNetwork.RaiseEvent(_playerPoseCode, pose, RaiseEventOptions.Default, SendOptions.SendUnreliable);
             }
         }
 
@@ -303,7 +316,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             if (IsConnected)
             {
                 transform.Target = target;
-                PhotonNetwork.RaiseEvent(_transformMessageCode, transform, RaiseEventOptions.Default, SendOptions.SendReliable);
+                PhotonNetwork.RaiseEvent(_transformMessageCode, transform, RaiseEventOptions.Default, SendOptions.SendUnreliable);
             }
         }
 
@@ -736,7 +749,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             LogVerbose("ConnectToPhoton()");
             ValidatePhotonConfiguration();
 
-            _autoJoinRoom = true;
             if (!_callbacksRegisteredWithPhoton)
             {
                 LogVerbose("AddCallbackTarget()");
@@ -744,11 +756,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
                 _callbacksRegisteredWithPhoton = true;
             }
 
-            if (PhotonNetwork.IsConnected)
-            {
-                TryAutoJoinRoom();
-            }
-            else
+            if (!PhotonNetwork.IsConnected)
             {
                 PhotonNetwork.PhotonServerSettings.AppSettings.AppIdRealtime = _appIdRealtime;
                 PhotonNetwork.ConnectUsingSettings();
@@ -787,7 +795,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         {
             LogVerbose("DisconnectFromPhoton()");
 
-            _autoJoinRoom = false;
             PhotonNetwork.Disconnect();
             if (_callbacksRegisteredWithPhoton)
             {
@@ -813,13 +820,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         private void TryAutoJoinRoom()
         {
             LogVerbose("TryAutoJoinRoom()");
-
+            
             if (!_autoJoinRoom)
             {
                 return;
             }
 
-            _autoJoinRoom = false;
             if (PhotonNetwork.InRoom)
             {
                 return;
@@ -840,12 +846,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
                 }
             }
 
-            if (string.IsNullOrEmpty(bestRoom))
+            if (!string.IsNullOrEmpty(bestRoom))
             {
-                CreatePhotonRoom();
-            }
-            else
-            {
+                _autoJoinRoom = false;
                 JoinOrCreatePhotonRoom(bestRoom);
             }
         }

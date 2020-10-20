@@ -228,9 +228,6 @@ MonoBehaviour:
   VoiceCommand: Select
   voiceRequiresFocus: 1
   profiles:
-  - Target: {fileID: 0}
-    Themes:
-    - {fileID: 11400000, guid: 0c4c73f326f602744bdcfff481fd6f20, type: 2}
   - Target: {fileID: 8346167386630597499}
     Themes:
     - {fileID: 11400000, guid: 8f8cfb3041153fa45bccb6d664a563ec, type: 2}
@@ -1032,7 +1029,6 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []

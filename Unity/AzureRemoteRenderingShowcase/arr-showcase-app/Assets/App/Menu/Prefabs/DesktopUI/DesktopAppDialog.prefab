@@ -1,0 +1,113 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &8630032644214816752
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2182247995863920963, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_FontSize
+      value: 80
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.22
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707144, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_Name
+      value: DesktopAppDialog
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503471351553352, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2243503471588092785, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8763119407713475931, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+        type: 3}
+      propertyPath: startDistance
+      value: 0.22
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 6506293908056418826, guid: 905dccb9ff8d07b4f9423664ed5a2ccc, type: 3}
+    - {fileID: 1050134704995561544, guid: 905dccb9ff8d07b4f9423664ed5a2ccc, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: 905dccb9ff8d07b4f9423664ed5a2ccc, type: 3}

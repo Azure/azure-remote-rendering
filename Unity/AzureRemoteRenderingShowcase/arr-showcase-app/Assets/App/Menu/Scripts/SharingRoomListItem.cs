@@ -122,7 +122,9 @@ public class SharingRoomListItem : ListItemEventHandler
         }
 
         _menuController?.GoToMenu(_backButtonDestinationIndex);
-    }
+        // // Close share menu
+        // GetComponentInParent<HandMenuHooks>()?.ClearMenu();
+    } 
     #endregion Public Functions
 
     #region Private Functions

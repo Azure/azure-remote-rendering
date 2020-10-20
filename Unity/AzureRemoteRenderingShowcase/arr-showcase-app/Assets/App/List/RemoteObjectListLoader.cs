@@ -74,6 +74,19 @@ public class RemoteObjectListLoader : MonoBehaviour
         get => useAzureContainerQuery;
         set => useAzureContainerQuery = value;
     }
+    
+    [SerializeField]
+    [Tooltip("Should all model sources be combined when querying for models instead of picking the first that returns any data.")]
+    private bool combineAllModelSources = true;
+
+    /// <summary>
+    /// Should all model sources be combined when querying for models instead of picking the first that returns any data.
+    /// </summary>
+    public bool CombineAllModelSources
+    {
+        get => combineAllModelSources;
+        set => combineAllModelSources = value;
+    }
 
     [SerializeField]
     [Tooltip("The xml file url to download data from. Second attempt is to load models from this. Used if 'Override File Name' doesn't exist or fails to load.")]
@@ -140,11 +153,46 @@ public class RemoteObjectListLoader : MonoBehaviour
 
         OverrideFilePath = Application.persistentDataPath + "/" + overrideFileName;
         FallbackFilePath = Application.persistentDataPath + "/" + fallbackFileName;
-        LoadData();
+
+        AppServices.RemoteRendering.StatusChanged += RemoteRendering_StatusChanged;
+        RemoteRendering_StatusChanged(AppServices.RemoteRendering.Status);
+
+        ConvertModelService.OnModelConversionSuccess += LoadData;
+        OnRefreshRequested += LoadData;
+    }
+
+    private void OnDestroy()
+    {
+        ConvertModelService.OnModelConversionSuccess -= LoadData;
+        OnRefreshRequested -= LoadData;
     }
     #endregion MonoBehavior Methods
 
+    #region Public Methods
+    public static void RefreshLists()
+    {
+        OnRefreshRequested?.Invoke();
+    }
+    #endregion Public Methods
+
     #region Private Methods
+
+    private static event Action OnRefreshRequested;
+
+    private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs e)
+    {
+        RemoteRendering_StatusChanged(e.NewStatus);
+    }
+
+    private void RemoteRendering_StatusChanged(RemoteRenderingServiceStatus newStatus)
+    {
+        if(newStatus != RemoteRenderingServiceStatus.Unknown && newStatus != RemoteRenderingServiceStatus.NoSession)
+        {
+            AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
+            LoadData();
+        }
+    }
+    
     private bool DataEmpty(RemoteModelFile fileData)
     {
         return fileData == null || fileData.Containers == null || fileData.Containers.Length == 0;
@@ -152,51 +200,42 @@ public class RemoteObjectListLoader : MonoBehaviour
 
     private async void LoadData()
     {
+        RemoteModelFile combinedFileData = new RemoteModelFile();
+        
+        // Load from Override
         RemoteModelFile fileData = await TryLoadFromOverride();
-        var includeDefaultModels = AppServices.RemoteRendering?.LoadedProfile?.AlwaysIncludeDefaultModels ?? false;
+        CombineData(fileData, ref combinedFileData);
 
-        if (DataEmpty(fileData) && useAzureContainerQuery)
+        // Load from Azure container
+        if ((DataEmpty(fileData) || combineAllModelSources) && useAzureContainerQuery)
         {
             fileData = await TryLoadFromAzureContainer();
+            CombineData(fileData, ref combinedFileData);
         }
 
-        if (DataEmpty(fileData))
+        if (DataEmpty(fileData) || combineAllModelSources)
         {
             fileData = await TryLoadFromCloud();
+            CombineData(fileData, ref combinedFileData);
         }
 
-        RemoteModelFile fallbackData = null;
-        var includeFallback = DataEmpty(fileData) || includeDefaultModels;
-        if (includeFallback)
+        var includeDefaultModels = AppServices.RemoteRendering?.LoadedProfile?.AlwaysIncludeDefaultModels ?? false;
+        if (DataEmpty(fileData) || combineAllModelSources || includeDefaultModels)
         {
-            fallbackData = await TryLoadFromFallback();
-        }
-
-        if (includeFallback && DataEmpty(fallbackData))
-        {
+            // Try to load fallback from XML
+            fileData = await TryLoadFromFallback();
             // Save fallback data to file, so consumers see a sample of the file format
-            if (TryLoadFromFallbackData(out fileData))
+            if (DataEmpty(fileData) && TryLoadFromFallbackData(out fileData))
             {
                 await TrySave(fileData);
             }
-        }
-
-        if (includeFallback)
-        {
-            if (DataEmpty(fileData))
-            {
-                fileData = fallbackData;
-            }
-            else
-            {
-                fileData.Containers = fileData.Containers.Concat(fallbackData.Containers).ToArray();
-            }
+            CombineData(fileData, ref combinedFileData);
         }
 
         List<object> sortedData = null;
-        if (fileData != null)
+        if (combinedFileData != null)
         {
-            sortedData = await CopyAndSort(fileData);
+            sortedData = await CopyAndSort(combinedFileData);
         }
 
         ApplyData(sortedData);
@@ -283,6 +322,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         RemoteModelFile result = new RemoteModelFile();
         try
         {
+            App.Authentication.AADAuth.PrepareOnMainThread();
             result.Containers = await AppServices.RemoteRendering.Storage.QueryModels();
         }
         catch (Exception ex)
@@ -330,6 +370,16 @@ public class RemoteObjectListLoader : MonoBehaviour
             sorted.Sort(CompareContainersByName);
             return sorted;
         });
+    }
+    
+    private void CombineData(RemoteModelFile fileData, ref RemoteModelFile combinedFileData)
+    {
+        if (IsEmpty(fileData))
+        {
+            return;
+        }
+
+        combinedFileData.Containers = combinedFileData.Containers.Concat(fileData.Containers).ToArray();
     }
 
     private static int CompareContainersByName(object container1, object container2)

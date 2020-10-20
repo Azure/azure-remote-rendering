@@ -445,9 +445,6 @@ MonoBehaviour:
   VoiceCommand: Select
   voiceRequiresFocus: 1
   profiles:
-  - Target: {fileID: 0}
-    Themes:
-    - {fileID: 11400000, guid: 0c4c73f326f602744bdcfff481fd6f20, type: 2}
   - Target: {fileID: 2051066500104522521}
     Themes:
     - {fileID: 11400000, guid: 8f8cfb3041153fa45bccb6d664a563ec, type: 2}
@@ -753,6 +750,7 @@ MonoBehaviour:
   previewRenderer: {fileID: 7152034999937994368}
   previewTextureName: _MainTex
   remoteCubeMap: {fileID: 0}
+  changeSkyReflection: {fileID: 0}
 --- !u!1 &5761004837348702577
 GameObject:
   m_ObjectHideFlags: 0
@@ -862,6 +860,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []

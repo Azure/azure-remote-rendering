@@ -32,7 +32,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Get the loaded profile. This is the profile object that also includes overrides from the various override files, as well as the default values.
         /// </summary>
-        RemoteRenderingServiceProfile LoadedProfile { get; }
+        BaseRemoteRenderingServiceProfile LoadedProfile { get; }
 
         /// <summary>
         /// A string used for debugging

@@ -83,12 +83,12 @@ PrefabInstance:
     - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_Name
-      value: AppDialog
+      value: StartSessionDialog
       objectReference: {fileID: 0}
     - target: {fileID: 2243503470272707145, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471203046030, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
@@ -108,22 +108,22 @@ PrefabInstance:
     - target: {fileID: 2243503471351553354, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.characterCount
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471351553354, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.wordCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471351553354, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.lineCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471351553354, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.pageCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471588092785, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
@@ -138,22 +138,22 @@ PrefabInstance:
     - target: {fileID: 2243503471588092787, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.characterCount
-      value: 0
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471588092787, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.wordCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471588092787, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.lineCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2243503471588092787, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}
       propertyPath: m_textInfo.pageCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2246367649367138475, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
         type: 3}

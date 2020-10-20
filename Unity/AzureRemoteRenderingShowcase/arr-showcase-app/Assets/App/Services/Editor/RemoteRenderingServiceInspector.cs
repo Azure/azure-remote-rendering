@@ -19,7 +19,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
         public override void DrawInspectorGUI(object target)
         {
             IRemoteRenderingService service = target as IRemoteRenderingService;
-            RemoteRenderingServiceProfile profile = service.ConfigurationProfile as RemoteRenderingServiceProfile;
+            BaseRemoteRenderingServiceProfile profile = service.ConfigurationProfile as BaseRemoteRenderingServiceProfile;
             
             if (boldText == null)
             {
@@ -131,7 +131,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 return;
             }
 
-            RemoteRenderingServiceProfile loadedProfile = service.LoadedProfile;
+            BaseRemoteRenderingServiceProfile loadedProfile = service.LoadedProfile;
 
             if (sessionOverrideLabel == null)
             {
@@ -154,7 +154,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
                 EditorGUILayout.TextField(sessionOverrideLabel, loadedProfile.SessionOverride);
         }
 
-        private void DrawConnectionControls(RemoteRenderingServiceProfile profile, IRemoteRenderingService service)
+        private void DrawConnectionControls(BaseRemoteRenderingServiceProfile profile, IRemoteRenderingService service)
         {
             GUILayout.BeginHorizontal();
 
@@ -311,7 +311,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
         private static async Task<IRemoteRenderingMachine> GetOrCreateMachine(IRemoteRenderingService service)
         {
             IRemoteRenderingMachine machine = service.PrimaryMachine;
-            RemoteRenderingServiceProfile loadedProfile = service.LoadedProfile;
+            BaseRemoteRenderingServiceProfile loadedProfile = service.LoadedProfile;
 
             if (loadedProfile != null &&
                 !string.IsNullOrEmpty(loadedProfile.SessionOverride))

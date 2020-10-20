@@ -116,30 +116,36 @@ public class AppActions : MonoBehaviour
     /// <summary>
     /// The function that actually quits the application
     /// </summary>
+    private bool quitting = false;
     private async void QuitApplicationWorker()
     {
-        bool quit = true;
-        if (quitConfirmationDialog != null)
+        if (!quitting)
         {
-            GameObject dialogObject = null;
-            try
+            bool quit = true;
+            quitting = true;
+            if (quitConfirmationDialog != null)
             {
-                dialogObject = Instantiate(quitConfirmationDialog.gameObject);
-                quit = await dialogObject.GetComponent<AppDialog>().Open();
-            }
-            finally
-            {
-                if (dialogObject != null)
+                GameObject dialogObject = null;
+                try
                 {
-                    GameObject.Destroy(dialogObject);
+                    dialogObject = Instantiate(quitConfirmationDialog.gameObject);
+                    quit = await dialogObject.GetComponent<AppDialog>().Open() != AppDialog.AppDialogResult.Cancel;
+                }
+                finally
+                {
+                    quitting = false;
+                    if (dialogObject != null)
+                    {
+                        GameObject.Destroy(dialogObject);
+                    }
                 }
             }
-        }
 
-        if (quit)
-        {
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  "Quitting application per request...");
-            Application.Quit();
+            if (quit)
+            {
+                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", "Quitting application per request...");
+                Application.Quit();
+            }
         }
     }
     #endregion Private Functions

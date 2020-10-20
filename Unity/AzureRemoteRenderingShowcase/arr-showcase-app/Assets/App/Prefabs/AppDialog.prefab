@@ -148,6 +148,10 @@ MonoBehaviour:
   destroyOnClose: 0
   okButton: {fileID: 2243503470627871720}
   cancelButton: {fileID: 2243503471243379201}
+  dialogHeaderText: {fileID: 2243503471203046030}
+  dialogText: {fileID: 2182247995863920963}
+  okButtonText: {fileID: 2243503471588092787}
+  cancelButtonText: {fileID: 2243503471351553354}
 --- !u!114 &8136568857827031511
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1729,6 +1733,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -1966,6 +1971,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2504,7 +2510,7 @@ PrefabInstance:
     - target: {fileID: 102000010767390410, guid: 670aca8db3bb6294581d6493f3e32380,
         type: 3}
       propertyPath: m_FontSize
-      value: 70
+      value: 60
       objectReference: {fileID: 0}
     - target: {fileID: 102000010767390410, guid: 670aca8db3bb6294581d6493f3e32380,
         type: 3}
@@ -2521,6 +2527,12 @@ PrefabInstance:
 --- !u!4 &2246367649367138475 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4000010330146594, guid: 670aca8db3bb6294581d6493f3e32380,
+    type: 3}
+  m_PrefabInstance: {fileID: 2243503471609685897}
+  m_PrefabAsset: {fileID: 0}
+--- !u!102 &2182247995863920963 stripped
+TextMesh:
+  m_CorrespondingSourceObject: {fileID: 102000010767390410, guid: 670aca8db3bb6294581d6493f3e32380,
     type: 3}
   m_PrefabInstance: {fileID: 2243503471609685897}
   m_PrefabAsset: {fileID: 0}

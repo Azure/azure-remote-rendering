@@ -18,7 +18,7 @@ PlayerSettings:
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.2784314, g: 0.2784314, b: 0.2784314, a: 0}
   m_ShowUnitySplashScreen: 1
-  m_ShowUnitySplashLogo: 1
+  m_ShowUnitySplashLogo: 0
   m_SplashScreenOverlayOpacity: 1
   m_SplashScreenAnimation: 1
   m_SplashScreenLogoStyle: 1
@@ -39,9 +39,7 @@ PlayerSettings:
     y: 0
     width: 1
     height: 1
-  m_SplashScreenLogos:
-  - logo: {fileID: 10404, guid: 0000000000000000e000000000000000, type: 0}
-    duration: 2
+  m_SplashScreenLogos: []
   m_VirtualRealitySplashScreen: {fileID: 2800000, guid: c6e5719a75b59f74b81e7f0496ea4edb,
     type: 3}
   m_HolographicTrackingLossScreen: {fileID: 0}
@@ -94,7 +92,7 @@ PlayerSettings:
   xboxEnableFitness: 0
   visibleInBackground: 1
   allowFullscreenSwitch: 1
-  fullscreenMode: 1
+  fullscreenMode: 3
   xboxSpeechDB: 0
   xboxEnableHeadOrientation: 0
   xboxEnableGuest: 0
@@ -121,7 +119,7 @@ PlayerSettings:
     16:10: 1
     16:9: 1
     Others: 1
-  bundleVersion: 0.1
+  bundleVersion: 1.1.56.0
   preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0
@@ -606,11 +604,12 @@ PlayerSettings:
   scriptingRuntimeVersion: 1
   gcIncremental: 0
   gcWBarrierValidation: 0
-  apiCompatibilityLevelPerPlatform: {}
+  apiCompatibilityLevelPerPlatform:
+    Windows Store Apps: 3
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
   metroPackageName: Azure.Remote.Rendering.Showcase
-  metroPackageVersion: 1.0.363.0
+  metroPackageVersion: 1.1.56.0
   metroCertificatePath: Assets/WSATestCertificate.pfx
   metroCertificatePassword: 
   metroCertificateSubject: Microsoft
@@ -675,8 +674,8 @@ PlayerSettings:
       Chat: False
       CodeGeneration: False
       Contacts: False
-      EnterpriseAuthentication: False
-      GazeInput: True
+      EnterpriseAuthentication: True
+      GazeInput: False
       HumanInterfaceDevice: False
       InputInjectionBrokered: False
       InternetClient: True
@@ -696,7 +695,7 @@ PlayerSettings:
       RecordedCallsFolder: False
       RemoteSystem: False
       RemovableStorage: False
-      SharedUserCertificates: False
+      SharedUserCertificates: True
       SpatialPerception: True
       SystemManagement: False
       UserAccountInformation: False

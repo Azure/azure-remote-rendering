@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-#if UNITY_WSA && !UNITY_EDITOR
+#if UNITY_WSA && !UNITY_EDITOR && USE_MR
 using UnityAnchor = UnityEngine.XR.WSA.WorldAnchor;
 #else
 using UnityAnchor = UnityEngine.Object;
@@ -363,7 +363,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return;
             }
 
-#if UNITY_WSA && !UNITY_EDITOR
+#if UNITY_WSA && !UNITY_EDITOR && USE_MR
             _cloudNativeAnchor.NativeAnchor.OnTrackingChanged += NativeAnchorTrackingUpdated;
             NativeAnchorTrackingUpdated(_cloudNativeAnchor.NativeAnchor, _cloudNativeAnchor.NativeAnchor.isLocated);
 #endif
@@ -380,7 +380,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return;
             }
 
-#if UNITY_WSA && !UNITY_EDITOR
+#if UNITY_WSA && !UNITY_EDITOR && USE_MR
             _cloudNativeAnchor.NativeAnchor.OnTrackingChanged -= NativeAnchorTrackingUpdated;
             NativeAnchorTrackingUpdated(_cloudNativeAnchor.NativeAnchor, false);
 #else

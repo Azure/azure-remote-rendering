@@ -69,6 +69,33 @@ namespace Microsoft.Azure.Storage
         /// <param name="md5">Provide the md5 and it will check and make sure it matches the blob's md5.
         /// If it doesn't match, it won't return a value.</param>
         /// <returns></returns>
+        internal static void AddAuthorizationHeader(
+           string accessToken,
+           HttpRequestMessage httpRequestMessage)
+        {
+            DateTime authorizationTime = DateTime.UtcNow;
+
+            // Add the request headers for x-ms-date and x-ms-version.
+            httpRequestMessage.Headers.Add("x-ms-date", authorizationTime.ToString("R", CultureInfo.InvariantCulture));
+            httpRequestMessage.Headers.Add("x-ms-version", "2019-02-02");
+            httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        }
+
+        /// <summary>
+        /// This creates the authorization header. This is required, and must be built 
+        ///   exactly following the instructions. This will return the authorization header
+        ///   for most storage service calls.
+        /// Create a string of the message signature and then encrypt it.
+        /// </summary>
+        /// <param name="storageAccountName">The name of the storage account to use.</param>
+        /// <param name="storageAccountKey">The access key for the storage account to be used.</param>
+        /// <param name="now">Date/Time stamp for now.</param>
+        /// <param name="httpRequestMessage">The HttpWebRequest that needs an auth header.</param>
+        /// <param name="ifMatch">Provide an eTag, and it will only make changes
+        /// to a blob if the current eTag matches, to ensure you don't overwrite someone else's changes.</param>
+        /// <param name="md5">Provide the md5 and it will check and make sure it matches the blob's md5.
+        /// If it doesn't match, it won't return a value.</param>
+        /// <returns></returns>
         internal static AuthenticationHeaderValue GetAuthorizationHeader(
            string storageAccountName, 
            string storageAccountKey, 

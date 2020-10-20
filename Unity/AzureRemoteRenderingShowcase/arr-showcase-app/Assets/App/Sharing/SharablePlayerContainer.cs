@@ -5,6 +5,7 @@ using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using System.Collections.Generic;
+using App.Authentication;
 using UnityEngine;
 
 /// <summary>
@@ -146,6 +147,7 @@ public class SharablePlayerContainer : MonoBehaviour
             if (player.IsLocal)
             {
                 _localPlayer = player;
+                UpdateLocalPlayerName();
                 UpdateLocalPlayerLoadStatus();
             }
             else if (playerPrefab != null)
@@ -158,6 +160,8 @@ public class SharablePlayerContainer : MonoBehaviour
             }
         }
     }
+    
+    
 
     /// <summary>
     /// Remove the associated 'PlayerPrefab' object from this object's children.
@@ -258,6 +262,30 @@ public class SharablePlayerContainer : MonoBehaviour
         {
             _localPlayer.SetProperty(SharableStrings.PlayerIsLoading, isLoading);
         }
+    }
+
+    /// <summary>
+    /// Called when the local player is created, updates the player's username by triggering a log in if necessary.
+    /// </summary>
+    private void UpdateLocalPlayerName()
+    {
+        // Version 1: Use device name as player name
+        // _localPlayer.SetProperty(SharableStrings.PlayerName, SystemInfo.deviceName);
+        
+        // Version 2: Use AD account name for player labels, and Developer for non-AD accounts
+        // var playerName = "Developer";
+        // // Log in if no account is selected 
+        // if(AppServices.RemoteRendering.LoadedProfile.AuthType == AuthenticationType.AccessToken && AADAuth.SelectedAccount == null)
+        // {
+        //     var profile = AppServices.RemoteRendering.LoadedProfile;
+        //     await profile.GetFrontend(profile.PreferredDomain);
+        //     playerName = AADAuth.SelectedAccount.Username;
+        // }
+        // // Check for edge case, the player may have disconnected from the session before clicking yes for cached credentials usage 
+        // if(_localPlayer != null)
+        // {
+        //     _localPlayer.SetProperty(SharableStrings.PlayerName, playerName);
+        // }
     }
     #endregion Private Functions
 }

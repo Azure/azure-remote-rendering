@@ -110,4 +110,9 @@ public static class SharableStrings
     /// A property name for sharing the id of the object that is currently on the app's main stage.
     /// </summary>
     public const string StageObjectId = "staged";
+    
+    /// <summary>
+    /// A property name for sharing the player's username for display.
+    /// </summary>
+    public const string PlayerName = "playername";
 }

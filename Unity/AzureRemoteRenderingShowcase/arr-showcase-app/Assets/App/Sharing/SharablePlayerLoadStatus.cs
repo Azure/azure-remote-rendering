@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System.Collections;
+using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -46,6 +48,19 @@ public class SharablePlayerLoadStatus : MonoBehaviour
     {
         get => materialRenderer;
         set => materialRenderer = value;
+    }
+    
+    [SerializeField]
+    [Tooltip("The text which will be enabled while loading.")]
+    private GameObject loadingText = null;
+
+    /// <summary>
+    /// The text which will be enabled while loading.
+    /// </summary>
+    public GameObject LoadingText
+    {
+        get => loadingText;
+        set => loadingText = value;
     }
 
     [SerializeField]
@@ -104,12 +119,8 @@ public class SharablePlayerLoadStatus : MonoBehaviour
     /// </summary>
     private void UpdateLoading(bool isLoading)
     {
-        if (materialRenderer == null)
-        {
-            return;
-        }
-
         materialRenderer.sharedMaterial = isLoading ? loadingMaterial : loadedMaterial;
+        loadingText.SetActive(isLoading);
     }
     #endregion Private Functions
 }

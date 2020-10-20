@@ -12,6 +12,7 @@ using System.Xml.Linq;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public enum CustomBuildType
 {
@@ -53,6 +54,10 @@ public class CustomBuildInfo
 
 public class CustomBuilder
 {
+    private const string CustomBuildPref_HoloLens_Scene = "SampleScene";
+    private const string CustomBuildPref_Desktop_Scene = "SampleSceneDesktop";
+
+
     private const string CustomBuildPref_HoloLens1BuildDir = "_CustomBuild_HoloLens1BuildDir";
     private const string CustomBuildPref_HoloLens2BuildDir_ARM32 = "_CustomBuild_HoloLens2BuildDir";
     private const string CustomBuildPref_HoloLens2BuildDir_ARM64 = "_CustomBuild_HoloLens2BuildDir_ARM64";
@@ -104,25 +109,82 @@ public class CustomBuilder
     [MenuItem("Builder/Build HoloLens 1 Client", false, 0)]
     public static async void BuildHoloLens1Project()
     {
+        ConfigureBuildScene(CustomBuildType.HoloLens1);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens1);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm)", false, 0)]
     public static async void BuildHoloLens2Project_ARM32()
     {
+        ConfigureBuildScene(CustomBuildType.HoloLens2_ARM32);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM32);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm64)", false, 0)]
     public static async void BuildHoloLens2Project_ARM64()
     {
+        ConfigureBuildScene(CustomBuildType.HoloLens2_ARM64);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM64);
     }
 
     [MenuItem("Builder/Build PC Client", false, 1)]
-    public static async void BuildServerProject()
+    public static async void BuildDesktopProject()
     {
+        ConfigureBuildScene(CustomBuildType.PC);
         await s_instance.BuildUnityPlayer(CustomBuildType.PC);
+    }
+
+    private static void ConfigureBuildScene(CustomBuildType buildType)
+    {
+        Scene targetScene = default;
+        List<string> allDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup).Split(';').ToList();
+
+        switch (buildType)
+        {
+            case CustomBuildType.HoloLens1:
+            case CustomBuildType.HoloLens2_ARM32:
+            case CustomBuildType.HoloLens2_ARM64:
+                if (!PlayerSettings.virtualRealitySupported)
+                {
+                    if (!allDefines.Contains("USE_MR"))
+                        allDefines.Add("USE_MR");
+                    PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, string.Join(";", allDefines));
+                    PlayerSettings.virtualRealitySupported = true;
+                }
+                targetScene = SceneManager.GetSceneByName(CustomBuildPref_Desktop_Scene);
+                break;
+            case CustomBuildType.PC:
+                if (PlayerSettings.virtualRealitySupported)
+                {
+                    if (allDefines.Contains("USE_MR"))
+                        allDefines.Remove("USE_MR");
+                    PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, string.Join(";", allDefines));
+                    PlayerSettings.virtualRealitySupported = false;
+                }
+                targetScene = SceneManager.GetSceneByName(CustomBuildPref_Desktop_Scene);
+                break;
+        }
+
+        if (targetScene != default)
+        {
+            bool targetSceneActive = false;
+            foreach (var editorScene in EditorBuildSettings.scenes)
+            {
+                if (editorScene.path.Equals(targetScene.path))
+                {
+                    editorScene.enabled = true;
+                    targetSceneActive = true;
+                }
+                else
+                {
+                    editorScene.enabled = false;
+                }
+            }
+            if (!targetSceneActive)
+            {
+                EditorBuildSettings.scenes.Append(new EditorBuildSettingsScene(targetScene.path, true));
+            }
+        }
     }
 
     /// <summary>

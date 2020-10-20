@@ -16,7 +16,7 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [ex
 
 ![Editor Image](.images/editor-arr-service-config.jpg)
 
-### Remote Rendering Configuration Profile
+### Remote Rendering Configuration Profiles
 
  A variety of remote rendering app settings can be changed with this custom profile. The settings are as follows:
 
@@ -44,7 +44,10 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [ex
 
 <br/>
 
-| <div style="width:190px">Remote Rendering Account Settings</div> | Description                                         |
+Two types of profiles exist to define a Remote Rendering Configuration: Development and Production. These profiles differ in the way account services are accessed. Using a development profile is the quickest way to get started because it uses Account Keys, without additional configuration. Using a production profile is the most secure way to utilize Azure Remote Rendering and Blob storage access because it uses Azure Active Directory to authenticate users. The production profile will require additional Azure configuration, described in the ARR tutorial for [Security](https://docs.microsoft.com/azure/remote-rendering/tutorials/unity/security/security).
+
+### Development Profile
+| <div style="width:190px">Remote Rendering Account Settings (Development)</div> | Description                                         |
 | :---------------------- | :------------------------------------------------------------------------- |
 | Account Domains         | A list of (up to 4) full [ARR account domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
 | Account Id              | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
@@ -53,8 +56,19 @@ The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [ex
 | Storage Account Key     | The Azure Storage Account key. Needed if the *model container* is private.
 | Storage Model Container | The Azure Storage Container that contains a set of arrAsset model files.
 
+### Production Profile
+| <div style="width:190px">Remote Rendering Account Settings (Production)</div> | Description                                         |
+| :---------------------- | :------------------------------------------------------------------------- |
+| Account Domains         | A list of (up to 4) full [ARR account domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
+| Account Id                      | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| App Id                          | The [Azure AD Application ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)
+| Tenant Id                       | The [Tenant ID of the Azure AD Application](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)
+| Storage Account Name            | The [ARR storage account name](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts). This account owns the *model container*.
+| Storage Model Container         | The Azure Storage Container that contains a set of arrAsset model files.
+| Storage Model Path By Username  | If checked, models uploaded through the desktop application will be stored in a sub directory matching the user name.
+
 > [!IMPORTANT]
-> To be able to load models from the storage account, you must link it to your ARR account. The necessary steps are described on the [<u>account creation page</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts) of the Remote Rendering documentation. Please note that this is only necessary for loading models. For simplicity's sake, the application obtains a list of models from the storage container by a different mechanism for which it requires the storage account key. When building similar functionality for your own application, you will want to consider a different authentication approach as described in the [<u>authentication how-to guide</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication).
+> To be able to load models from the storage account, you must link it to your ARR account. This applies to both profile types. The necessary steps are described on the [<u>account creation page</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts) of the Remote Rendering documentation. Please note that this is only necessary for loading models.
 
 Changes to the configuration will be applied to *RemoteRenderingService* during the next app session. For more information about custom MRTK extension services, visit the MRTK [documentation](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html).
 
@@ -138,14 +152,13 @@ Photon Unity Network (PUN) SDK is required for the _Sharing Service_ to function
 | Room Name Format | Room names are automatically created to limit the amount of user input. The room names will use this string format. The format must contain *{0}*. When a room is created, the *{0}* will be replaced with a unique integer. |
 | Verbose Logging | When set to true, turns on verbose logging messages for the sharing service. This is useful when trying to diagnose sharing failures.  |
 
-
 <br/>
 
 >The *Photon Realtime ID* setting is optional if its value is set in the [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file. The [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file can be placed under Unity's *StreamingAssets* directory. If this file exists, the app will use the file's settings, instead of those within the configuration profiles.
-> 
+>
 > The [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) file is not tracked by *git* (as defined in the app's [.gitignore](../.gitignore)), preventing accidental commits of private/secret information. So it is preferred to use [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the MRTK's configuration profile.
 >
-> Also, the [arr.overrides.xml](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor overrides, [arr.overrides.xml](.samples/arr.overrides.xml) needs to be placed in the [%USERPROFILE%/AppData/LocalLow/Microsoft/ARR Showcase]() folder. For HoloLens overrides, [arr.overrides.xml](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
+> Also, the [arr.overrides.xml](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor and Desktop overrides, [arr.overrides.xml](.samples/arr.overrides.xml) needs to be placed in the [%USERPROFILE%/AppData/LocalLow/Microsoft/ARR Showcase]() folder. For HoloLens overrides, [arr.overrides.xml](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
 >
 > The schema for [arr.account.xml](../arr-showcase-app/Assets/StreamingAssets/arr.account.xml) and [arr.overrides.xml](.samples/arr.overrides.xml) can be found [here](.schemas/arr.overrides.schema.xds).
 
@@ -198,6 +211,8 @@ Here are all the multi-user voice commands:
 # App Features
 This sample app has the following features:
 
+## HoloLens
+
 | <div style="width:190px">Feature</div> | Description |
 | :-------------| :----------- |
 | Session Management | Start, stop, and configure ARR sessions. |
@@ -213,3 +228,23 @@ This sample app has the following features:
 | Erase Models | Erase whole models from the scene.
 | Change Sky Map | Change the scene's sky map to a predefined set of cube maps.
 | Add light sources | Add point lights, directional lights, and spotlights to the scene.
+
+## Desktop
+
+| <div style="width:190px">Feature</div> | Description |
+| :-------------| :----------- |
+| Session Management | Start, stop, and configure ARR sessions. |
+| Session Status | View the session's lifetime, and various other performance statistics |
+| Search Azure Containers | Search Azure containers for arrAsset models, and display the model names within the app's model menu. From the model menu, you can load these models. |
+| Multiple Models | View multiple models at once.
+| Manipulate Whole Model | Use MRTK's far interactions to move models.
+| Manipulate Model Pieces | Use MRTK's far interactions to move model pieces.
+| Slice Tool | Turn on a clipping plane that can be moved and rotated with MRTK's far interactions.
+| Model Explosion | For easier access of pieces, explode a model.
+| Change Model Materials | Change model pieces' materials.
+| Reset Models | Reset a model so its pieces return to their original positions and materials.
+| Erase Models | Erase whole models from the scene.
+| Change Sky Map | Change the scene's sky map to a predefined set of cube maps.
+| Add light sources | Add point lights, directional lights, and spotlights to the scene.
+| Upload Models | Select supported source model to upload and convert it into an ARR model.
+| Reset Camera | Resets the camera to the initial position.

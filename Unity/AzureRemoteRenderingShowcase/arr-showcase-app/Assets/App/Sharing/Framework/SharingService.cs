@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -151,22 +152,35 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Create and join a new sharing room.
         /// </summary>
-        public void CreateAndJoinRoom()
+        public async void CreateAndJoinRoom()
         {
             if (ValidateProviderReady())
             {
-                Provider.CreateAndJoinRoom();
+                int remoteObjects = Object.FindObjectsOfType<RemoteObject>().Length;
+                var clear = remoteObjects == 0 ? AppDialog.AppDialogResult.No : await ClearObjectsDialogController.ClearObjectsNeedsConfirmation(true);
+                if(clear != AppDialog.AppDialogResult.Cancel)
+                {
+                    // Ok maps to bring objects, no maps to don't bring
+                    if(clear != AppDialog.AppDialogResult.Ok) ClearRemoteObjects();
+                    Provider.CreateAndJoinRoom();
+                }
             }
         }
 
         /// <summary>
         /// Join the given room.
         /// </summary>
-        public void JoinRoom(ISharingServiceRoom room)
+        public async void JoinRoom(ISharingServiceRoom room)
         {
-            if (ValidateProviderReady())
+            if (ValidateProviderReady() && (CurrentRoom == null || room.Name != CurrentRoom?.Name))
             {
-                Provider.JoinRoom(room);
+                int remoteObjects = Object.FindObjectsOfType<RemoteObject>().Length;
+                var clear = remoteObjects == 0 ? AppDialog.AppDialogResult.No : await ClearObjectsDialogController.ClearObjectsNeedsConfirmation(false);
+                if(clear != AppDialog.AppDialogResult.Cancel)
+                {
+                    if(clear == AppDialog.AppDialogResult.Ok) ClearRemoteObjects();
+                    Provider.JoinRoom(room);
+                }
             }
         }
 
@@ -177,6 +191,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             if (ValidateProviderReady())
             {
+                ClearRemoteObjects();
                 Provider.LeaveRoom();
             }
         }
@@ -473,6 +488,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
             }
         }
+        
+        private void ClearRemoteObjects()
+        {
+            foreach(var remoteObject in Object.FindObjectsOfType<RemoteObject>())
+            {
+                remoteObject.Destroy();
+            }
+        }
 
         /// <summary>
         /// Handle the provider sending a "Connected" event, and resend the event to this object's listeners.
@@ -665,7 +688,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             if (Provider == null)
             {
-                Debug.LogWarning("Sharing service is still starting up. Unable to complete request.");
+                Debug.LogError("Sharing service is still starting up. Unable to complete request.");
                 return false;
             }
             else

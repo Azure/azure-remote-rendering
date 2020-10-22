@@ -686,7 +686,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private bool ValidateProviderReady()
         {
-#if PHOTON_INSTALLED
             if (Provider == null)
             {
                 Debug.LogError("Sharing service is still starting up. Unable to complete request.");
@@ -696,9 +695,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return true;
             }
-#else
-            return false;
-#endif // PHOTON_INSTALLED
         }
         #endregion
     }

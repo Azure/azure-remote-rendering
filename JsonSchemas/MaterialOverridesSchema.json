@@ -1,0 +1,87 @@
+{
+    "definitions" :
+    {
+        "color":
+        {
+            "type" : "object",
+            "description" : "Color as 3 or 4 components vector",
+            "properties":
+            {
+                "r": {"type":"number"},
+                "g": {"type":"number"},
+                "b": {"type":"number"},
+                "a": {"type":"number"}
+            },
+            "required": ["r", "g", "b"]
+        },
+        "alpha":
+        {
+            "type" : "object",
+            "description" : "Alpha channel for color",
+            "properties":
+            {
+                "a": {"type":"number"}
+            },
+            "required": ["a"]
+        },
+        "colorOrAlpha":
+        {
+            "anyOf": [
+                {"$ref": "#/definitions/color"},
+                {"$ref": "#/definitions/alpha"}
+            ]
+        },
+        "listOfMaps":
+        {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["AlbedoMap",
+                          "EmissiveMap",
+                          "NormalMap",
+                          "OcclusionMap",
+                          "RoughnessMap",
+                          "MetalnessMap",
+                          "ReflectivityMap",
+                          "BumpMap",
+                          "OpacityMap",
+                          "DiffuseMap",
+                          "SpecularMap",
+                          "ShininessMap",
+                          "MetallicRoughnessMap",
+                          "SpecularGlossinessMap"]
+            }
+        }
+    },
+
+    "type" : "array",
+    "description" : "List of materials to override",
+    "items":
+    {
+        "type" : "object",
+        "description" : "List of parameters to override",
+        "properties":
+        {
+            "name": { "type" : "string"},
+            "nameMatching" : { "type" : "string", "enum" : ["exact", "regex"] },
+
+            "roughness": { "type": "number" },
+            "metalness": { "type": "number" },
+
+            "albedoColor": { "$ref": "#/definitions/colorOrAlpha" },
+
+            "transparent": { "type" : "boolean" },
+            "alphaClipEnabled": { "type" : "boolean" },
+            "alphaClipThreshold": { "type": "number" },
+
+            "useVertexColor": { "type" : "boolean" },
+
+            "isDoubleSided": { "type" : "boolean" },
+            "unlit": { "type" : "boolean" },
+
+            "ignoreTextureMaps": { "$ref" : "#/definitions/listOfMaps"}
+        },
+        "required": ["name"],
+        "additionalProperties" : false
+    }
+}

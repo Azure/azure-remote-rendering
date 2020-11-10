@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9db93c5ed901fe84180126f65e21c6ca, type: 3}
+  m_Name: remote.models
+  m_EditorClassIdentifier: 
+  Objects:
+  - {fileID: 11400000, guid: 1f6430d8530731841aca04a570e93f88, type: 2}

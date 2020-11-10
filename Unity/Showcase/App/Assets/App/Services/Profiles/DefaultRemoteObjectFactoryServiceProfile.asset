@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68fb52be16ae42f4797b345c1d674286, type: 3}
+  m_Name: DefaultRemoteObjectFactoryServiceProfile
+  m_EditorClassIdentifier: 
+  isCustomProfile: 1
+  LoadingStatusPrefab: {fileID: 847265149088661384, guid: 32483f1cd87be964b9f45e6cc1e7923d,
+    type: 3}
+  ConcurrentModelLoads: 10

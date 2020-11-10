@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Session>
+      <SessionOverride></SessionOverride>
+      <Size>Premium</Size>
+      <MaxLeaseTime>600</MaxLeaseTime>
+      <AutoRenewLease>true</AutoRenewLease>
+      <AutoReconnect>true</AutoReconnect>
+      <AutoReconnectRate>10</AutoReconnectRate>
+  </Session>
+  <Account>
+    <AccountDomains>
+      <AccountDomain>eastus.mixedreality.azure.com</AccountDomain>
+      <AccountDomain>southeastasia.mixedreality.azure.com</AccountDomain>
+      <AccountDomain>westeurope.mixedreality.azure.com</AccountDomain>
+      <AccountDomain>westus2.mixedreality.azure.com</AccountDomain>
+    </AccountDomains>
+    <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
+    <AccountKey>=</AccountKey>
+  </Account>
+  <Storage>
+    <StorageAccountName>teststorage</StorageAccountName>
+    <StorageAccountKey>=</StorageAccountKey>
+    <StorageModelContainer>test-storage-container</StorageModelContainer>
+  </Storage>
+  <Sharing>
+    <PhotonRealtimeId>00000000-0000-0000-0000-000000000000</PhotonRealtimeId>
+  </Sharing>
+  <Anchor>
+    <AnchorAccountId>00000000-0000-0000-0000-000000000000</AnchorAccountId>
+    <AnchorAccountKey>=</AnchorAccountKey>
+  </Anchor>
+</Configuration>

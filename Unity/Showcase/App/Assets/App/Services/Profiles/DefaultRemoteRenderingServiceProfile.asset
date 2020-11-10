@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f92878197a8dd54298df026bce7d3ad, type: 3}
+  m_Name: DefaultRemoteRenderingServiceProfile
+  m_EditorClassIdentifier: 
+  isCustomProfile: 1
+  Size: 2
+  SessionOverride: 
+  MaxLeaseTime: 1800
+  AutoRenewLease: 1
+  AutoReconnect: 1
+  AutoReconnectRate: 15
+  AlwaysIncludeDefaultModels: 0
+  AccountDomains:
+  - westus2.mixedreality.azure.com
+  - eastus.mixedreality.azure.com
+  - westeurope.mixedreality.azure.com
+  - southeastasia.mixedreality.azure.com
+  AccountDomainLabels:
+  - West US 2
+  - East US
+  - West Europe
+  - Southeast Asia
+  AccountId: 
+  AccountKey: 
+  StorageAccountName: 
+  StorageAccountKey: 
+  StorageModelContainer: 

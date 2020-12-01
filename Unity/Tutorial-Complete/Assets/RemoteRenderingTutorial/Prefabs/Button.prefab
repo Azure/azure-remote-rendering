@@ -295,7 +295,7 @@ MeshCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Convex: 0
+  m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &3728675247861558924
@@ -373,4 +373,5 @@ MonoBehaviour:
     AssemblyQualifiedName: Microsoft.MixedReality.Toolkit.UI.InteractableOnClickReceiver,
       Microsoft.MixedReality.Toolkit.SDK, Version=2.3.0.0, Culture=neutral, PublicKeyToken=null
     Settings: []
+  resetOnDestroy: 0
   enabledOnStart: 1

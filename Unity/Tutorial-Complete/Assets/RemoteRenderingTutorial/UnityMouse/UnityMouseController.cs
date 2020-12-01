@@ -43,12 +43,6 @@ namespace Microsoft.MixedReality.Toolkit.Input
             new MixedRealityInteractionMapping(9, "Mouse Button 6", AxisType.Digital, DeviceInputType.Select, MixedRealityInputAction.None, KeyCode.Mouse6),
         };
 
-        /// <inheritdoc />
-        public override void SetupDefaultInteractions(Handedness controllerHandedness)
-        {
-            AssignControllerMappings(DefaultInteractions);
-        }
-
         private MixedRealityPose controllerPose = MixedRealityPose.ZeroIdentity;
         private Vector3 screenPosition;
         private Vector2 mouseDelta;

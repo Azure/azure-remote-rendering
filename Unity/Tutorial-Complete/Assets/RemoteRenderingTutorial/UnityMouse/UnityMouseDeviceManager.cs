@@ -125,7 +125,6 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 mouseInputSource.Pointers[i].Controller = mouseController;
             }
 
-            mouseController.SetupConfiguration(typeof(UnityMouseController));
             return mouseController;
         }
     }

@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8321461021763833142}
   - component: {fileID: 8321461021763833141}
   - component: {fileID: 5752130474591536712}
+  - component: {fileID: 1788231634650759603}
   m_Layer: 0
   m_Name: DirLightViewControllerHelper
   m_TagString: Untagged
@@ -111,13 +112,18 @@ MonoBehaviour:
   manipulationType: -1
   twoHandedManipulationType: 3
   allowFarManipulation: 1
+  useForcesForNearManipulation: 0
   oneHandRotationModeNear: 1
   oneHandRotationModeFar: 0
   releaseBehavior: 3
-  smoothingActive: 1
+  smoothingFar: 1
+  smoothingNear: 1
   moveLerpTime: 0.001
   rotateLerpTime: 0.001
   scaleLerpTime: 0.001
+  enableConstraints: 1
+  constraintsManager: {fileID: 1788231634650759603}
+  elasticsManager: {fileID: 0}
   onManipulationStarted:
     m_PersistentCalls:
       m_Calls: []
@@ -142,3 +148,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3119d16048096334399563fe2fde15ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1788231634650759603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 25378531080962414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a98de877dee5fc341b4eb59dfdab266c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  autoConstraintSelection: 1
+  selectedConstraints: []

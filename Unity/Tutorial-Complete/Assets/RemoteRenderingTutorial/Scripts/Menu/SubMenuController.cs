@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.MixedReality.Toolkit.Utilities;
 using System.Collections;
 using UnityEngine;
 
@@ -178,6 +179,15 @@ public class SubMenuController : MonoBehaviour
         // enable collision
         SetCollidersForContainer(index, true);
         menuContainers[_activeIndex].SetActive(false);
+
+        // This is a workaround for pinch slider thumbs disappearing. Without this they are clipped by the ClippingBox
+        // once their containing sub menu has gone cycled through active -> inactive -> active for the first time.
+        var clippingPrimitive = gameObject.GetComponentInChildren<ClippingPrimitive>();
+        if (clippingPrimitive != null)
+        {
+            clippingPrimitive.IsDirty = true;
+        }
+
         _activeIndex = index;
     }
 

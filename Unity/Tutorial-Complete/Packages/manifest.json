@@ -9,7 +9,7 @@
     }
   ], 
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "0.1.69", 
+    "com.microsoft.azure.remote-rendering": "0.1.71", 
     "com.unity.2d.sprite": "1.0.0", 
     "com.unity.2d.tilemap": "1.0.0", 
     "com.unity.ads": "2.0.8", 

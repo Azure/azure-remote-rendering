@@ -388,7 +388,7 @@ MeshCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Convex: 0
+  m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &4176295588222538767
@@ -1030,6 +1030,7 @@ MonoBehaviour:
       - Near and Far
       - Near Only
       - Far Only
+  resetOnDestroy: 0
   enabledOnStart: 1
 --- !u!82 &5341178311731636750
 AudioSource:

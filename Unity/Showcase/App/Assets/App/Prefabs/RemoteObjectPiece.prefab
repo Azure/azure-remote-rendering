@@ -11,10 +11,11 @@ GameObject:
   - component: {fileID: 4816955586682293095}
   - component: {fileID: 1628170220131008680}
   - component: {fileID: 727125191008420309}
-  - component: {fileID: 4816955586682293092}
   - component: {fileID: 2336985525574003437}
   - component: {fileID: 1698918445462718379}
   - component: {fileID: 4617393529754944333}
+  - component: {fileID: 9221344209286288684}
+  - component: {fileID: 1338490463878584526}
   m_Layer: 0
   m_Name: RemoteObjectPiece
   m_TagString: Untagged
@@ -49,7 +50,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   movable: {fileID: 4816955586682293095}
-  manipulation: {fileID: 4816955586682293092}
+  manipulation: {fileID: 0}
   placement: {fileID: 0}
   onTarget: {fileID: 0}
   moving:
@@ -75,7 +76,7 @@ MonoBehaviour:
     enabled:
       m_PersistentCalls:
         m_Calls:
-        - m_Target: {fileID: 4816955586682293092}
+        - m_Target: {fileID: 9221344209286288684}
           m_MethodName: set_enabled
           m_Mode: 6
           m_Arguments:
@@ -89,7 +90,7 @@ MonoBehaviour:
     disabled:
       m_PersistentCalls:
         m_Calls:
-        - m_Target: {fileID: 4816955586682293092}
+        - m_Target: {fileID: 9221344209286288684}
           m_MethodName: set_enabled
           m_Mode: 6
           m_Arguments:
@@ -103,66 +104,6 @@ MonoBehaviour:
     clicked:
       m_PersistentCalls:
         m_Calls: []
---- !u!114 &4816955586682293092
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4816955586682293093}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 03daa81ea5f685f4ebf6e32038d058ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hostTransform: {fileID: 4816955586682293095}
-  manipulationType: 2
-  twoHandedManipulationType: 5
-  allowFarManipulation: 1
-  oneHandRotationModeNear: 6
-  oneHandRotationModeFar: 4
-  releaseBehavior: 3
-  constraintOnRotation: 0
-  useLocalSpaceForConstraint: 0
-  constraintOnMovement: 0
-  smoothingActive: 1
-  smoothingAmountOneHandManip: 0.001
-  OnManipulationStarted:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2336985525574003437}
-        m_MethodName: PlayOneShot
-        m_Mode: 2
-        m_Arguments:
-          m_ObjectArgument: {fileID: 8300000, guid: a16c53885bdbc54469088880ea44a9fd,
-            type: 3}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.AudioClip, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  OnManipulationEnded:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 2336985525574003437}
-        m_MethodName: PlayOneShot
-        m_Mode: 2
-        m_Arguments:
-          m_ObjectArgument: {fileID: 8300000, guid: bcae4cbce6135d84b9b04ee9e5b909f4,
-            type: 3}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.AudioClip, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-  OnHoverEntered:
-    m_PersistentCalls:
-      m_Calls: []
-  OnHoverExited:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!82 &2336985525574003437
 AudioSource:
   m_ObjectHideFlags: 0
@@ -288,3 +229,77 @@ MonoBehaviour:
   enableLiveMovement: 1
   target: {fileID: 1698918445462718379}
   movable: {fileID: 1628170220131008680}
+--- !u!114 &9221344209286288684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4816955586682293093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 181cd563a8349c34ea8978b0bc8d9c7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hostTransform: {fileID: 4816955586682293095}
+  manipulationType: 3
+  twoHandedManipulationType: 7
+  allowFarManipulation: 1
+  oneHandRotationModeNear: 1
+  oneHandRotationModeFar: 1
+  releaseBehavior: 3
+  smoothingActive: 1
+  moveLerpTime: 0.001
+  rotateLerpTime: 0.001
+  scaleLerpTime: 0.001
+  onManipulationStarted:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2336985525574003437}
+        m_MethodName: PlayOneShot
+        m_Mode: 2
+        m_Arguments:
+          m_ObjectArgument: {fileID: 8300000, guid: a16c53885bdbc54469088880ea44a9fd,
+            type: 3}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.AudioClip, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  onManipulationEnded:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2336985525574003437}
+        m_MethodName: PlayOneShot
+        m_Mode: 2
+        m_Arguments:
+          m_ObjectArgument: {fileID: 8300000, guid: bcae4cbce6135d84b9b04ee9e5b909f4,
+            type: 3}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.AudioClip, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  onHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  onHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &1338490463878584526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4816955586682293093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff5df7a2c3b5b4843bdc23997f95edc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetTransform: {fileID: 4816955586682293095}
+  handType: 1
+  proximityType: 2

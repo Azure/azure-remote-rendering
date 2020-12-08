@@ -284,7 +284,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     }
     #endregion Private Methods
 
-    #region Private Class
+    #region Private Classes
     /// <summary>
     /// A class that will expand a pointer's remote target to a game object.
     /// </summary>
@@ -345,15 +345,9 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         public void OnPointerDown(MixedRealityPointerEventData eventData)
         {
             UpdateProxyObject(eventData.Pointer);
-            RouteEventToCurrentObject(eventData, OnPointerDownEventHandler);
+            // Forwarding the event is done later in the frame by DelayPointerDown component on the proxy object
+            _proxyObject?.EnsureComponent<DelayPointerDown>().Fire(eventData);
         }
-
-        private static readonly ExecuteEvents.EventFunction<IMixedRealityPointerHandler> OnPointerDownEventHandler =
-            delegate (IMixedRealityPointerHandler handler, BaseEventData eventData)
-            {
-                var casted = ExecuteEvents.ValidateEventData<MixedRealityPointerEventData>(eventData);
-                handler.OnPointerDown(casted);
-            };
 
         private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
         {
@@ -701,5 +695,54 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             return (proxyObject != null) ? proxyObject.RefCount : 0;
         }
     }
-    #endregion Private Class
+
+    /// <summary>
+    // Handle forwarding events to proxy object late in the frame. During OnPointerDown Start()
+    // for the ObjectManipulator component on the proxy object hasn't been called in all cases.
+    // So we wait with event forwarding to prevent jumpy behavior of the moved pieces.
+    /// </summary>
+    private class DelayPointerDown : MonoBehaviour
+    {
+        private MixedRealityPointerEventData _pendingPointerDown = null;
+        private bool _started = false;
+
+        public void Start()
+        {
+            _started = true;
+            if (_pendingPointerDown != null)
+            {
+                Fire(_pendingPointerDown);
+                _pendingPointerDown = null;
+            }
+        }
+
+        public void Fire(MixedRealityPointerEventData pointerDownEventData)
+        {
+            if (_started)
+            {
+                RouteEventToCurrentObject(_pendingPointerDown, OnPointerDownEventHandler);
+                _pendingPointerDown = null;
+            }
+            else
+            {
+                _pendingPointerDown = pointerDownEventData;
+            }
+        }
+
+        private static readonly ExecuteEvents.EventFunction<IMixedRealityPointerHandler> OnPointerDownEventHandler =
+            delegate (IMixedRealityPointerHandler handler, BaseEventData eventData)
+            {
+                if (eventData != null)
+                {
+                    var casted = ExecuteEvents.ValidateEventData<MixedRealityPointerEventData>(eventData);
+                    handler.OnPointerDown(casted);
+                }
+            };
+
+        private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
+        {
+            ExecuteEvents.Execute(gameObject, eventData, eventFunction);
+        }
+    }
+    #endregion Private Classes
 }

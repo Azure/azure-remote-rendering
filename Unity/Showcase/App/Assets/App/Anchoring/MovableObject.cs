@@ -43,13 +43,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [Header("Transforms Changers")]
 
         [SerializeField]
-        [Tooltip("The manipulation handler that can change this object's position and rotation..")]
-        private ManipulationHandler manipulation;
+        [Tooltip("The object manipulator that can change this object's position and rotation..")]
+        private ObjectManipulator manipulation;
 
         /// <summary>
         /// The manipulation handler that will change this object's position and rotation.
         /// </summary>
-        public ManipulationHandler Manipulation
+        public ObjectManipulator Manipulation
         {
             get => manipulation;
             set => manipulation = value;
@@ -125,7 +125,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             if (manipulation == null)
             {
-                manipulation = GetComponent<ManipulationHandler>();
+                manipulation = GetComponent<ObjectManipulator>();
             }
 
             if (placement == null)

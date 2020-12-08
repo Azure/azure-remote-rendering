@@ -10,10 +10,10 @@ using UnityEngine;
 /// <summary>
 /// This component handles pointer down events, and redirects manipulation's host transform to the pointer target.
 /// </summary>
-[RequireComponent(typeof(ManipulationHandler))]
+[RequireComponent(typeof(ObjectManipulator))]
 public class RedirectManipulationTarget : MonoBehaviour, IMixedRealityPointerHandler
 {
-    private ManipulationHandler _manipulationHandler = null;
+    private ObjectManipulator _objectManipulator = null;
     private Transform _previousTarget = null;
 
     #region MonoBehavior Functions
@@ -22,8 +22,8 @@ public class RedirectManipulationTarget : MonoBehaviour, IMixedRealityPointerHan
     /// </summary>
     private void Start()
     {
-        _manipulationHandler = GetComponent<ManipulationHandler>();
-        Debug.Assert(_manipulationHandler != null, "RedirectManipulationTarget requires a ManipulationHandler");
+        _objectManipulator = GetComponent<ObjectManipulator>();
+        Debug.Assert(_objectManipulator != null, "RedirectManipulationTarget requires a ObjectManipulator");
     }
     #endregion MonoBehavior Functions
 
@@ -41,13 +41,14 @@ public class RedirectManipulationTarget : MonoBehaviour, IMixedRealityPointerHan
     public void OnPointerDown(MixedRealityPointerEventData eventData)
     {
         FocusDetails focusDetails;
-        if (_manipulationHandler != null &&
+        if (_objectManipulator != null &&
             CoreServices.InputSystem.FocusProvider.TryGetFocusDetails(eventData.Pointer, out focusDetails) &&
-            focusDetails.Object != null)
+            focusDetails.Object != null &&
+            focusDetails.Object.GetComponent<Microsoft.Azure.RemoteRendering.Unity.RemoteEntitySyncObject>() == null)
         {
-            Debug.Assert(_previousTarget == null, "Previouse target should have been null");
-            _previousTarget = _manipulationHandler.HostTransform;
-            _manipulationHandler.HostTransform = focusDetails.Object.transform;
+            Debug.Assert(_previousTarget == null, "Previous target should have been null");
+            _previousTarget = _objectManipulator.HostTransform;
+            _objectManipulator.HostTransform = focusDetails.Object.transform;
         }
     }
 
@@ -65,7 +66,7 @@ public class RedirectManipulationTarget : MonoBehaviour, IMixedRealityPointerHan
     {
         if (_previousTarget != null)
         {
-            _manipulationHandler.HostTransform = _previousTarget;
+            _objectManipulator.HostTransform = _previousTarget;
             _previousTarget = null;
         }
     }

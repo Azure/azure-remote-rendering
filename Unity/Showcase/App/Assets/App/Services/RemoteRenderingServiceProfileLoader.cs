@@ -120,10 +120,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     var devResult = (RemoteRenderingServiceDevelopmentProfile)result;
                     // Copy all or nothing from remote rendering account credentials
                     if (fileData.Account.ShouldSerializeAccountId() &&
+                        fileData.Account.ShouldSerializeAccountAuthenticationDomain() &&
                         fileData.Account.ShouldSerializeAccountKey())
                     {
                         devResult.AccountId = fileData.Account.AccountId;
                         devResult.AccountKey = fileData.Account.AccountKey;
+                        devResult.AccountAuthenticationDomain = fileData.Account.AccountAuthenticationDomain;
                     }
 
                     if (fileData.Account.ShouldSerializeAccountDomains())
@@ -146,6 +148,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     if (fileData.Account.ShouldSerializeAccountDomains())
                     {
                         relResult.AccountDomains = fileData.Account.AccountDomains;
+                    }
+
+                    if (fileData.Account.ShouldSerializeAccountAuthenticationDomain())
+                    {
+                        relResult.AccountAuthenticationDomain = fileData.Account.AccountAuthenticationDomain;
                     }
 
                     if (fileData.Account.ShouldSerializeAccountDomainLabels())

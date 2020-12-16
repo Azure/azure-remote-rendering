@@ -30,7 +30,8 @@ MonoBehaviour:
   - East US
   - West Europe
   - Southeast Asia
-  AccountId: 
+  AccountId:
+  AccountAuthenticationDomain:
   AccountKey: 
   StorageAccountName: 
   StorageAccountKey: 

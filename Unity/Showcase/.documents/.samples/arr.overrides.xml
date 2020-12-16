@@ -16,6 +16,7 @@
       <AccountDomain>westus2.mixedreality.azure.com</AccountDomain>
     </AccountDomains>
     <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
+    <AccountAuthenticationDomain>mixedreality.azure.com</AccountAuthenticationDomain>
     <AccountKey>=</AccountKey>
   </Account>
   <Storage>

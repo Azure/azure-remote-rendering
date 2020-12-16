@@ -97,6 +97,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountId = Guid.Empty.ToString();
 
+        [Tooltip("The default Azure remote rendering account's location. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public string AccountAuthenticationDomain = string.Empty;        
+
         [Tooltip("The Azure Active Directory Application ID to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AppId = string.Empty;
 
@@ -194,6 +197,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 AccessToken = string.Empty, //STS Access token
                 AccountDomain = domain.Trim(),
                 AccountId = AccountId.Trim(),
+                AccountAuthenticationDomain = AccountAuthenticationDomain.Trim(),
                 AccountKey = string.Empty,
                 AuthenticationToken = accessToken, //Active Directory Access Token
             });
@@ -219,6 +223,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 validateMessages = "Azure Remote Rendering account id hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
                 return false;
             }
+            else if (string.IsNullOrEmpty(AccountAuthenticationDomain))
+            {
+                validateMessages = "Azure Remote Rendering account authentication domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
+                return false;
+            }            
             else if (string.IsNullOrEmpty(AppId))
             {
                 validateMessages = "Azure Active Directory Application id hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
@@ -249,12 +258,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             if (AccountDomains?.Length > 0 ||
                 AccountDomainLabels?.Length > 0 ||
                 !string.IsNullOrEmpty(AccountId) ||
+                !string.IsNullOrEmpty(AccountAuthenticationDomain) ||
                 !string.IsNullOrEmpty(AppId))
             {
                 var accountData = result.Account = new RemoteRenderingServiceAccountData();
                 accountData.AccountDomains = AccountDomains;
                 accountData.AccountDomainLabels = AccountDomainLabels;
                 accountData.AccountId = AccountId;
+                accountData.AccountAuthenticationDomain = AccountAuthenticationDomain;
                 accountData.AppId = AppId;
                 accountData.TenantId = TenantId;
             }

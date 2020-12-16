@@ -31,6 +31,7 @@
     <xs:sequence>
       <xs:element type="RemoteRenderingServiceAccountDataAccountDomains" name="AccountDomains" minOccurs="0"/>
       <xs:element type="GUID" name="AccountId" minOccurs="0"/>
+      <xs:element type="xs:string" name="AccountAuthenticationDomain" minOccurs="0"/>
       <xs:element type="xs:string" name="AccountKey" minOccurs="0"/>
     </xs:sequence>
   </xs:complexType>

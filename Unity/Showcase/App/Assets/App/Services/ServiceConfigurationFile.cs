@@ -210,6 +210,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     (Account.ShouldSerializeAccountDomains() ||
                      Account.ShouldSerializeAccountDomainLabels() ||
                      Account.ShouldSerializeAccountId() ||
+                     Account.ShouldSerializeAccountAuthenticationDomain() ||
                      Account.ShouldSerializeAccountKey());
             }
 
@@ -303,6 +304,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     AccountDomains = AccountDomains,
                     AccountDomainLabels = AccountDomainLabels,
                     AccountId = AccountId,
+                    AccountAuthenticationDomain = AccountAuthenticationDomain,
                     AccountKey = AccountKey
                 };
             }
@@ -317,6 +319,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             [Tooltip("The default Azure remote rendering account id to use.")]
             public string AccountId;
+
+            [Tooltip("The default Azure remote rendering account's location.")]
+            public string AccountAuthenticationDomain;
 
             //Used in development
             [Tooltip("The default Azure remote rendering account key to use.")]
@@ -335,6 +340,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 Guid id = Guid.Empty;
                 return Guid.TryParse(AccountId, out id) && id != Guid.Empty;
             }
+
+            public bool ShouldSerializeAccountAuthenticationDomain() { return !string.IsNullOrEmpty(AccountAuthenticationDomain); }
 
             public bool ShouldSerializeAccountKey() { return !string.IsNullOrEmpty(AccountKey); }
 

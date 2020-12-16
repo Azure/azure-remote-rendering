@@ -22,6 +22,9 @@ public class RemoteRendering : MonoBehaviour
     // AccountDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
     // For the best suitable region near you, please refer to the "Reference > Regions" chapter in the documentation
     public string AccountDomain = "westus2.mixedreality.azure.com";
+    // AccountAuthenticationDomain must be '<account_region>.mixedreality.azure.com' where '<account_region>' is the your Remote Rendering
+    // account location.
+    public string AccountAuthenticationDomain = "<enter you account authentication domain here>";
     public string AccountId = "<enter your account id here>";
     public string AccountKey = "<enter your account key here>";
 
@@ -115,6 +118,7 @@ public class RemoteRendering : MonoBehaviour
         accountInfo.AccountKey = AccountKey.Trim();
         accountInfo.AccountId = AccountId.Trim();
         accountInfo.AccountDomain = AccountDomain.Trim();
+        accountInfo.AccountAuthenticationDomain = AccountAuthenticationDomain.Trim();
 
         arrService.Initialize(accountInfo);
     }

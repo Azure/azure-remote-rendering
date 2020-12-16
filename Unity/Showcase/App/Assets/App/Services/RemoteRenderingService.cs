@@ -1558,7 +1558,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     try
                     {
-                        fileUrl = await _arrSession.ConnectToArrInspectorAsync(HostName).AsTask();
+                        fileUrl = await _arrSession.ConnectToArrInspectorAsync().AsTask();
                     }
                     catch (Exception ex)
                     {

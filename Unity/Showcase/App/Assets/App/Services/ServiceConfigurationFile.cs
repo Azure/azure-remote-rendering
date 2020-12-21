@@ -320,7 +320,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             [Tooltip("The default Azure remote rendering account id to use.")]
             public string AccountId;
 
-            [Tooltip("The default Azure remote rendering account's location.")]
+            [Tooltip("The domain of the Azure remote rendering account.")]
             public string AccountAuthenticationDomain;
 
             //Used in development

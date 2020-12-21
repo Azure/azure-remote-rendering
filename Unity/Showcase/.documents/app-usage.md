@@ -14,6 +14,7 @@ Search for the *RemoteRenderingService* object under the *MixedRealityToolkit* n
 
 The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html). As with most MRTK services, the *RemoteRenderingService* object has a configuration profile.
 
+
 ![Editor Image](.images/editor-arr-service-config.jpg)
 
 ### Remote Rendering Configuration Profiles
@@ -49,7 +50,8 @@ Two types of profiles exist to define a Remote Rendering Configuration: Developm
 ### Development Profile
 | <div style="width:190px">Remote Rendering Account Settings (Development)</div> | Description                                         |
 | :---------------------- | :------------------------------------------------------------------------- |
-| Account Domains         | A list of (up to 4) full [ARR account domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
+| Account Authentication Domain | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| Account Domains         | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
 | Account Id              | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
 | Account Key             | The [ARR account key](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information)
 | Storage Account Name    | The [ARR storage account name](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts). This account owns the *model container*.
@@ -59,7 +61,8 @@ Two types of profiles exist to define a Remote Rendering Configuration: Developm
 ### Production Profile
 | <div style="width:190px">Remote Rendering Account Settings (Production)</div> | Description                                         |
 | :---------------------- | :------------------------------------------------------------------------- |
-| Account Domains         | A list of (up to 4) full [ARR account domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
+| Account Authentication Domain | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| Account Domains         | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
 | Account Id                      | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
 | App Id                          | The [Azure AD Application ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)
 | Tenant Id                       | The [Tenant ID of the Azure AD Application](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)

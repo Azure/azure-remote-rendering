@@ -722,6 +722,7 @@ MonoBehaviour:
   AccountDomain: westus2.mixedreality.azure.com
   AccountId: <enter your account id here>
   AccountKey: <enter your account key here>
+  AccountAuthenticationDomain: <enter your account authentication domain here>
   MaxLeaseTimeHours: 0
   MaxLeaseTimeMinutes: 10
   VMSize: 2

@@ -64,37 +64,33 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
 
     // 3. Open/create rendering session
     {
-        bool createNewSession = true;
+        auto SessionHandler = [&](RR::ApiHandle<RR::CreateSessionAsync> const& handler)
+        {
+            if (handler->GetStatus() == RR::Result::Success)
+            {
+                SetNewSession(handler->GetResult());
+            }
+            else
+            {
+                SetNewState(AppConnectionStatus::ConnectionFailed, "failed");
+            }
+        };
 
-        // If we had an old (valid) session that we can recycle, we call synchronous function m_frontEnd->OpenRenderingSession
+        // If we had an old (valid) session that we can recycle, we call async function m_frontEnd->OpenRenderingSessionAsync
         if (!m_sessionOverride.empty())
         {
-            auto openSessionRes = m_frontEnd->OpenRenderingSession(m_sessionOverride);
-            if (openSessionRes->valid())
-            {
-                SetNewSession(*openSessionRes);
-                createNewSession = false;
-            }
+            auto openSessionAsync = *m_frontEnd->OpenRenderingSessionAsync(m_sessionOverride);
+            openSessionAsync->Completed(SessionHandler);
+            SetNewState(AppConnectionStatus::CreatingSession, nullptr);
         }
-
-        if (createNewSession)
+        else
         {
             // create a new session
             RR::RenderingSessionCreationParams init;
             init.MaxLease.minute = 10; // session is leased for 10 minutes
             init.Size = RR::RenderingSessionVmSize::Standard;
             auto createSessionAsync = *m_frontEnd->CreateNewRenderingSessionAsync(init);
-            createSessionAsync->Completed([&](auto handler)
-                {
-                    if (handler->GetStatus() == RR::Result::Success)
-                    {
-                        SetNewSession(handler->GetResult());
-                    }
-                    else
-                    {
-                        SetNewState(AppConnectionStatus::ConnectionFailed, "failed");
-                    }
-                });
+            createSessionAsync->Completed(SessionHandler);
             SetNewState(AppConnectionStatus::CreatingSession, nullptr);
         }
     }

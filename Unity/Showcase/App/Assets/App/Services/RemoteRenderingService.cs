@@ -335,8 +335,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public async Task<IRemoteRenderingMachine> Open(string id, string domain)
         {
-            var frontEnd = await GetFrontend(domain);
-            return await Task.FromResult<IRemoteRenderingMachine>(AddMachine(frontEnd.OpenRenderingSession(id)));
+            var frontend = await GetFrontend(domain);
+            Task<AzureSession> sessionTask;
+            try
+            {
+                sessionTask = frontend.OpenRenderingSessionAsync(id).AsTask();
+                var resultSession = await sessionTask;
+                return AddMachine(resultSession);
+            }
+            catch (Exception ex)
+            {
+                string msg = $"Failed to open session. Reason: {ex.Message}";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+            }
+
+            return null;
         }
 
         /// <summary>

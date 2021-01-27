@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WindowsPerformanceRecorder Version="1.0" Author="Microsoft Corporation" Copyright="Microsoft Corporation" Company="Microsoft Corporation">
+    <Profiles>
+        <SystemCollector Id="SystemCollector_StackTrace" Name="NT Kernel Logger">
+            <BufferSize Value="128"/>
+            <Buffers Value="80"/>
+        </SystemCollector>
+
+        <EventCollector Id="EventCollector_ArrInternal" Name="ArrInternalCollector">
+            <BufferSize Value="1020" />
+            <Buffers Value="100" />
+        </EventCollector>
+
+        <SystemProvider Id="SystemProvider_StackTrace">
+            <Keywords>
+                <Keyword Value="ProcessThread"/>
+            </Keywords>
+        </SystemProvider>
+
+        <EventProvider Id="arrLauncher" Name="FE89BFCE-EA15-467D-BBAE-E9DEE92432D8" />
+        <EventProvider Id="arrDownloader" Name="3AE5EAF3-3A3E-4797-8780-6D26248E3BA2" />
+        <EventProvider Id="Microsoft.Streaming.Basix" Name="AFC8A033-E28A-415C-ACFF-030E4B113A35" />
+        <EventProvider Id="Microsoft.Streaming.Nano" Name="D20F61E9-8929-4282-9B24-B07DB5A27A76" />
+        <EventProvider Id="Microsoft.Streaming.Nano.Input" Name="86750899-3DAB-45E2-8F95-59DBEFA0A7D6" />
+        <EventProvider Id="Microsoft.Streaming.Nano.Media" Name="CB8B7862-EAE7-4F30-9574-9453076EBAAB" />
+        <EventProvider Id="Microsoft.Streaming.Nano.Network" Name="36C39BD1-5EB9-4785-A06E-C6D8DE073CB0" />
+        <EventProvider Id="Microsoft.Streaming.Nano.Network.urcp" Name="E027BCEC-71F3-4B85-AE28-90FF7446B675" />
+        <EventProvider Id="Microsoft.Holographic.AppRemoting" Name="3313B099-E54E-4601-941A-FBB0B20478B7" />
+        <EventProvider Id="Microsoft.Holographic.AppRemoting.HttpHandshake" Name="775f448D-79F9-4564-AC5F-9F43FF58FDCF" />
+        <EventProvider Id="Microsoft.Azure.RemoteRendering.API" Name="9388A5E0-0649-4B2A-A147-D92BFB243EB1" />
+        <EventProvider Id="EZ.Etw" Name="5F94531D-F719-48D2-9ED8-955A3744B677" />
+        <EventProvider Id="Microsoft-Windows-TCPIP" Name="2F07E2EE-15DB-40F1-90EF-9D7BA282188A" Level="5" NonPagedMemory="true">
+            <Keywords>
+                <Keyword Value="0x0000000300000000" />
+            </Keywords>
+        </EventProvider>
+
+        <Profile Id="ArrInternal.Verbose.File" Name="ArrInternal" Description="ArrInternal" LoggingMode="File" DetailLevel="Verbose">
+            <Collectors>
+                <SystemCollectorId Value="SystemCollector_StackTrace">
+                    <SystemProviderId Value="SystemProvider_StackTrace"/>
+                </SystemCollectorId>
+                <EventCollectorId Value="EventCollector_ArrInternal">
+                    <EventProviders>
+                        <EventProviderId Value="Microsoft.Streaming.Basix" />
+                        <EventProviderId Value="Microsoft.Streaming.Nano" />
+                        <EventProviderId Value="Microsoft.Streaming.Nano.Input" />
+                        <EventProviderId Value="Microsoft.Streaming.Nano.Media" />
+                        <EventProviderId Value="Microsoft.Streaming.Nano.Network" />
+                        <EventProviderId Value="Microsoft.Streaming.Nano.Network.urcp" />
+                        <EventProviderId Value="Microsoft.Holographic.AppRemoting" />
+                        <EventProviderId Value="Microsoft.Holographic.AppRemoting.HttpHandshake" />
+                        <EventProviderId Value="Microsoft-Windows-TCPIP" />
+                        <EventProviderId Value="Microsoft.Azure.RemoteRendering.API" />
+                        <EventProviderId Value="EZ.Etw" />
+                        <EventProviderId Value="arrLauncher" />
+                        <EventProviderId Value="arrDownloader" />
+                    </EventProviders>
+                </EventCollectorId>
+            </Collectors>
+        </Profile>
+        <Profile Id="ArrInternal.Verbose.Memory" Name="ArrInternal" Description="ArrInternal" Base="ArrInternal.Verbose.File" LoggingMode="Memory" DetailLevel="Verbose" />
+
+    </Profiles>
+</WindowsPerformanceRecorder>

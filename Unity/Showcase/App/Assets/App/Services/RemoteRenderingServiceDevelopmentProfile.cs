@@ -175,14 +175,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public override AuthenticationType AuthType => AuthenticationType.AccountKey;
 
-        public override async Task<AzureFrontend> GetFrontend(string domain)
+        public override async Task<RemoteRenderingClient> GetClient(string domain)
         {
-            return await Task.FromResult(new AzureFrontend(new AzureFrontendAccountInfo()
+            return await Task.FromResult(new RemoteRenderingClient(new SessionConfiguration()
             {
                 AccessToken = string.Empty,
-                AccountDomain = domain.Trim(),
+                RemoteRenderingDomain = domain.Trim(),
                 AccountId = AccountId.Trim(),
-                AccountAuthenticationDomain = AccountAuthenticationDomain.Trim(),
+                AccountDomain = AccountAuthenticationDomain.Trim(),
                 AccountKey = AccountKey.Trim(),
                 AuthenticationToken = string.Empty,
             }));

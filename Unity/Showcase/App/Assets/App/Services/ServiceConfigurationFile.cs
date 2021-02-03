@@ -237,7 +237,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return Anchor != null &&
                     (Anchor.ShouldSerializeAnchorAccountId() ||
-                    Anchor.ShouldSerializeAnchorAccountKey());
+                    Anchor.ShouldSerializeAnchorAccountKey() ||
+                    Anchor.ShouldSerializeAnchorAccountDomain());
             }
         }
 
@@ -406,7 +407,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return new AnchorAccount()
                 {
                     AnchorAccountId = AnchorAccountId,
-                    AnchorAccountKey = AnchorAccountKey
+                    AnchorAccountKey = AnchorAccountKey,
+                    AnchorAccountDomain = AnchorAccountDomain
                 };
             }
 
@@ -416,6 +418,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             [Tooltip("The account key to use for Azure Spatial Anchors")]
             public string AnchorAccountKey;
 
+            [Tooltip("The account key to use for Azure Spatial Anchors")]
+            public string AnchorAccountDomain;
+
             public bool ShouldSerializeAnchorAccountId()
             {
                 Guid id = Guid.Empty;
@@ -423,6 +428,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
             public bool ShouldSerializeAnchorAccountKey() { return !string.IsNullOrEmpty(AnchorAccountKey); }
+
+            public bool ShouldSerializeAnchorAccountDomain() { return !string.IsNullOrEmpty(AnchorAccountDomain); }
         }
         #endregion Public Classes
     }

@@ -9,12 +9,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
     public class RemoteRenderingConnectionEventArgs
     {
-        public AzureSession Session { get; private set; }
+        public RenderingSession Session { get; private set; }
 
         public ConnectionStatus ConnectionStatus { get; private set; }
 
         public RemoteRenderingConnectionEventArgs(
-             AzureSession session,
+             RenderingSession session,
              ConnectionStatus connectionStatus)
         {
             Session = session;

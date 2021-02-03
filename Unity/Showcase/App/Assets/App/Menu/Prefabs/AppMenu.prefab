@@ -24094,7 +24094,7 @@ MonoBehaviour:
   overrideFileName: models.xml
   useAzureContainerQuery: 1
   combineAllModelSources: 1
-  cloudFileUrl: https://bennu.blob.core.windows.net/curated/models_curated.xml
+  cloudFileUrl: 
   fallbackFileName: models.fallback.xml
   fallbackData: {fileID: 11400000, guid: f56eb99a8b9d1194fada9d510cfed2a7, type: 2}
 --- !u!114 &3422088902558771348

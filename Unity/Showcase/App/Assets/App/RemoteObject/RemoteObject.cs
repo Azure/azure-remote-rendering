@@ -556,7 +556,7 @@ public class RemoteObject : MonoBehaviour
             MakePiecesInteractable(localModel.GetComponentsInChildren<MeshRenderer>());
 
             // Apply transform to this object
-            Bounds modelBounds = await GetBoundsAsNeeded(model, localModel.transform);
+            UnityEngine.Bounds modelBounds = await GetBoundsAsNeeded(model, localModel.transform);
             ApplyTransform(model, localModel.transform, modelBounds);
         }
 
@@ -673,7 +673,7 @@ public class RemoteObject : MonoBehaviour
 
         if (remoteObjectFactoryService != null)
         {
-            loadTask = remoteObjectFactoryService.Load(model, remoteParent).Result;
+            loadTask = remoteObjectFactoryService.Load(model, remoteParent);
         }
         else
         {
@@ -698,7 +698,7 @@ public class RemoteObject : MonoBehaviour
         if (entity != null && entity.Valid)
         {
             GameObject entityGameObject = entity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
-            Bounds entityBounds = await GetBoundsAsNeeded(model, entityGameObject.transform);
+            UnityEngine.Bounds entityBounds = await GetBoundsAsNeeded(model, entityGameObject.transform);
             ApplyTransform(model, entityGameObject.transform, entityBounds);
             entityGameObject.GetComponent<RemoteEntitySyncObject>()?.SyncToRemote();
         }
@@ -908,13 +908,13 @@ public class RemoteObject : MonoBehaviour
         return string.IsNullOrEmpty(item.Name) ? "Model" : item.Name;
     }
     
-    private static async Task<Bounds> GetBounds(Component container)
+    private static async Task<UnityEngine.Bounds> GetBounds(Component container)
     {
-        Bounds result = LocalBounds.PositiveInfinity;
+        UnityEngine.Bounds result = LocalBounds.PositiveInfinity;
         RemoteEntitySyncObject remoteEntitySyncObject = container.GetComponentInChildren<RemoteEntitySyncObject>();
         Entity entityContainer = null;
 
-        // Only allow messuring of this container if it's not empty
+        // Only allow measuring of this container if it's not empty
         if (remoteEntitySyncObject != null &&
             remoteEntitySyncObject.IsEntityValid &&
             remoteEntitySyncObject.Entity.Children.Count > 0)
@@ -934,7 +934,7 @@ public class RemoteObject : MonoBehaviour
         return result;
     }
 
-    private static Task<Bounds> GetBoundsAsNeeded(RemoteItemBase item, Transform container)
+    private static Task<UnityEngine.Bounds> GetBoundsAsNeeded(RemoteItemBase item, Transform container)
     {
         if (!ModelNeedsBounds(item))
         {
@@ -950,7 +950,7 @@ public class RemoteObject : MonoBehaviour
             (item != null && (item.Transform.Center || item.Transform.MinSize != Vector3.zero || item.Transform.MaxSize != Vector3.zero || !item.HasColliders));
     }
 
-    private void SetColliderBounds(Component container, Bounds localBounds)
+    private void SetColliderBounds(Component container, UnityEngine.Bounds localBounds)
     {
         if (container == null || container.transform == null)
         {
@@ -984,7 +984,7 @@ public class RemoteObject : MonoBehaviour
     }
 
     /// <summary>
-    /// Create collider around a container, and disabled it. Enablement should happen later, once the container has
+    /// Create collider around a container, and disabled it. Enabling should happen later, once the container has
     /// been sized correctly.
     /// </summary>
     private void MakeInteractable(Component container)
@@ -999,7 +999,7 @@ public class RemoteObject : MonoBehaviour
         collider.enabled = false;
     }
 
-    private void ApplyTransform(RemoteItemBase item, Component container, Bounds bounds)
+    private void ApplyTransform(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
     {
         if (item == null || item.Transform == null)
         {
@@ -1030,7 +1030,7 @@ public class RemoteObject : MonoBehaviour
     /// <summary>
     /// Ensure the bounds of the object falls within the min and max settings.
     /// </summary>
-    private void ApplyMinMaxSize(RemoteItemBase item, Component container, Bounds bounds)
+    private void ApplyMinMaxSize(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
     {
         if (item.Transform.MaxSize == Vector3.zero && item.Transform.MaxSize == Vector3.zero)
         {
@@ -1114,7 +1114,7 @@ public class RemoteObject : MonoBehaviour
         container.transform.localScale = container.transform.localScale * scale;
     }
 
-    private void MoveToCenter(RemoteItemBase item, Component container, Bounds bounds)
+    private void MoveToCenter(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
     {
         if (!item.Transform.Center)
         {
@@ -1143,7 +1143,7 @@ public class RemoteObject : MonoBehaviour
     }
 
 
-    private void MoveContainerToGround(Component container, Bounds bounds)
+    private void MoveContainerToGround(Component container, UnityEngine.Bounds bounds)
     {
         if (!grounded)
         {

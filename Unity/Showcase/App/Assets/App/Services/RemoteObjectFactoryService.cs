@@ -80,7 +80,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             _progress.Completed -= ProgressCompleted;
         }
 
-        public ModelProgressStatus Load(RemoteModel model, Entity parent)
+        public Task<LoadModelResult> Load(RemoteModel model, Entity parent)
         {
             var machine = AppServices.RemoteRendering?.PrimaryMachine;
 
@@ -101,18 +101,18 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
             ModelProgressStatus progressTask = new ModelProgressStatus();
-            ScaleLoad(model, parent, progressTask);
-            return progressTask;
+            var loadModelTask = ScaleLoad(model, parent, progressTask);
+            return loadModelTask;
         }
 
-        private async void ScaleLoad(RemoteModel model, Entity parent, ModelProgressStatus progressTask)
+        private async Task<LoadModelResult> ScaleLoad(RemoteModel model, Entity parent, ModelProgressStatus progressTask)
         {
             var machine = AppServices.RemoteRendering?.PrimaryMachine;
 
             // Remember the current connection, so we can cancel the load on a new connection
             uint connectionId = _connectionId;
 
-            LoadModelAsync loadOperation = null;
+            Task<LoadModelResult> loadOperation = null;
             _progress.Add(progressTask);
 
             while (true)
@@ -130,7 +130,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     if (_loadingTasks.Count == 0 || 
                         _loadingTasks.Count < _remoteObjectFactoryServiceProfile.ConcurrentModelLoads)
                     {
-                        loadOperation = machine.Actions.LoadModelAsyncAsOperation(model, parent);
+                        loadOperation = machine.Actions.LoadModelAsyncAsOperation(model, parent, progressTask);
                         break;
                     }
                 }
@@ -147,14 +147,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 if (_connectionId != connectionId)
                 {
-                    progressTask.Start(null);
                 }
                 else
                 {
-                    progressTask.Start(loadOperation);
-                    _loadingTasks.Add(IgnoreFailure(progressTask.Result));
+                    _loadingTasks.Add(IgnoreFailure(loadOperation));
                 }
             }
+            return await loadOperation;
         }
 
         /// <summary>

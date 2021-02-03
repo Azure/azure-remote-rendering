@@ -11,9 +11,6 @@ public class RemoteBounds : BaseRemoteBounds
 {
     //Remote bounds works with a specific remotely rendered model
     private BaseRemoteRenderedModel targetModel = null;
-
-    private BoundsQueryAsync remoteBoundsQuery = null;
-
     private RemoteBoundsState currentBoundsState = RemoteBoundsState.NotReady;
 
     public override RemoteBoundsState CurrentBoundsState
@@ -55,17 +52,12 @@ public class RemoteBounds : BaseRemoteBounds
     }
 
     // Create a query using the model entity
-    private void QueryBounds()
+    private async void QueryBounds()
     {
-        remoteBoundsQuery = targetModel.ModelEntity.QueryLocalBoundsAsync();
+        var remoteBounds = targetModel.ModelEntity.QueryLocalBoundsAsync();
         CurrentBoundsState = RemoteBoundsState.Updating;
-        remoteBoundsQuery.Completed += ProcessQueryResult;
-    }
-
-    // Check the result and apply it to the local Unity bounding box if it was successful
-    private void ProcessQueryResult(BoundsQueryAsync remoteBounds)
-    {
-        if (remoteBounds.IsRanToCompletion)
+        await remoteBounds;
+        if (remoteBounds.IsCompleted)
         {
             var newBounds = remoteBounds.Result.toUnity();
             BoundsBoxCollider.center = newBounds.center;

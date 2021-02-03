@@ -65,7 +65,7 @@ public class AADAuthentication : BaseARRAuthentication
         this.gameObject.AddComponent<ExecuteOnUnityThread>();
     }
 
-    public async override Task<AzureFrontendAccountInfo> GetAARCredentials()
+    public async override Task<SessionConfiguration> GetAARCredentials()
     {
         var result = await TryLogin();
         if (result != null)
@@ -74,7 +74,7 @@ public class AADAuthentication : BaseARRAuthentication
 
             var AD_Token = result.AccessToken;
 
-            return await Task.FromResult(new AzureFrontendAccountInfo(AzureRemoteRenderingAccountAuthenticationDomain, AccountDomain, AzureRemoteRenderingAccountID, "", AD_Token, ""));
+            return await Task.FromResult(new SessionConfiguration(AzureRemoteRenderingAccountAuthenticationDomain, AccountDomain, AzureRemoteRenderingAccountID, "", AD_Token, ""));
         }
         else
         {

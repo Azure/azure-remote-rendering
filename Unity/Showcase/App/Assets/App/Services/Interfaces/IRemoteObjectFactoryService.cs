@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.RemoteRendering;
 using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -32,6 +33,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Load a model.
         /// </summary>
-        ModelProgressStatus Load(RemoteModel model, Entity parent);
-	}
+        Task<LoadModelResult> Load(RemoteModel model, Entity parent);
+    }
 }

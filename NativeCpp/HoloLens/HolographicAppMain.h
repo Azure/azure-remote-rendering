@@ -74,7 +74,7 @@ namespace HolographicApp
     #ifdef USE_REMOTE_RENDERING
         void OnConnectionStatusChanged(RR::ConnectionStatus status, RR::Result error);
         void SetNewState(AppConnectionStatus state, const char* statusMsg);
-        void SetNewSession(RR::ApiHandle<RR::AzureSession> newSession);
+        void SetNewSession(RR::ApiHandle<RR::RenderingSession> newSession);
         void StartModelLoading();
         void UpdateStatusText();
     #endif
@@ -166,14 +166,13 @@ namespace HolographicApp
 #ifdef USE_REMOTE_RENDERING
         // Session related:
         std::string m_sessionOverride;
-        RR::ApiHandle<RR::AzureFrontend> m_frontEnd;
-        RR::ApiHandle<RR::AzureSession> m_session;
-        RR::ApiHandle<RR::RemoteManager> m_api;
+        RR::ApiHandle<RR::RemoteRenderingClient> m_client;
+        RR::ApiHandle<RR::RenderingSession> m_session;
+        RR::ApiHandle<RR::RenderingConnection> m_api;
         RR::ApiHandle<RR::GraphicsBindingWmrD3d11> m_graphicsBinding;
 
         // Model loading:
         std::string m_modelURI;
-        RR::ApiHandle<RR::LoadModelAsync> m_loadModelAsync;
 
         // Connection state machine:
         AppConnectionStatus m_currentStatus = AppConnectionStatus::Disconnected;
@@ -182,8 +181,8 @@ namespace HolographicApp
         RR::Result m_modelLoadResult = RR::Result::Success;
         bool m_isConnected = false;
         bool m_sessionStarted = false;
-        RR::ApiHandle<RR::SessionPropertiesAsync> m_sessionPropertiesAsync;
         bool m_modelLoadTriggered = false;
+        bool m_sessionPropertiesQueryInProgress = false;
         float m_modelLoadingProgress = 0.f;
         bool m_modelLoadFinished = false;
         bool m_needsStatusUpdate = true;

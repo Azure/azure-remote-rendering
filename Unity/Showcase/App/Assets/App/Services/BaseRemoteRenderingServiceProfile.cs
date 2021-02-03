@@ -27,7 +27,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         public abstract BaseStorageAccountData StorageAccountData { get; }
         public abstract AuthenticationType AuthType { get; }
         public abstract RemoteRenderingServiceProfileFileData CreateFileData();
-        public abstract Task<AzureFrontend> GetFrontend(string domain);
+        public abstract Task<RemoteRenderingClient> GetClient(string domain);
         public abstract bool ValidateProfile(out string validateMessages);
     }
 }

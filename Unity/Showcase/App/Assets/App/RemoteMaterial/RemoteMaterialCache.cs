@@ -73,7 +73,7 @@ public class RemoteMaterialCache
 
     private async Task<Remote.Material> InitializePhysicalMaterial(RemoteMaterial material)
     {
-        var remoteMaterial = RemoteManagerUnity.CurrentSession?.Actions.CreateMaterial(MaterialType.Pbr);
+        var remoteMaterial = RemoteManagerUnity.CurrentSession?.Connection.CreateMaterial(MaterialType.Pbr);
         remoteMaterial.Name = material.Name;
 
         PbrMaterial pbrMaterial = remoteMaterial as PbrMaterial;
@@ -111,7 +111,7 @@ public class RemoteMaterialCache
 
     private async Task<Remote.Material> InitializeColorMaterial(RemoteMaterial material)
     {
-        var remoteMaterial = RemoteManagerUnity.CurrentSession?.Actions.CreateMaterial(MaterialType.Color);
+        var remoteMaterial = RemoteManagerUnity.CurrentSession?.Connection.CreateMaterial(MaterialType.Color);
         remoteMaterial.Name = material.Name;
 
         ColorMaterial colorMaterial = remoteMaterial as ColorMaterial;

@@ -520,35 +520,28 @@ public class SharableObjectEntity : MonoBehaviour
             return;
         }
 
-        if (destination.Position.x != source.Position.x ||
-            destination.Position.y != source.Position.y ||
-            destination.Position.z != source.Position.z)
+        if (destination.Position.X != source.Position.x ||
+            destination.Position.Y != source.Position.y ||
+            destination.Position.Z != source.Position.z)
         {
-            _receivedPosition.x = source.Position.x;
-            _receivedPosition.y = source.Position.y;
-            _receivedPosition.z = source.Position.z;
+            _receivedPosition = new Remote.Double3(source.Position.x, source.Position.y, source.Position.z);
             destination.Position = _receivedPosition;
         }
 
-        if (destination.Rotation.x != source.Rotation.x ||
-            destination.Rotation.y != source.Rotation.y ||
-            destination.Rotation.z != source.Rotation.z ||
-            destination.Rotation.w != source.Rotation.w)
+        if (destination.Rotation.X != source.Rotation.x ||
+            destination.Rotation.Y != source.Rotation.y ||
+            destination.Rotation.Z != source.Rotation.z ||
+            destination.Rotation.W != source.Rotation.w)
         {
-            _receivedQuaternion.x = source.Rotation.x;
-            _receivedQuaternion.y = source.Rotation.y;
-            _receivedQuaternion.z = source.Rotation.z;
-            _receivedQuaternion.w = source.Rotation.w;
+            _receivedQuaternion = new Remote.Quaternion(source.Rotation.x, source.Rotation.y, source.Rotation.z, source.Rotation.w);
             destination.Rotation = _receivedQuaternion;
         }
 
-        if (destination.Scale.x != source.Scale.x ||
-            destination.Scale.y != source.Scale.y ||
-            destination.Scale.z != source.Scale.z)
+        if (destination.Scale.X != source.Scale.x ||
+            destination.Scale.Y != source.Scale.y ||
+            destination.Scale.Z != source.Scale.z)
         {
-            _receivedScale.x = source.Scale.x;
-            _receivedScale.y = source.Scale.y;
-            _receivedScale.z = source.Scale.z;
+            _receivedScale = new Remote.Float3(source.Scale.x, source.Scale.y, source.Scale.z);
             destination.Scale = _receivedScale;
         }
     }

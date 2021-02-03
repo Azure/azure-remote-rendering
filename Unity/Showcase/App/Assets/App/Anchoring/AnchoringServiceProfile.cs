@@ -27,5 +27,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Tooltip("The account key to use for Azure Spatial Anchors")]
         public string AnchorAccountKey;
+
+        [Tooltip("The account domain to use for Azure Spatial Anchors")]
+        public string AnchorAccountDomain;
     }
 }

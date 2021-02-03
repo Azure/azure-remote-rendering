@@ -30,7 +30,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     {
         private Task _initializationTask;
         private Task<IRemoteRenderingMachine> _autoConnectTask;
-        private AzureFrontend _arrFrontend = null;
+        private RemoteRenderingClient _arrClient = null;
         private RemoteRenderingMachine _primaryMachine = null;
         private RemoteRenderingStorage _storage = new RemoteRenderingStorage();
         private List<RemoteRenderingMachine> _machines = new List<RemoteRenderingMachine>();
@@ -275,10 +275,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public async Task<IRemoteRenderingMachine> Create()
         {
-            AzureFrontend frontend = null;
+            RemoteRenderingClient client = null;
             try
             {
-                frontend = await GetFrontend();
+                client = await GetClient();
             }
             catch (Exception ex)
             {
@@ -287,30 +287,30 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
                 return null;
             }
-            Task<AzureSession> sessionTask;
+            Task<CreateRenderingSessionResult> sessionTask;
 
             try
             {
                 if (!string.IsNullOrEmpty(LoadedProfile.UnsafeSizeOverride))
                 {
-                    var sessionParms = new RenderingSessionCreationParamsUnsafe(
+                    var sessionParms = new RenderingSessionCreationOptionsUnsafe(
                         LoadedProfile.UnsafeSizeOverride,
-                        (uint)LoadedProfile.MaxLeaseTimespan.Hours,
-                        (uint)LoadedProfile.MaxLeaseTimespan.Minutes);
+                        LoadedProfile.MaxLeaseTimespan.Hours,
+                        LoadedProfile.MaxLeaseTimespan.Minutes);
 
-                    sessionTask = frontend.CreateNewRenderingSessionUnsafeAsync(sessionParms).AsTask();
+                    sessionTask = client.CreateNewRenderingSessionUnsafeAsync(sessionParms);
                 }
                 else
                 {
-                    var sessionParms = new RenderingSessionCreationParams(
+                    var sessionParms = new RenderingSessionCreationOptions(
                         LoadedProfile.Size,
-                        (uint)LoadedProfile.MaxLeaseTimespan.Hours,
-                        (uint)LoadedProfile.MaxLeaseTimespan.Minutes);
-                    sessionTask = frontend.CreateNewRenderingSessionAsync(sessionParms).AsTask();
+                        LoadedProfile.MaxLeaseTimespan.Hours,
+                        LoadedProfile.MaxLeaseTimespan.Minutes);
+                    sessionTask = client.CreateNewRenderingSessionAsync(sessionParms);
                 }
 
                 var resultSession = await sessionTask;
-                return AddMachine(resultSession);
+                return AddMachine(resultSession.Session);
             }
             catch (Exception ex)
             {
@@ -335,13 +335,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public async Task<IRemoteRenderingMachine> Open(string id, string domain)
         {
-            var frontend = await GetFrontend(domain);
-            Task<AzureSession> sessionTask;
+            var frontend = await GetClient(domain);
+            Task<CreateRenderingSessionResult> sessionTask;
             try
             {
-                sessionTask = frontend.OpenRenderingSessionAsync(id).AsTask();
+                sessionTask = frontend.OpenRenderingSessionAsync(id);
                 var resultSession = await sessionTask;
-                return AddMachine(resultSession);
+                return AddMachine(resultSession.Session);
             }
             catch (Exception ex)
             {
@@ -470,23 +470,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         #endregion BaseExtensionService Methods
 
         #region Private Methods
-        private async Task<AzureFrontend> GetFrontend(string domain = null)
+        private async Task<RemoteRenderingClient> GetClient(string domain = null)
         {
             if (string.IsNullOrEmpty(domain))
             {
                 domain = LoadedProfile.PreferredDomain;
             }
 
-            if (_arrFrontend == null ||
-                _arrFrontend.Configuration.AccountDomain != domain)
+            if (_arrClient == null || _arrClient.Configuration.RemoteRenderingDomain != domain)
             {
                 DestroyFrontend();
                 ValidateFrontendConfiguration();
 
-                _arrFrontend = await LoadedProfile.GetFrontend(domain);
+                _arrClient = await LoadedProfile.GetClient(domain);
             }
 
-            return _arrFrontend;
+            return _arrClient;
         }
 
         /// <summary>
@@ -506,10 +505,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void DestroyFrontend()
         {
-            if (_arrFrontend != null)
+            if (_arrClient != null)
             {
-                _arrFrontend.Dispose();
-                _arrFrontend = null;
+                _arrClient.Dispose();
+                _arrClient = null;
             }
         }
 
@@ -553,7 +552,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
         }
 
-        private RemoteRenderingMachine AddMachine(AzureSession arrSession)
+        private RemoteRenderingMachine AddMachine(RenderingSession arrSession)
         {
             if (arrSession == null)
             {
@@ -1154,16 +1153,16 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private class RemoteRenderingMachine : IRemoteRenderingMachine
         {
-            AzureSession _arrSession = null;
+            RenderingSession _arrSession = null;
             RemoteRenderingSession _session = null;
             RemoteRenderingConnection _connection = null;
             RemoteRenderingActions _actions = null;
             RemoteRenderingSessionProperties _properties = null;
 
             /// <summary>
-            /// Create a new machine wrapper from an AzureSession
+            /// Create a new machine wrapper from an RenderingSession
             /// </summary>
-            public RemoteRenderingMachine(AzureSession arrSession, IRemoteRenderingServiceProfile profile)
+            public RemoteRenderingMachine(RenderingSession arrSession, IRemoteRenderingServiceProfile profile)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
                 _properties = new RemoteRenderingSessionProperties(_arrSession);
@@ -1179,7 +1178,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     AutoRenewLease = profile.AutoRenewLease
                 };
 
-                ServiceStats = new ARRServiceStats();
+                ServiceStats = new ServiceStatistics();
             }
 
             /// <summary>
@@ -1190,7 +1189,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Get the current session stats.
             /// </summary>
-            public ARRServiceStats ServiceStats { get; private set; }
+            public ServiceStatistics ServiceStats { get; private set; }
 
             /// <summary>
             /// Action invoked when this should be made the primary machine
@@ -1246,7 +1245,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Couldn't update service stats.");
                 }
-                _arrSession.Actions?.Update();
+                _arrSession.Connection?.Update();
             }
         }
 
@@ -1255,14 +1254,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private class RemoteRenderingSessionProperties : IRemoteRenderingSessionProperties
         {
-            private AzureSession _arrSession = null;
+            private RenderingSession _arrSession = null;
             private TimeSpan _updateDelay = TimeSpan.FromSeconds(15);
             private Task<RenderingSessionProperties> _lastUpdateTask = null;
 
             /// <summary>
             /// Create a property cache for the given arr session.
             /// </summary>
-            public RemoteRenderingSessionProperties(AzureSession arrSession)
+            public RemoteRenderingSessionProperties(RenderingSession arrSession)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
             }
@@ -1303,7 +1302,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 try
                 {
                     LastUpdated = DateTime.UtcNow;
-                    Value = await _arrSession.GetPropertiesAsync().AsTask();
+                    var result = await _arrSession.GetPropertiesAsync();
+                    Value = result.SessionProperties;
                 }
                 catch (Exception ex)
                 {
@@ -1319,7 +1319,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private class RemoteRenderingSession : IRemoteRenderingSession
         {
-            private AzureSession _arrSession = null;
+            private RenderingSession _arrSession = null;
             private IRemoteRenderingSessionProperties _properties;
             private bool _autoRenewLease = false;
             private bool _isDisposed = false;
@@ -1329,18 +1329,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private Timer _updatePropertiesTimer;
 
             /// <summary>
-            /// Create a new session wrapper from an AzureSession
+            /// Create a new session wrapper from an RenderingSession
             /// </summary>
-            public RemoteRenderingSession(AzureSession arrSession, IRemoteRenderingSessionProperties properties, IRemoteRenderingConnection connection)
+            public RemoteRenderingSession(RenderingSession arrSession, IRemoteRenderingSessionProperties properties, IRemoteRenderingConnection connection)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
                 _properties = properties ?? throw new ArgumentNullException("Properties object can't be null.");
                 Connection = connection ?? throw new ArgumentNullException("Connection object can't be null.");
 
                 string[] domainParts = null;
-                if (_arrSession.AzureFrontend.Configuration.AccountDomain != null)
+				var config = _arrSession.Client.Configuration;
+                if (config.RemoteRenderingDomain != null)
                 {
-                    domainParts = _arrSession.AzureFrontend.Configuration.AccountDomain.Split('.');
+                    domainParts = config.RemoteRenderingDomain.Split('.');
                 }
 
                 // Assume the location is the first part of the domain
@@ -1366,7 +1367,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Get the session domain.
             /// </summary>
-            public string Domain => _arrSession.AzureFrontend.Configuration.AccountDomain;
+            public string Domain => _arrSession.Client.Configuration.RemoteRenderingDomain;
 
             /// <summary>
             /// Should the session lease auto renew
@@ -1403,7 +1404,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Get the session id
             /// </summary>
-            public string Id => _arrSession?.SessionUUID ?? string.Empty;
+            public string Id => _arrSession?.SessionUuid ?? string.Empty;
 
             /// <summary>
             /// Get the host name
@@ -1446,7 +1447,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     else
                     {
-                        var realElapsedTime = (DateTime.UtcNow - _properties.LastUpdated) + _properties.Value.ElapsedTime.AsTimeSpan();
+                        TimeSpan elapsed = new TimeSpan(_properties.Value.ElapsedTimeInMinutes / 60, _properties.Value.ElapsedTimeInMinutes % 60, 0);
+                        var realElapsedTime = (DateTime.UtcNow - _properties.LastUpdated) + elapsed;
                         var maxLeaseTime = MaxLeaseTime;
 
                         if (_properties.Value.Status != RenderingSessionStatus.Ready)
@@ -1468,7 +1470,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Get the session lease time
             /// </summary>
-            public TimeSpan MaxLeaseTime => _properties.Value.MaxLease.AsTimeSpan();
+            public TimeSpan MaxLeaseTime => new TimeSpan(_properties.Value.ElapsedTimeInMinutes / 60, _properties.Value.ElapsedTimeInMinutes % 60, 0);
 
             /// <summary>
             /// Get the session expiration time in UTC
@@ -1532,10 +1534,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                 var newLeaseTime = MaxLeaseTime + increment;
 
-                Result result = await _arrSession.RenewAsync(
-                    new RenderingSessionUpdateParams((uint)newLeaseTime.Hours, (uint)newLeaseTime.Minutes)).AsTask();
+                var result = await _arrSession.RenewAsync(
+                    new RenderingSessionUpdateOptions(newLeaseTime.Hours, newLeaseTime.Minutes));
 
-                bool success = result == Result.Success;
+                bool success = result.ErrorCode == Result.Success;
                 if (success)
                 {
                     await UpdateProperties();
@@ -1557,7 +1559,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 else
                 {
-                    return _arrSession.StopAsync().AsTask();
+                    return _arrSession.StopAsync();
                 }
             }
 
@@ -1572,7 +1574,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     try
                     {
-                        fileUrl = await _arrSession.ConnectToArrInspectorAsync().AsTask();
+                        fileUrl = await _arrSession.ConnectToArrInspectorAsync();
                     }
                     catch (Exception ex)
                     {
@@ -1701,7 +1703,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private class RemoteRenderingConnection : IRemoteRenderingConnection
         {
-            private AzureSession _arrSession = null;
+            private RenderingSession _arrSession = null;
             private IRemoteRenderingSessionProperties _properties;
             private bool _isDisposed = false;
             private bool _disconnectRequested = false;
@@ -1714,9 +1716,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private Result _lastConnectError = Result.Success;
 
             /// <summary>
-            /// Create a new session wrapper from an AzureSession
+            /// Create a new session wrapper from an RenderingSession
             /// </summary>
-            public RemoteRenderingConnection(AzureSession arrSession, IRemoteRenderingSessionProperties properties)
+            public RemoteRenderingConnection(RenderingSession arrSession, IRemoteRenderingSessionProperties properties)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
                 _properties = properties ?? throw new ArgumentNullException("Properties object can't be null.");
@@ -1727,7 +1729,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Event raised when the connections status changes
             /// </summary>
-            public event ConnectionStatusHandler ConnectionStatusChanged;
+            public event ConnectionStatusChangedEventHandler ConnectionStatusChanged;
 
             /// <summary>
             /// An action raised when a connection is requested.
@@ -1834,7 +1836,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                 try
                 {
-                    _arrSession?.DisconnectFromRuntime();
+                    _arrSession?.Disconnect();
                 }
                 catch (Exception ex)
                 {
@@ -1847,7 +1849,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     while (_arrSession.IsConnected)
                     {
-                        _arrSession.Actions.Update();
+                        _arrSession.Connection.Update();
                     }
                 }
 
@@ -1940,7 +1942,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     try
                     {
-                        await _arrSession.ConnectToRuntime(new ConnectToRuntimeParams()).AsTask();
+                        await _arrSession.ConnectAsync(new RendererInitOptions());
                     }
                     catch (Exception ex)
                     {
@@ -2042,7 +2044,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private class RemoteRenderingActions : IRemoteRenderingActions
         {
-            private AzureSession _arrSession = null;
+            private RenderingSession _arrSession = null;
             private RemoteMaterialCache _materialCache = null;
 
             /// <summary>
@@ -2059,9 +2061,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
             /// <summary>
-            /// Create a new remote action wrapper from an AzureSession
+            /// Create a new remote action wrapper from an RenderingSession
             /// </summary>
-            public RemoteRenderingActions(AzureSession arrSession)
+            public RemoteRenderingActions(RenderingSession arrSession)
             {
                 _arrSession = arrSession ?? throw new ArgumentNullException("ARR Session object can't be null.");
                 _materialCache = new RemoteMaterialCache(this);
@@ -2081,7 +2083,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <param name="model">The model to load.</param>
             /// <param name="parent">The parent of the model.</param>
             /// <returns></returns>
-            public LoadModelAsync LoadModelAsyncAsOperation(RemoteModel model, Entity parent)
+            public Task<LoadModelResult> LoadModelAsyncAsOperation(RemoteModel model, Entity parent, ModelProgressStatus progress)
             {
                 if (!IsValid())
                 {
@@ -2091,17 +2093,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 // For builtin models the SAS load function must be used.
                 if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    return _arrSession.Actions.LoadModelFromSASAsync(new LoadModelFromSASParams(
+                    return _arrSession.Connection.LoadModelFromSasAsync(new LoadModelFromSasOptions(
                         model.Url,
-                        parent));
+                        parent), progress.OnProgressUpdated);
                 }
                 else
                 {
-                    return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
+                    return _arrSession.Connection.LoadModelAsync(new LoadModelOptions(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
                         AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
-                        parent));
+                        parent), progress.OnProgressUpdated);
                 }
             }
 
@@ -2121,17 +2123,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 // For builtin models the SAS load function must be used.
                 if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    return _arrSession.Actions.LoadModelFromSASAsync(new LoadModelFromSASParams(
+                    return _arrSession.Connection.LoadModelFromSasAsync(new LoadModelFromSasOptions(
                         model.Url,
-                        parent)).AsTask();
+                        parent), null);
                 }
                 else
                 {
-                    return _arrSession.Actions.LoadModelAsync(new LoadModelParams(
+                    return _arrSession.Connection.LoadModelAsync(new LoadModelOptions(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
                         AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
-                        parent)).AsTask();
+                        parent), null);
                 }
             }
 
@@ -2147,11 +2149,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return Task.FromResult<Remote.Texture>(null);
                 }
 
-                return _arrSession.Actions.LoadTextureAsync(new LoadTextureParams(
+                return _arrSession.Connection.LoadTextureAsync(new LoadTextureOptions(
                     $"{storageAccountName}.blob.core.windows.net",
                     containerName,
                     blobPath,
-                    type)).AsTask();
+                    type));
             }
 
             /// <summary>
@@ -2161,14 +2163,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </summary>
             /// <param name="cast">Outgoing RayCast.</param>
             /// <returns></returns>
-            public Task<RayCastHit[]> RayCastQueryAsync(RayCast cast)
+            public Task<RayCastQueryResult> RayCastQueryAsync(RayCast cast)
             {
                 if (!IsValid())
                 {
-                    return Task.FromResult<RayCastHit[]>(null);
+                    return Task.FromResult<RayCastQueryResult>(null);
                 }
 
-                return _arrSession.Actions.RayCastQueryAsync(cast).AsTask();
+                return _arrSession.Connection.RayCastQueryAsync(cast);
             }
 
             /// <summary>
@@ -2202,7 +2204,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                return _arrSession.Actions.CreateEntity();
+                return _arrSession.Connection.CreateEntity();
             }
 
             /// <summary>
@@ -2217,7 +2219,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                return _arrSession.Actions.CreateMaterial(type);
+                return _arrSession.Connection.CreateMaterial(type);
             }
 
 
@@ -2234,7 +2236,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                return _arrSession.Actions.CreateComponent(componentType, owner);
+                return _arrSession.Connection.CreateComponent(componentType, owner);
             }
 
             /// <summary>
@@ -2247,7 +2249,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return default;
                 }
 
-                return _arrSession.Actions.CameraSettings;
+                return _arrSession.Connection.CameraSettings;
             }
 
             /// <summary>
@@ -2260,7 +2262,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return default;
                 }
 
-                return _arrSession.Actions.SkyReflectionSettings;
+                return _arrSession.Connection.SkyReflectionSettings;
             }
 
             /// <summary>
@@ -2273,7 +2275,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return default;
                 }
 
-                return _arrSession.Actions.OutlineSettings;
+                return _arrSession.Connection.OutlineSettings;
             }
 
             /// <summary>
@@ -2286,7 +2288,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return default;
                 }
 
-                return _arrSession.Actions.ZFightingMitigationSettings;
+                return _arrSession.Connection.ZFightingMitigationSettings;
             }
 
             /// <summary>
@@ -2352,7 +2354,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return null;
                 }
 
-                return _arrSession.Actions.LoadTextureFromSASAsync(new LoadTextureFromSASParams(url, type)).AsTask();
+                return _arrSession.Connection.LoadTextureFromSasAsync(new LoadTextureFromSasOptions(url, type));
             }
 
             /// <summary>

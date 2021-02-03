@@ -34,13 +34,13 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
     // 1. One time initialization
     {
         RR::RemoteRenderingInitialization clientInit;
-        clientInit.connectionType = RR::ConnectionType::General;
-        clientInit.graphicsApi = RR::GraphicsApiType::WmrD3D11;
-        clientInit.toolId = "<sample name goes here>"; // <put your sample name here>
-        clientInit.unitsPerMeter = 1.0f;
-        clientInit.forward = RR::Axis::Z_Neg;
-        clientInit.right = RR::Axis::X;
-        clientInit.up = RR::Axis::Y;
+        clientInit.ConnectionType = RR::ConnectionType::General;
+        clientInit.GraphicsApi = RR::GraphicsApiType::WmrD3D11;
+        clientInit.ToolId = "<sample name goes here>"; // <put your sample name here>
+        clientInit.UnitsPerMeter = 1.0f;
+        clientInit.Forward = RR::Axis::NegativeZ;
+        clientInit.Right = RR::Axis::X;
+        clientInit.Up = RR::Axis::Y;
         if (RR::StartupRemoteRendering(clientInit) != RR::Result::Success)
         {
             // something fundamental went wrong with the initialization
@@ -49,26 +49,34 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
     }
 
 
-    // 2. Create front end
+    // 2. Create Client
     {
         // Users need to fill out the following with their account data and model
-        RR::AzureFrontendAccountInfo init;
+        RR::SessionConfiguration init;
         init.AccountId = "00000000-0000-0000-0000-000000000000";
         init.AccountKey = "<account key>";
-        init.AccountDomain = "westus2.mixedreality.azure.com"; // <change to the region that the rendering session should be created in>
-        init.AccountAuthenticationDomain = "westus2.mixedreality.azure.com"; // <change to the region the account was created in>
+        init.RemoteRenderingDomain = "westus2.mixedreality.azure.com"; // <change to the region that the rendering session should be created in>
+        init.AccountDomain = "westus2.mixedreality.azure.com"; // <change to the region the account was created in>
         m_modelURI = "builtin://Engine";
         m_sessionOverride = ""; // If there is a valid session ID to re-use, put it here. Otherwise a new one is created
-        m_frontEnd = RR::ApiHandle(RR::AzureFrontend(init));
+        m_client = RR::ApiHandle(RR::RemoteRenderingClient(init));
     }
 
     // 3. Open/create rendering session
     {
-        auto SessionHandler = [&](RR::ApiHandle<RR::CreateSessionAsync> const& handler)
+        auto SessionHandler = [&](RR::Status status, RR::ApiHandle<RR::CreateRenderingSessionResult> result)
         {
-            if (handler->GetStatus() == RR::Result::Success)
+            if (status == RR::Status::OK)
             {
-                SetNewSession(handler->GetResult());
+                auto ctx = result->GetContext();
+                if (ctx.Result == RR::Result::Success)
+                {
+                    SetNewSession(result->GetSession());
+                }
+                else
+                {
+                    SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
+                }
             }
             else
             {
@@ -76,21 +84,19 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
             }
         };
 
-        // If we had an old (valid) session that we can recycle, we call async function m_frontEnd->OpenRenderingSessionAsync
+        // If we had an old (valid) session that we can recycle, we call async function m_client->OpenRenderingSessionAsync
         if (!m_sessionOverride.empty())
         {
-            auto openSessionAsync = *m_frontEnd->OpenRenderingSessionAsync(m_sessionOverride);
-            openSessionAsync->Completed(SessionHandler);
+            m_client->OpenRenderingSessionAsync(m_sessionOverride, SessionHandler);
             SetNewState(AppConnectionStatus::CreatingSession, nullptr);
         }
         else
         {
             // create a new session
-            RR::RenderingSessionCreationParams init;
-            init.MaxLease.minute = 10; // session is leased for 10 minutes
+            RR::RenderingSessionCreationOptions init;
+            init.MaxLeaseInMinutes = 10; // session is leased for 10 minutes
             init.Size = RR::RenderingSessionVmSize::Standard;
-            auto createSessionAsync = *m_frontEnd->CreateNewRenderingSessionAsync(init);
-            createSessionAsync->Completed(SessionHandler);
+            m_client->CreateNewRenderingSessionAsync(init, SessionHandler);
             SetNewState(AppConnectionStatus::CreatingSession, nullptr);
         }
     }
@@ -251,10 +257,10 @@ HolographicAppMain::~HolographicAppMain()
 #ifdef USE_REMOTE_RENDERING
     if (m_session != nullptr)
     {
-        m_session->DisconnectFromRuntime();
+        m_session->Disconnect();
         m_session = nullptr;
     }
-    m_frontEnd = nullptr;
+    m_client = nullptr;
 
     // One-time deinitialization
     RR::ShutdownRemoteRendering();
@@ -280,28 +286,29 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
             m_needsStatusUpdate = true; // Info text should update more frequently
 
             // query session status periodically until we reach 'session started'
-            if (m_sessionPropertiesAsync == nullptr && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > delayBetweenRESTCalls)
+            if (!m_sessionPropertiesQueryInProgress && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > delayBetweenRESTCalls)
             {
                 m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
-                if (auto propAsync = m_session->GetPropertiesAsync())
-                {
-                    m_sessionPropertiesAsync = *propAsync;
-                    m_sessionPropertiesAsync->Completed([this](const RR::ApiHandle<RR::SessionPropertiesAsync>& async)
+                m_sessionPropertiesQueryInProgress = true;
+                m_session->GetPropertiesAsync([this](RR::Status status, RR::ApiHandle<RR::RenderingSessionPropertiesResult> propertiesResult)
+                    {
+                        if (status == RR::Status::OK)
                         {
-                        if (async->GetStatus() == RR::Result::Success)
+                            auto ctx = propertiesResult->GetContext();
+                            if (ctx.Result == RR::Result::Success)
                             {
-                            auto res = async->GetResult();
-                            switch (res.Status)
+                                auto res = propertiesResult->GetSessionProperties();
+                                switch (res.Status)
                                 {
                                 case RR::RenderingSessionStatus::Ready:
                                 {
-                                    // The following is async, but we'll get notifications via OnConnectionStatusChanged
+                                    // The following ConnectAsync is async, but we'll get notifications via OnConnectionStatusChanged
                                     m_sessionStarted = true;
                                     SetNewState(AppConnectionStatus::Connecting, nullptr);
-                                    RR::ConnectToRuntimeParams init;
-                                    init.ignoreCertificateValidation = false;
-                                    init.mode = RR::ServiceRenderMode::Default;
-                                    m_session->ConnectToRuntime(init);
+                                    RR::RendererInitOptions init;
+                                    init.IgnoreCertificateValidation = false;
+                                    init.RenderMode = RR::ServiceRenderMode::Default;
+                                    m_session->ConnectAsync(init, [](RR::Status, RR::ConnectionStatus) {});
                                 }
                                 break;
                                 case RR::RenderingSessionStatus::Error:
@@ -314,17 +321,21 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
                                     SetNewState(AppConnectionStatus::ConnectionFailed, "Session expired");
                                     break;
                                 }
-
                             }
                             else
                             {
-                                SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
+                                SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
                             }
-                            m_sessionPropertiesAsync = nullptr; // next try
-                        });
-                }
+                        }
+                        else
+                        {
+                            SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
+                        }
+                        m_sessionPropertiesQueryInProgress = false; // next try
+                    });
             }
         }
+
 
         if (m_isConnected && !m_modelLoadTriggered)
         {
@@ -444,19 +455,19 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
 #endif
 
     m_timer.Tick([this]()
-    {
-        //
-        // TODO: Update scene objects.
-        //
-        // Put time-based updates here. By default this code will run once per frame,
-        // but if you change the StepTimer to use a fixed time step this code will
-        // run as many times as needed to get to the current step.
-        //
+        {
+            //
+            // TODO: Update scene objects.
+            //
+            // Put time-based updates here. By default this code will run once per frame,
+            // but if you change the StepTimer to use a fixed time step this code will
+            // run as many times as needed to get to the current step.
+            //
 
 #ifdef DRAW_SAMPLE_CONTENT
-        m_spinningCubeRenderer->Update(m_timer);
+            m_spinningCubeRenderer->Update(m_timer);
 #endif
-    });
+        });
 
     // On HoloLens 2, the platform can achieve better image stabilization results if it has
     // a stabilization plane and a depth buffer.
@@ -517,27 +528,25 @@ void HolographicApp::HolographicAppMain::StartModelLoading()
 {
     m_modelLoadingProgress = 0.f;
 
-    RR::LoadModelFromSASParams params;
-    params.ModelUrl = m_modelURI.c_str();
+    RR::LoadModelFromSasOptions params;
+    params.ModelUri = m_modelURI.c_str();
     params.Parent = nullptr;
 
     // start the async model loading
-    if (auto loadModel = m_api->LoadModelFromSASAsync(params))
-    {
-        m_loadModelAsync = *loadModel;
-        m_loadModelAsync->Completed([this](const RR::ApiHandle<RR::LoadModelAsync>& async)
+    m_api->LoadModelFromSasAsync(params,
+        // completed callback
+        [this](RR::Status status, RR::ApiHandle<RR::LoadModelResult> result)
         {
-            m_modelLoadResult = async->GetStatus();
+            m_modelLoadResult = RR::StatusToResult(status);
             m_modelLoadFinished = true; // successful if m_modelLoadResult==RR::Result::Success
-            m_loadModelAsync = nullptr;
-        });
-        m_loadModelAsync->ProgressUpdated([this](float progress)
+        },
+        // progress update callback
+            [this](float progress)
         {
             // progress callback
             m_modelLoadingProgress = progress;
             m_needsStatusUpdate = true;
         });
-    }
 }
 
 
@@ -620,13 +629,13 @@ void HolographicApp::HolographicAppMain::SetNewState(AppConnectionStatus state, 
     m_needsStatusUpdate = true;
 }
 
-void HolographicAppMain::SetNewSession(RR::ApiHandle<RR::AzureSession> newSession)
+void HolographicAppMain::SetNewSession(RR::ApiHandle<RR::RenderingSession> newSession)
 {
     SetNewState(AppConnectionStatus::StartingSession, nullptr);
 
     m_sessionStartingTime = m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
     m_session = newSession;
-    m_api = m_session->Actions();
+    m_api = m_session->Connection();
     m_graphicsBinding = m_session->GetGraphicsBinding().as<RR::GraphicsBindingWmrD3d11>();
     m_session->ConnectionStatusChanged([this](auto status, auto error)
         {
@@ -660,116 +669,116 @@ bool HolographicAppMain::Render(HolographicFrame const& holographicFrame)
     // in this frame.
     return m_deviceResources->UseHolographicCameraResources<bool>(
         [this, holographicFrame](std::map<UINT32, std::unique_ptr<DX::CameraResources>>& cameraResourceMap)
-    {
-        // Up-to-date frame predictions enhance the effectiveness of image stablization and
-        // allow more accurate positioning of holograms.
-        holographicFrame.UpdateCurrentPrediction();
-        HolographicFramePrediction prediction = holographicFrame.CurrentPrediction();
-
-        bool atLeastOneCameraRendered = false;
-        for (HolographicCameraPose const& cameraPose : prediction.CameraPoses())
         {
-            // This represents the device-based resources for a HolographicCamera.
-            DX::CameraResources* pCameraResources = cameraResourceMap[cameraPose.HolographicCamera().Id()].get();
+            // Up-to-date frame predictions enhance the effectiveness of image stablization and
+            // allow more accurate positioning of holograms.
+            holographicFrame.UpdateCurrentPrediction();
+            HolographicFramePrediction prediction = holographicFrame.CurrentPrediction();
 
-            // Get the device context.
-            const auto context = m_deviceResources->GetD3DDeviceContext();
-            const auto depthStencilView = pCameraResources->GetDepthStencilView();
-
-            // Set render targets to the current holographic camera.
-            ID3D11RenderTargetView *const targets[1] = { pCameraResources->GetBackBufferRenderTargetView() };
-            context->OMSetRenderTargets(1, targets, depthStencilView);
-
-            // Clear the back buffer and depth stencil view.
-            if (m_canGetHolographicDisplayForCamera &&
-                cameraPose.HolographicCamera().Display().IsOpaque())
+            bool atLeastOneCameraRendered = false;
+            for (HolographicCameraPose const& cameraPose : prediction.CameraPoses())
             {
-                context->ClearRenderTargetView(targets[0], DirectX::Colors::CornflowerBlue);
-            }
-            else
-            {
-                context->ClearRenderTargetView(targets[0], DirectX::Colors::Transparent);
-            }
-            context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+                // This represents the device-based resources for a HolographicCamera.
+                DX::CameraResources* pCameraResources = cameraResourceMap[cameraPose.HolographicCamera().Id()].get();
 
-            //
-            // TODO: Replace the sample content with your own content.
-            //
-            // Notes regarding holographic content:
-            //    * For drawing, remember that you have the potential to fill twice as many pixels
-            //      in a stereoscopic render target as compared to a non-stereoscopic render target
-            //      of the same resolution. Avoid unnecessary or repeated writes to the same pixel,
-            //      and only draw holograms that the user can see.
-            //    * To help occlude hologram geometry, you can create a depth map using geometry
-            //      data obtained via the surface mapping APIs. You can use this depth map to avoid
-            //      rendering holograms that are intended to be hidden behind tables, walls,
-            //      monitors, and so on.
-            //    * On HolographicDisplays that are transparent, black pixels will appear transparent 
-            //      to the user. On such devices, you should clear the screen to Transparent as shown 
-            //      above. You should still use alpha blending to draw semitransparent holograms. 
-            //
+                // Get the device context.
+                const auto context = m_deviceResources->GetD3DDeviceContext();
+                const auto depthStencilView = pCameraResources->GetDepthStencilView();
+
+                // Set render targets to the current holographic camera.
+                ID3D11RenderTargetView* const targets[1] = { pCameraResources->GetBackBufferRenderTargetView() };
+                context->OMSetRenderTargets(1, targets, depthStencilView);
+
+                // Clear the back buffer and depth stencil view.
+                if (m_canGetHolographicDisplayForCamera &&
+                    cameraPose.HolographicCamera().Display().IsOpaque())
+                {
+                    context->ClearRenderTargetView(targets[0], DirectX::Colors::CornflowerBlue);
+                }
+                else
+                {
+                    context->ClearRenderTargetView(targets[0], DirectX::Colors::Transparent);
+                }
+                context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+                //
+                // TODO: Replace the sample content with your own content.
+                //
+                // Notes regarding holographic content:
+                //    * For drawing, remember that you have the potential to fill twice as many pixels
+                //      in a stereoscopic render target as compared to a non-stereoscopic render target
+                //      of the same resolution. Avoid unnecessary or repeated writes to the same pixel,
+                //      and only draw holograms that the user can see.
+                //    * To help occlude hologram geometry, you can create a depth map using geometry
+                //      data obtained via the surface mapping APIs. You can use this depth map to avoid
+                //      rendering holograms that are intended to be hidden behind tables, walls,
+                //      monitors, and so on.
+                //    * On HolographicDisplays that are transparent, black pixels will appear transparent 
+                //      to the user. On such devices, you should clear the screen to Transparent as shown 
+                //      above. You should still use alpha blending to draw semitransparent holograms. 
+                //
 
 
-            // The view and projection matrices for each holographic camera will change
-            // every frame. This function refreshes the data in the constant buffer for
-            // the holographic camera indicated by cameraPose.
-            if (m_stationaryReferenceFrame)
-            {
-                pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_stationaryReferenceFrame.CoordinateSystem());
-            }
+                // The view and projection matrices for each holographic camera will change
+                // every frame. This function refreshes the data in the constant buffer for
+                // the holographic camera indicated by cameraPose.
+                if (m_stationaryReferenceFrame)
+                {
+                    pCameraResources->UpdateViewProjectionBuffer(m_deviceResources, cameraPose, m_stationaryReferenceFrame.CoordinateSystem());
+                }
 
-            // Attach the view/projection constant buffer for this camera to the graphics pipeline.
-            bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
+                // Attach the view/projection constant buffer for this camera to the graphics pipeline.
+                bool cameraActive = pCameraResources->AttachViewProjectionBuffer(m_deviceResources);
 
 #ifdef USE_REMOTE_RENDERING
-            if (cameraActive)
-            {
-                // Inject remote rendering: as soon as we are connected, start blitting the remote frame.
-                // We do the blitting after the Clear and viewport setup, and before our rendering.
-                if (m_isConnected)
+                if (cameraActive)
                 {
-                    m_graphicsBinding->BlitRemoteFrame();
-                }
-
-                // Show a status text during connection, while loading or when an error occurred
-                if (!m_isConnected || !m_modelLoadFinished || m_modelLoadResult != RR::Result::Success)
-                {
-                    if (m_statusDisplay != nullptr)
+                    // Inject remote rendering: as soon as we are connected, start blitting the remote frame.
+                    // We do the blitting after the Clear and viewport setup, and before our rendering.
+                    if (m_isConnected)
                     {
-                        // Draw connection/progress/error status
-                        m_statusDisplay->Render();
+                        m_graphicsBinding->BlitRemoteFrame();
+                    }
+
+                    // Show a status text during connection, while loading or when an error occurred
+                    if (!m_isConnected || !m_modelLoadFinished || m_modelLoadResult != RR::Result::Success)
+                    {
+                        if (m_statusDisplay != nullptr)
+                        {
+                            // Draw connection/progress/error status
+                            m_statusDisplay->Render();
+                        }
                     }
                 }
-            }
 #endif
 
 #ifdef DRAW_SAMPLE_CONTENT
-            // Only render world-locked content when positional tracking is active.
-            if (cameraActive)
-            {
-                // Draw the sample hologram.
-                m_spinningCubeRenderer->Render();
-                if (m_canCommitDirect3D11DepthBuffer)
+                // Only render world-locked content when positional tracking is active.
+                if (cameraActive)
                 {
-                    // On versions of the platform that support the CommitDirect3D11DepthBuffer API, we can 
-                    // provide the depth buffer to the system, and it will use depth information to stabilize 
-                    // the image at a per-pixel level.
-                    HolographicCameraRenderingParameters renderingParameters = holographicFrame.GetRenderingParameters(cameraPose);
-                    
-                    IDirect3DSurface interopSurface = DX::CreateDepthTextureInteropObject(pCameraResources->GetDepthStencilTexture2D());
+                    // Draw the sample hologram.
+                    m_spinningCubeRenderer->Render();
+                    if (m_canCommitDirect3D11DepthBuffer)
+                    {
+                        // On versions of the platform that support the CommitDirect3D11DepthBuffer API, we can 
+                        // provide the depth buffer to the system, and it will use depth information to stabilize 
+                        // the image at a per-pixel level.
+                        HolographicCameraRenderingParameters renderingParameters = holographicFrame.GetRenderingParameters(cameraPose);
 
-                    // Calling CommitDirect3D11DepthBuffer causes the system to queue Direct3D commands to 
-                    // read the depth buffer. It will then use that information to stabilize the image as
-                    // the HolographicFrame is presented.
-                    renderingParameters.CommitDirect3D11DepthBuffer(interopSurface);
+                        IDirect3DSurface interopSurface = DX::CreateDepthTextureInteropObject(pCameraResources->GetDepthStencilTexture2D());
+
+                        // Calling CommitDirect3D11DepthBuffer causes the system to queue Direct3D commands to 
+                        // read the depth buffer. It will then use that information to stabilize the image as
+                        // the HolographicFrame is presented.
+                        renderingParameters.CommitDirect3D11DepthBuffer(interopSurface);
+                    }
                 }
-            }
 #endif
-            atLeastOneCameraRendered = true;
-        }
+                atLeastOneCameraRendered = true;
+            }
 
-        return atLeastOneCameraRendered;
-    });
+            return atLeastOneCameraRendered;
+        });
 }
 
 void HolographicAppMain::SaveAppState()
@@ -868,28 +877,28 @@ void HolographicAppMain::OnCameraAdded(
     winrt::Windows::Foundation::Deferral deferral = args.GetDeferral();
     HolographicCamera holographicCamera = args.Camera();
     create_task([this, deferral, holographicCamera]()
-    {
-        //
-        // TODO: Allocate resources for the new camera and load any content specific to
-        //       that camera. Note that the render target size (in pixels) is a property
-        //       of the HolographicCamera object, and can be used to create off-screen
-        //       render targets that match the resolution of the HolographicCamera.
-        //
+        {
+            //
+            // TODO: Allocate resources for the new camera and load any content specific to
+            //       that camera. Note that the render target size (in pixels) is a property
+            //       of the HolographicCamera object, and can be used to create off-screen
+            //       render targets that match the resolution of the HolographicCamera.
+            //
 
-        // Create device-based resources for the holographic camera and add it to the list of
-        // cameras used for updates and rendering. Notes:
-        //   * Since this function may be called at any time, the AddHolographicCamera function
-        //     waits until it can get a lock on the set of holographic camera resources before
-        //     adding the new camera. At 60 frames per second this wait should not take long.
-        //   * A subsequent Update will take the back buffer from the RenderingParameters of this
-        //     camera's CameraPose and use it to create the ID3D11RenderTargetView for this camera.
-        //     Content can then be rendered for the HolographicCamera.
-        m_deviceResources->AddHolographicCamera(holographicCamera);
+            // Create device-based resources for the holographic camera and add it to the list of
+            // cameras used for updates and rendering. Notes:
+            //   * Since this function may be called at any time, the AddHolographicCamera function
+            //     waits until it can get a lock on the set of holographic camera resources before
+            //     adding the new camera. At 60 frames per second this wait should not take long.
+            //   * A subsequent Update will take the back buffer from the RenderingParameters of this
+            //     camera's CameraPose and use it to create the ID3D11RenderTargetView for this camera.
+            //     Content can then be rendered for the HolographicCamera.
+            m_deviceResources->AddHolographicCamera(holographicCamera);
 
-        // Holographic frame predictions will not include any information about this camera until
-        // the deferral is completed.
-        deferral.Complete();
-    });
+            // Holographic frame predictions will not include any information about this camera until
+            // the deferral is completed.
+            deferral.Complete();
+        });
 }
 
 void HolographicAppMain::OnCameraRemoved(
@@ -898,12 +907,12 @@ void HolographicAppMain::OnCameraRemoved(
 )
 {
     create_task([this]()
-    {
-        //
-        // TODO: Asynchronously unload or deactivate content resources (not back buffer 
-        //       resources) that are specific only to the camera that was removed.
-        //
-    });
+        {
+            //
+            // TODO: Asynchronously unload or deactivate content resources (not back buffer 
+            //       resources) that are specific only to the camera that was removed.
+            //
+        });
 
     // Before letting this callback return, ensure that all references to the back buffer 
     // are released.

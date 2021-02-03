@@ -21,7 +21,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         bool AutoRenewLease { get; set; }
         BaseStorageAccountData StorageAccountData { get; }
         bool ValidateProfile(out string validateMessages);
-        Task<AzureFrontend> GetFrontend(string domain);
+        Task<RemoteRenderingClient> GetClient(string domain);
         RemoteRenderingServiceProfileFileData CreateFileData();
     }
 }

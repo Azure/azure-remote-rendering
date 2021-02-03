@@ -328,6 +328,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             var fileData = await AnchoringServiceProfileLoader.Load(_defaultProfile);
             AnchorManager.SpatialAnchorsAccountId = fileData.AnchorAccountId;
             AnchorManager.SpatialAnchorsAccountKey = fileData.AnchorAccountKey;
+            AnchorManager.SpatialAnchorsAccountDomain = fileData.AnchorAccountDomain;
             AnchorManager.AuthenticationMode = AuthenticationMode.ApiKey;
             AnchorManager.enabled = true;
 

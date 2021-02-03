@@ -213,19 +213,19 @@ public class RemoteClippingBox : MonoBehaviour
                 return Axis.X;
 
             case ClippingBoxFaces.NegativeX:
-                return Axis.X_Neg;
+                return Axis.NegativeX;
 
             case ClippingBoxFaces.PositiveY:
                 return Axis.Y;
 
             case ClippingBoxFaces.NegativeY:
-                return Axis.Y_Neg;
+                return Axis.NegativeY;
 
             case ClippingBoxFaces.PositiveZ:
                 return Axis.Z;
 
             case ClippingBoxFaces.NegativeZ:
-                return Axis.Z_Neg;
+                return Axis.NegativeZ;
 
             default:
                 // Catch all

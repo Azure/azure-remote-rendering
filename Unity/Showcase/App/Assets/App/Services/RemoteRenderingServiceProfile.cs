@@ -183,7 +183,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public override AuthenticationType AuthType => AuthenticationType.AccessToken;
 
-        public override async Task<AzureFrontend> GetFrontend(string domain)
+        public override async Task<RemoteRenderingClient> GetClient(string domain)
         {
             var authResult = await AADAuth.TryLogin(AppId, AADAuth.Scope.ARR, SelectAccount, ExecuteOnUnityThread.ApplicationToken, TenantId, RedirectURI);
             string accessToken = string.Empty;
@@ -192,12 +192,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             else
                 throw new Exception("Azure Active Directory authentication failed!");
 
-            return new AzureFrontend(new AzureFrontendAccountInfo()
+            return new RemoteRenderingClient(new SessionConfiguration()
             {
                 AccessToken = string.Empty, //STS Access token
-                AccountDomain = domain.Trim(),
+                RemoteRenderingDomain = domain.Trim(),
                 AccountId = AccountId.Trim(),
-                AccountAuthenticationDomain = AccountAuthenticationDomain.Trim(),
+                AccountDomain = AccountAuthenticationDomain.Trim(),
                 AccountKey = string.Empty,
                 AuthenticationToken = accessToken, //Active Directory Access Token
             });

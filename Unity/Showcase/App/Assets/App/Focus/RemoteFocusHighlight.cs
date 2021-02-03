@@ -231,7 +231,7 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
             }
 
             if (overrides.UseTintColorState == HierarchicalEnableState.ForceOn &&
-                (overrides.TintColor.bytes != tintColor.bytes))
+                (overrides.TintColor.Bytes != tintColor.Bytes))
             {
                 overrides.TintColor = tintColor;
             }

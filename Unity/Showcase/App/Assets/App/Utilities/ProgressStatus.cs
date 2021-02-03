@@ -98,61 +98,14 @@ public class ProgressStatus
 /// </summary>
 public class ModelProgressStatus : ProgressStatus
 {
-    private LoadModelAsync _waitable = null;
-    private TaskCompletionSource<LoadModelResult> _taskSource = new TaskCompletionSource<LoadModelResult>();
-
     public ModelProgressStatus()
     {
         UpdateMax(1.0f);
     }
 
-    /// <summary>
-    /// Get the related task
-    /// </summary>
-    /// <remarks>
-    /// Start() can be called after something requests this task, hence the use of a TaskCompletionSource
-    /// </remarks>
-    public Task<LoadModelResult> Result => _taskSource.Task;
-
-    /// <summary>
-    /// Start the progress using the given IAsync operation
-    /// </summary>
-    /// <param name="asyncOperation"></param>
-    public void Start(LoadModelAsync asyncOperation)
+    public void OnProgressUpdated(float progress)
     {
-        _waitable = asyncOperation;
 
-        if (_waitable == null)
-        {
-            return;
-        }
-
-        _waitable.ProgressUpdated += (float value) => { UpdateProgress(value); };
-        _waitable.Completed += WaitableCompleted;
-    }
-
-    /// <summary>
-    /// Handle the waitable completion event.
-    /// </summary>
-    private void WaitableCompleted(LoadModelAsync async)
-    {
-        if (_waitable == null || _taskSource.Task.IsCompleted)
-        {
-            return;
-        }
-
-        _waitable.Completed -= WaitableCompleted;
-        if (_waitable.IsRanToCompletion)
-        {
-            _taskSource.TrySetResult(_waitable.Result);
-        }
-        else
-        { 
-            _taskSource.TrySetException(new Exception($"Load model failed with status '{_waitable.Status}'"));
-        }
-
-        // Force progress to complete on success or failure
-        UpdateProgress(1.0f);
     }
 }
 

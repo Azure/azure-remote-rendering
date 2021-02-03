@@ -1165,7 +1165,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2921167222025722129}
-  - component: {fileID: 2857736065295886713}
+  - component: {fileID: 7836617229872690670}
+  - component: {fileID: 6419118972540198050}
   - component: {fileID: 8216890673362500372}
   - component: {fileID: 7420387856879194744}
   - component: {fileID: 8893964028262229396}
@@ -1191,7 +1192,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2857736065295886713
+--- !u!114 &7836617229872690670
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1200,22 +1201,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 2921167222025722128}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 03daa81ea5f685f4ebf6e32038d058ca, type: 3}
+  m_Script: {fileID: 11500000, guid: 181cd563a8349c34ea8978b0bc8d9c7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   hostTransform: {fileID: 7479401676133425217}
-  manipulationType: 2
-  twoHandedManipulationType: 5
+  manipulationType: 3
+  twoHandedManipulationType: 7
   allowFarManipulation: 1
-  oneHandRotationModeNear: 6
-  oneHandRotationModeFar: 4
+  oneHandRotationModeNear: 1
+  oneHandRotationModeFar: 1
   releaseBehavior: 3
-  constraintOnRotation: 0
-  useLocalSpaceForConstraint: 0
-  constraintOnMovement: 0
   smoothingActive: 1
-  smoothingAmountOneHandManip: 0.001
-  OnManipulationStarted:
+  moveLerpTime: 0.001
+  rotateLerpTime: 0.001
+  scaleLerpTime: 0.001
+  onManipulationStarted:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 693857968}
@@ -1241,7 +1241,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnManipulationEnded:
+  onManipulationEnded:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 693857968}
@@ -1267,7 +1267,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnHoverEntered:
+  onHoverEntered:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 693857968}
@@ -1281,7 +1281,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  OnHoverExited:
+  onHoverExited:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 693857968}
@@ -1295,6 +1295,23 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &6419118972540198050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2921167222025722128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b3e6359c9750ad4fb8a05c9b8704d7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetTransform: {fileID: 0}
+  handType: 3
+  proximityType: 1
+  constraintOnRotation: 0
+  useLocalSpaceForConstraint: 0
 --- !u!114 &8216890673362500372
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1308,7 +1325,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   movable: {fileID: 7479401676133425217}
-  manipulation: {fileID: 2857736065295886713}
+  manipulation: {fileID: 7836617229872690670}
   placement: {fileID: 0}
   onTarget: {fileID: 7824354567102825347}
   moving:
@@ -1352,6 +1369,7 @@ MonoBehaviour:
   enableLiveMovement: 1
   target: {fileID: 7420387856879194744}
   movable: {fileID: 8216890673362500372}
+  locationManager: {fileID: 0}
 --- !u!1 &2921167222493747013
 GameObject:
   m_ObjectHideFlags: 0

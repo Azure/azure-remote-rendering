@@ -642,7 +642,8 @@ namespace Microsoft.MixedReality.Toolkit.Input
             RayCastHit[] hits = null;
             try
             {
-                hits = await AppServices.RemoteRendering.PrimaryMachine.Actions.RayCastQueryAsync(cast);
+                var result = await AppServices.RemoteRendering.PrimaryMachine.Actions.RayCastQueryAsync(cast);
+                hits = result.Hits;
             }
             catch (Exception ex)
             {

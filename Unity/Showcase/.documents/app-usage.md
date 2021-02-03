@@ -110,8 +110,9 @@ The *AnchoringService* is a custom Mixed Reality Toolkit (MRTK) [extension servi
 
 | <div style="width:190px">Anchoring Setting</div> | Description |
 | :---------------------- | :---------------------- |
-| Anchor Account ID | This is the Azure Spatial Anchor account ID. This must be set for the multi-user experience to work. |
-| Anchor Account Key | This is the Azure Spatial Anchor account key. This must be set for the multi-user experience to work. |
+| Anchor Account ID | The Azure Spatial Anchor account ID. This must be set for the multi-user experience to work. |
+| Anchor Account Key | The Azure Spatial Anchor account key. This must be set for the multi-user experience to work. |
+| Anchor Account Domain | The Azure Spatial Anchor account domain. This must be set for the multi-user experience to work. |
 | Search Timeout | The time, in seconds, to stop searching for a particular Azure Spatial Anchor. If negative, the app will never stop searching for the shared Azure Spatial Anchor. It's a good idea to set to a positive value, so to prevent users at different physical locations from endlessly searching for unfindable anchors. |
 | Verbose Logging | When set to true, turns on verbose logging messages for the anchoring service. This is useful when trying to diagnose anchoring failures. |
 

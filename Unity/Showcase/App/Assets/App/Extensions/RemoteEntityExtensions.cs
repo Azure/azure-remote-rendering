@@ -17,7 +17,7 @@ using Remote = Microsoft.Azure.RemoteRendering;
 public static class RemoteEntityExtensions
 {
     /// <summary>
-    /// Get the first game object in the heirarchy this entity.
+    /// Get the first game object in the hierarchy this entity.
     /// </summary>
     public static GameObject GetExistingParentGameObject(this Entity entity)
     {
@@ -33,13 +33,13 @@ public static class RemoteEntityExtensions
     /// <summary>
     /// This is a "no exception" version of QueryLocalBoundsAsync(). This will catch exceptions and return a default result.
     /// </summary>
-    public static async Task<Bounds> SafeQueryLocalBoundsAsync(this Remote.Entity entity)
+    public static async Task<UnityEngine.Bounds> SafeQueryLocalBoundsAsync(this Remote.Entity entity)
     {
-        Bounds result = new Bounds(Vector3.positiveInfinity, Vector3.negativeInfinity);
+        UnityEngine.Bounds result = new UnityEngine.Bounds(Vector3.positiveInfinity, Vector3.negativeInfinity);
 
         try
         {
-            var arrBounds = await entity.QueryLocalBoundsAsync().AsTask();
+            var arrBounds = await entity.QueryLocalBoundsAsync();
             result = arrBounds.toUnity();
         }
         catch (Exception ex)
@@ -268,7 +268,7 @@ public static class RemoteEntityExtensions
             return default(T);
         }
 
-        T result = RemoteManagerUnity.CurrentSession?.Actions.CreateComponent(GetObjectType<T>(), entity) as T ?? null;
+        T result = RemoteManagerUnity.CurrentSession?.Connection.CreateComponent(GetObjectType<T>(), entity) as T ?? null;
         return result;
     }
 

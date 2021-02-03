@@ -21,19 +21,19 @@ using Windows.Storage.Pickers;
 
 public class ConvertModelService : MonoBehaviour
 {
-	#region Serialized Fields
-	/// <summary>
-	/// The button to be used to upload and convert a new model for viewing.
-	/// </summary>
-	public Interactable UploadModelButton;
+    #region Serialized Fields
+    /// <summary>
+    /// The button to be used to upload and convert a new model for viewing.
+    /// </summary>
+    public Interactable UploadModelButton;
 
     #endregion Serialized Fields
 
     #region Static Events
 
-	/// <summary>
-	/// Called when a model has been converted
-	/// </summary>
+    /// <summary>
+    /// Called when a model has been converted
+    /// </summary>
     public static event Action OnModelConversionSuccess;
 
     #endregion Static Events
@@ -46,58 +46,59 @@ public class ConvertModelService : MonoBehaviour
 	private FileOpenPicker openPicker;
 #endif
 
-	#endregion
+    #endregion
 
-	#region MonoBehaviour Functions
-	private void Start()
+    #region MonoBehaviour Functions
+    private void Start()
     {
-		_remoteRenderingService = AppServices.RemoteRendering;
-		if (_remoteRenderingService != null && UploadModelButton != null)
-	    {
-		    // Button listener
-		    UploadModelButton.OnClick.AddListener(SelectModel);
-		    
-		    // Remote rendering status
-		    _remoteRenderingService.StatusChanged += RemoteRendering_StatusChanged;
-		    RemoteRendering_StatusChanged(_remoteRenderingService.Status);
-	    }
+        _remoteRenderingService = AppServices.RemoteRendering;
+        if (_remoteRenderingService != null && UploadModelButton != null)
+        {
+            // Button listener
+            UploadModelButton.OnClick.AddListener(SelectModel);
+
+            // Remote rendering status
+            _remoteRenderingService.StatusChanged += RemoteRendering_StatusChanged;
+            RemoteRendering_StatusChanged(_remoteRenderingService.Status);
+        }
     }
-	#endregion MonoBehaviour Functions
+    #endregion MonoBehaviour Functions
 
-	#region Private Functions
-	private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs e)
-	{
-		RemoteRendering_StatusChanged(e.NewStatus);
-	}
-	
-	private void RemoteRendering_StatusChanged(RemoteRenderingServiceStatus newStatus)
-	{
-		if(newStatus != RemoteRenderingServiceStatus.Unknown)
-		{
-			_remoteRenderingService.StatusChanged -= RemoteRendering_StatusChanged;
-			// Enable button
-			UploadModelButton.IsEnabled = true;
-		}
-		else
-		{
-			// Disable button
-			UploadModelButton.IsEnabled = false;
-		}
-	}
+    #region Private Functions
+    private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs e)
+    {
+        RemoteRendering_StatusChanged(e.NewStatus);
+    }
 
-	private void SelectModel()
-	{
-	#if ENABLE_WINMD_SUPPORT
+    private void RemoteRendering_StatusChanged(RemoteRenderingServiceStatus newStatus)
+    {
+        if (newStatus != RemoteRenderingServiceStatus.Unknown)
+        {
+            _remoteRenderingService.StatusChanged -= RemoteRendering_StatusChanged;
+            // Enable button
+            UploadModelButton.IsEnabled = true;
+        }
+        else
+        {
+            // Disable button
+            UploadModelButton.IsEnabled = false;
+        }
+    }
+
+    private void SelectModel()
+    {
+#if ENABLE_WINMD_SUPPORT
 		UnityEngine.WSA.Application.InvokeOnUIThread(()=> SelectFileAsync(), false);
-	#elif UNITY_EDITOR
-		var modelPath = UnityEditor.EditorUtility.OpenFilePanel("Model", Application.streamingAssetsPath,"fbx,glb,bin");
-		if(modelPath.Length != 0) {
-			ConvertModel(modelPath);
-		}
-	#endif
-	}
+#elif UNITY_EDITOR
+        var modelPath = UnityEditor.EditorUtility.OpenFilePanel("Model", Application.streamingAssetsPath, "fbx,glb,bin");
+        if (modelPath.Length != 0)
+        {
+            ConvertModel(modelPath);
+        }
+#endif
+    }
 
- #if ENABLE_WINMD_SUPPORT
+#if ENABLE_WINMD_SUPPORT
 	private async void SelectFileAsync()
 	{
 		FileOpenPicker openPicker = new FileOpenPicker();
@@ -114,165 +115,164 @@ public class ConvertModelService : MonoBehaviour
 			UnityEngine.WSA.Application.InvokeOnAppThread(()=> ConvertModel(file.Path, stream), false);
 		}
 	}
- #endif
+#endif
 
     private async Task ConvertModel(string modelPath, Stream modelStream = null)
     {
-	    try
-	    {
-		    // Settings
-		    string msg;
-		    const string inputContainerName = "arrinput";
-		    const string outputContainerName = "arroutput";
-		    
-		    string modelFile = Path.GetFileName(modelPath);
-		    string outputFile = Path.ChangeExtension(modelFile, "arrAsset");
+        try
+        {
+            // Settings
+            string msg;
+            const string inputContainerName = "arrinput";
+            const string outputContainerName = "arroutput";
 
-		    msg = $"File selected for conversion: {modelPath}\n{modelFile}.";
-		    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-		    Debug.Log(msg);
+            string modelFile = Path.GetFileName(modelPath);
+            string outputFile = Path.ChangeExtension(modelFile, "arrAsset");
 
-		    // Default model folder name
-		    string folderName = string.Empty;
-		    
-		    // AAR Profile
-		    var loadedProfile = AppServices.RemoteRendering.LoadedProfile;
-		    
-		    // Initialize storage
-		    var storageAccountData = loadedProfile.StorageAccountData;
-		    StorageCredentials storageCredentials;
-		    
-		    if(storageAccountData.AuthType == AuthenticationType.AccountKey)
-		    {
-			    string authKey = await loadedProfile.StorageAccountData.GetAuthData();
-			    storageCredentials = new StorageCredentials(loadedProfile.StorageAccountData.StorageAccountName, authKey);
-			    if(loadedProfile.StorageModelPathByUsername) folderName = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
-		    }
-		    else
-		    {
-			    string authToken = await loadedProfile.StorageAccountData.GetAuthData();
-			    storageCredentials = new StorageCredentials(new TokenCredential(authToken));
-			    if(loadedProfile.StorageModelPathByUsername) folderName = AADAuth.SelectedAccount.Username;
-		    }
-		    var storageAccount = new CloudStorageAccount(storageCredentials, loadedProfile.StorageAccountData.StorageAccountName, null, true);
+            msg = $"File selected for conversion: {modelPath}\n{modelFile}.";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+            Debug.Log(msg);
 
-		    // Storage client
-		    var blobClient = storageAccount.CreateCloudBlobClient();
-		    
-		    // Input container
-		    var inputContainer = blobClient.GetContainerReference(inputContainerName);
-		    await inputContainer.CreateIfNotExistsAsync();
+            // Default model folder name
+            string folderName = string.Empty;
 
-		    // Output container
-		    var outputContainer = blobClient.GetContainerReference(outputContainerName);
-		    await outputContainer.CreateIfNotExistsAsync();
+            // AAR Profile
+            var loadedProfile = AppServices.RemoteRendering.LoadedProfile;
 
-		    msg = $"Uploading model.";
-		    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-		    Debug.Log(msg);
+            // Initialize storage
+            var storageAccountData = loadedProfile.StorageAccountData;
+            StorageCredentials storageCredentials;
 
-		    // Upload model
-		    CloudBlockBlob modelBlockBlob;
-		    if(loadedProfile.StorageModelPathByUsername)
-		    {
-			    var modelFolder = inputContainer.GetDirectoryReference(folderName);
-			    modelBlockBlob = modelFolder.GetBlockBlobReference(modelFile);
-		    }
-		    else
-		    {
-			    modelBlockBlob = inputContainer.GetBlockBlobReference(modelFile);
-		    }
-		    
-		    // Upload using path or provided stream
-		    if(modelStream == null)
-		    {
-			    await modelBlockBlob.UploadFromFileAsync(modelPath);
-		    }
-		    else
-		    {
-			    await modelBlockBlob.UploadFromStreamAsync(modelStream);
-		    }
+            if (storageAccountData.AuthType == AuthenticationType.AccountKey)
+            {
+                string authKey = await loadedProfile.StorageAccountData.GetAuthData();
+                storageCredentials = new StorageCredentials(loadedProfile.StorageAccountData.StorageAccountName, authKey);
+                if (loadedProfile.StorageModelPathByUsername) folderName = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
+            }
+            else
+            {
+                string authToken = await loadedProfile.StorageAccountData.GetAuthData();
+                storageCredentials = new StorageCredentials(new TokenCredential(authToken));
+                if (loadedProfile.StorageModelPathByUsername) folderName = AADAuth.SelectedAccount.Username;
+            }
+            var storageAccount = new CloudStorageAccount(storageCredentials, loadedProfile.StorageAccountData.StorageAccountName, null, true);
 
-		    // Conversion parameters
-		    var inputParams = new AssetConversionInputParams(loadedProfile.StorageAccountName, inputContainerName, folderName, modelFile);
-		    var outputParams = new AssetConversionOutputParams(loadedProfile.StorageAccountName, outputContainerName, folderName, outputFile);
+            // Storage client
+            var blobClient = storageAccount.CreateCloudBlobClient();
 
-		    // Azure authentication
-		    var azureFrontend = await loadedProfile.GetFrontend(loadedProfile.PreferredDomain);
-		    
-		    msg = $"Starting conversion.";
-		    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-		    Debug.Log(msg);
+            // Input container
+            var inputContainer = blobClient.GetContainerReference(inputContainerName);
+            await inputContainer.CreateIfNotExistsAsync();
 
-		    // Start conversion
-		    var conversion = azureFrontend.StartAssetConversionAsync(inputParams, outputParams);
-		    string conversionId;
-		    while(conversion.Status == Result.InProgress)
-		    {
-			    await Task.Delay(100);
-		    }
+            // Output container
+            var outputContainer = blobClient.GetContainerReference(outputContainerName);
+            await outputContainer.CreateIfNotExistsAsync();
 
-		    // Conversion result
-		    if(conversion.Status == Result.Success)
-		    {
-			    msg = $"Conversion started.";
-			    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-			    Debug.Log(msg);
-			    conversionId = conversion.Result;
-		    }
-		    else
-		    {
-			    msg = $"Error starting conversion.";
-			    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-			    Debug.LogError(msg);
-			    return;
-		    }
+            msg = $"Uploading model.";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+            Debug.Log(msg);
 
-		    // Poll conversion process
-		    while(true)
-		    {
-			    // Wait 10 seconds
-			    await Task.Delay(10000);
-			    // Poll conversion status
-			    var status = await azureFrontend.GetAssetConversionStatusAsync(conversionId).AsTask();
-			    if(status == ConversionSessionStatus.Created || status == ConversionSessionStatus.Running)
-			    {
-				    // In progress
-				    msg = $"Conversion Session In Progress...";
-				    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-				    Debug.Log(msg);
-			    }
-			    else
-			    {
-				    // Done, success/fail
-				    switch(status)
-				    {
-					    case ConversionSessionStatus.Unknown:
-					    case ConversionSessionStatus.Aborted:
-					    case ConversionSessionStatus.Failure:
-						    msg = $"Conversion Session Failed.";
-						    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-						    Debug.LogError(msg);
-						    break;
-					    case ConversionSessionStatus.Success:
-						    msg = $"Conversion Session Completed Successfully.";
-						    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
-							OnModelConversionSuccess?.Invoke();
-							Debug.Log(msg);
-						    break;
-				    }
+            // Upload model
+            CloudBlockBlob modelBlockBlob;
+            if (loadedProfile.StorageModelPathByUsername)
+            {
+                var modelFolder = inputContainer.GetDirectoryReference(folderName);
+                modelBlockBlob = modelFolder.GetBlockBlobReference(modelFile);
+            }
+            else
+            {
+                modelBlockBlob = inputContainer.GetBlockBlobReference(modelFile);
+            }
 
-				    break;
-			    }
-		    }
-	    }
-	    catch(Exception e)
-	    {
-		    var msg = $"Conversion Process Failed.\n{e}";
-		    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-		    Debug.LogError(msg);
-		    Debug.LogError(e.StackTrace);
-	    }
+            // Upload using path or provided stream
+            if (modelStream == null)
+            {
+                await modelBlockBlob.UploadFromFileAsync(modelPath);
+            }
+            else
+            {
+                await modelBlockBlob.UploadFromStreamAsync(modelStream);
+            }
+
+            // Conversion parameters
+            var inputParams = new AssetConversionInputOptions(loadedProfile.StorageAccountName, inputContainerName, folderName, modelFile);
+            var outputParams = new AssetConversionOutputOptions(loadedProfile.StorageAccountName, outputContainerName, folderName, outputFile);
+
+            // Azure authentication
+            var client = await loadedProfile.GetClient(loadedProfile.PreferredDomain);
+
+            msg = $"Starting conversion.";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+            Debug.Log(msg);
+
+            // Start conversion
+            var conversion = client.StartAssetConversionAsync(inputParams, outputParams);
+            await conversion;
+
+            string conversionId;
+
+            // Conversion result
+            if (conversion.IsCompleted)
+            {
+                msg = $"Conversion started.";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+                Debug.Log(msg);
+                conversionId = conversion.Result.ConversionUuid;
+            }
+            else
+            {
+                msg = $"Error starting conversion.";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                Debug.LogError(msg);
+                return;
+            }
+
+            // Poll conversion process
+            while (true)
+            {
+                // Wait 10 seconds
+                await Task.Delay(10000);
+                // Poll conversion status
+                var task = await client.GetAssetConversionStatusAsync(conversionId);
+                ConversionSessionStatus status = task.Result;
+                if (status == ConversionSessionStatus.Created || status == ConversionSessionStatus.Running)
+                {
+                    // In progress
+                    msg = $"Conversion Session In Progress...";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+                    Debug.Log(msg);
+                }
+                else
+                {
+                    // Done, success/fail
+                    switch (status)
+                    {
+                        case ConversionSessionStatus.Unknown:
+                        case ConversionSessionStatus.Aborted:
+                        case ConversionSessionStatus.Failure:
+                            msg = $"Conversion Session Failed.";
+                            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                            Debug.LogError(msg);
+                            break;
+                        case ConversionSessionStatus.Success:
+                            msg = $"Conversion Session Completed Successfully.";
+                            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Info);
+                            OnModelConversionSuccess?.Invoke();
+                            Debug.Log(msg);
+                            break;
+                    }
+
+                    break;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            var msg = $"Conversion Process Failed.\n{e}";
+            AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+            Debug.LogError(msg);
+            Debug.LogError(e.StackTrace);
+        }
     }
-	#endregion Private Functions
+    #endregion Private Functions
 }

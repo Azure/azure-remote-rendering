@@ -10,12 +10,12 @@ public class RemoteFrameStats : MonoBehaviour
 {
     public TextMeshPro FrameStats = null;
 
-    ARRServiceStats arrServiceStats = null;
+    ServiceStatistics arrServiceStats = null;
 
 #if UNITY_EDITOR
     private void OnEnable()
     {
-        arrServiceStats = new ARRServiceStats();
+        arrServiceStats = new ServiceStatistics();
     }
 
     void Update()

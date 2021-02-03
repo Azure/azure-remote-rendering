@@ -25,7 +25,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <param name="model">The model to load.</param>
         /// <param name="parent">The parent of the model.</param>
         /// <returns></returns>
-        LoadModelAsync LoadModelAsyncAsOperation(RemoteModel model, Entity parent);
+        Task<LoadModelResult> LoadModelAsyncAsOperation(RemoteModel model, Entity parent, ModelProgressStatus progress);
 
         /// <summary>
         /// Loads a model from a linked storage account or a publicly accessible container.
@@ -53,7 +53,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         /// <param name="cast">Outgoing RayCast.</param>
         /// <returns></returns>
-        Task<RayCastHit[]> RayCastQueryAsync(RayCast cast);
+        Task<RayCastQueryResult> RayCastQueryAsync(RayCast cast);
 
         /// <summary>
         /// Retrieves the remote focus point that will be used to present the current frame if FocusPointReprojectionMode is set to FocusPointMode.UseRemoteFocusPoint.

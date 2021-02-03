@@ -90,7 +90,7 @@ public class RemoteLight : BaseRemoteLight
 
         //Create a root object for the light
         if (lightEntity == null)
-            lightEntity = RemoteRenderingCoordinator.CurrentSession.Actions.CreateEntity();
+            lightEntity = RemoteRenderingCoordinator.CurrentSession.Connection.CreateEntity();
 
         //Bind the remote entity to this game object
         lightEntity.BindToUnityGameObject(this.gameObject);
@@ -103,13 +103,13 @@ public class RemoteLight : BaseRemoteLight
         switch (RemoteLightType)
         {
             case ObjectType.DirectionalLightComponent:
-                var remoteDirectional = RemoteRenderingCoordinator.CurrentSession.Actions.CreateComponent(ObjectType.DirectionalLightComponent, lightEntity) as DirectionalLightComponent;
+                var remoteDirectional = RemoteRenderingCoordinator.CurrentSession.Connection.CreateComponent(ObjectType.DirectionalLightComponent, lightEntity) as DirectionalLightComponent;
                 //No additional properties
                 remoteLightComponent = remoteDirectional;
                 break;
 
             case ObjectType.PointLightComponent:
-                var remotePoint = RemoteRenderingCoordinator.CurrentSession.Actions.CreateComponent(ObjectType.PointLightComponent, lightEntity) as PointLightComponent;
+                var remotePoint = RemoteRenderingCoordinator.CurrentSession.Connection.CreateComponent(ObjectType.PointLightComponent, lightEntity) as PointLightComponent;
                 remotePoint.Radius = 0;
                 remotePoint.Length = localLight.range;
                 //remotePoint.AttenuationCutoff = //No direct analog in Unity legacy lights

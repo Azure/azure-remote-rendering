@@ -132,6 +132,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         devResult.AccountDomains = fileData.Account.AccountDomains;
                     }
+
+                    if (fileData.Account.ShouldSerializeAccountDomainLabels())
+                    {
+                        devResult.AccountDomainLabels = fileData.Account.AccountDomainLabels;
+                    }
                     result = devResult;
                 }
                 else

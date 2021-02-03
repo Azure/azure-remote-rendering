@@ -12,7 +12,7 @@ public abstract class BaseRemoteSky : MonoBehaviour
     public abstract event Action<string> SkyChanged;
     public abstract string CurrentSky { get; protected set; }
 
-    public abstract Dictionary<string, LoadTextureFromSASParams> AvailableCubemaps { get; }
+    public abstract Dictionary<string, LoadTextureFromSasOptions> AvailableCubemaps { get; }
 
     public abstract void SetSky(string skyKey);
 

@@ -138,14 +138,14 @@ public class RemoteObjectExplode : MonoBehaviour
         }
 
         // Calculate the global parent bounds
-        Bounds parentBounds = default;
+        UnityEngine.Bounds parentBounds = default;
         for (int i = 0; i < data.Count; i++)
         {
             ExplodeData explodeData = data[i];
-            AABB3D localBounds = explodeData.Mesh.Mesh.Bounds;
-            Vector3 max = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.max.toUnityPos());
-            Vector3 min = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.min.toUnityPos());
-            var globalBounds = new Bounds((min + max) * 0.5f, max - min);
+            Remote.Bounds localBounds = explodeData.Mesh.Mesh.Bounds;
+            Vector3 max = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.Max.toUnityPos());
+            Vector3 min = explodeData.Snapshot.ToWorld.MultiplyPoint(localBounds.Min.toUnityPos());
+            var globalBounds = new UnityEngine.Bounds((min + max) * 0.5f, max - min);
 
             explodeData.Center = globalBounds.center;
             if (i == 0)

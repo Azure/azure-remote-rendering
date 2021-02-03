@@ -10,7 +10,7 @@ public class RemoteCutPlane : BaseRemoteCutPlane
 {
     public Color SliceColor = new Color(0.5f, 0f, 0f, .5f);
     public float FadeLength = 0.01f;
-    public Axis SliceNormal = Axis.Y_Neg;
+    public Axis SliceNormal = Axis.NegativeY;
 
     public bool AutomaticallyCreate = true;
 
@@ -60,7 +60,7 @@ public class RemoteCutPlane : BaseRemoteCutPlane
             return; //Nothing to do!
 
         //Create a root object for the cut plane
-        var cutEntity = RemoteRenderingCoordinator.CurrentSession.Actions.CreateEntity();
+        var cutEntity = RemoteRenderingCoordinator.CurrentSession.Connection.CreateEntity();
 
         //Bind the remote entity to this game object
         cutEntity.BindToUnityGameObject(this.gameObject);
@@ -70,7 +70,7 @@ public class RemoteCutPlane : BaseRemoteCutPlane
         syncComponent.SyncEveryFrame = true;
 
         //Add a cut plane to the entity
-        remoteCutPlaneComponent = RemoteRenderingCoordinator.CurrentSession.Actions.CreateComponent(ObjectType.CutPlaneComponent, cutEntity) as CutPlaneComponent;
+        remoteCutPlaneComponent = RemoteRenderingCoordinator.CurrentSession.Connection.CreateComponent(ObjectType.CutPlaneComponent, cutEntity) as CutPlaneComponent;
 
         //Configure the cut plane
         remoteCutPlaneComponent.Normal = SliceNormal;

@@ -10,7 +10,7 @@ public class RemoteFrameStats : MonoBehaviour
 {
     public TextMeshPro FrameStats = null;
 
-    ARRServiceStats arrServiceStats = null;
+    ServiceStatistics arrServiceStats = null;
     ARRServiceUnity arrServiceReference = null;
 
     string logMessage;
@@ -29,7 +29,7 @@ public class RemoteFrameStats : MonoBehaviour
 
     private void OnEnable()
     {
-        arrServiceStats = new ARRServiceStats();
+        arrServiceStats = new ServiceStatistics();
     }
 
     void Update()
@@ -52,7 +52,7 @@ public class RemoteFrameStats : MonoBehaviour
             }
             else if (RemoteManagerUnity.CurrentSession != null)
             {
-                FrameStats.text += $"Session id: '{RemoteManagerUnity.CurrentSession.SessionUUID}' \n";
+                FrameStats.text += $"Session id: '{RemoteManagerUnity.CurrentSession.SessionUuid}' \n";
                 FrameStats.text += $"Session status: {arrServiceReference.LastProperties.Status}";
 
                 if (arrServiceReference.LastProperties.Status == RenderingSessionStatus.Starting)

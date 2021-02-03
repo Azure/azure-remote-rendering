@@ -947,7 +947,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         {
             LogVerbose("UpdatePhotonRooms()");
 
-            PhotonNetwork.GetCustomRoomList(TypedLobby.Default, "*");
+            PhotonNetwork.GetCustomRoomList(new TypedLobby(null, LobbyType.SqlLobby), "*");
         }
 
         /// <summary>

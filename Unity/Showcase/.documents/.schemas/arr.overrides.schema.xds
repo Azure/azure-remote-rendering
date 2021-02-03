@@ -74,6 +74,7 @@
       <xs:element type="GUID" name="AccountId" minOccurs="0"/>
       <xs:element type="GUID" name="AnchorAccountId" minOccurs="0" />
       <xs:element type="xs:string" name="AnchorAccountKey" minOccurs="0" />
+      <xs:element type="xs:string" name="AnchorAccountDomain" minOccurs="0"/>
     </xs:all>
   </xs:complexType>
   <!-- End Type Defines -->

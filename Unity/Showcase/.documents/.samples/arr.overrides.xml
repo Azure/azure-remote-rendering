@@ -30,5 +30,6 @@
   <Anchor>
     <AnchorAccountId>00000000-0000-0000-0000-000000000000</AnchorAccountId>
     <AnchorAccountKey>=</AnchorAccountKey>
+    <AnchorAccountDomain>mixedreality.azure.com</AnchorAccountDomain>
   </Anchor>
 </Configuration>

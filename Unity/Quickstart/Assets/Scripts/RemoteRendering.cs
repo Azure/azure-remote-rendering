@@ -106,7 +106,7 @@ public class RemoteRendering : MonoBehaviour
 
     private void CreateFrontend()
     {
-        if (arrService.Frontend != null)
+        if (arrService.Client != null)
         {
             // early out if the front-end has been created before
             return;
@@ -114,26 +114,26 @@ public class RemoteRendering : MonoBehaviour
 
         // initialize the ARR service with our account details.
         // Trim the strings in case they have been pasted into the inspector with trailing whitespaces
-        AzureFrontendAccountInfo accountInfo = new AzureFrontendAccountInfo();
+        SessionConfiguration accountInfo = new SessionConfiguration();
         accountInfo.AccountKey = AccountKey.Trim();
         accountInfo.AccountId = AccountId.Trim();
-        accountInfo.AccountDomain = AccountDomain.Trim();
-        accountInfo.AccountAuthenticationDomain = AccountAuthenticationDomain.Trim();
+        accountInfo.RemoteRenderingDomain = AccountDomain.Trim();
+        accountInfo.AccountDomain = AccountAuthenticationDomain.Trim();
 
         arrService.Initialize(accountInfo);
     }
 
-    private void ARRService_OnSessionStatusChanged(ARRServiceUnity service, AzureSession session)
+    private void ARRService_OnSessionStatusChanged(ARRServiceUnity service, RenderingSession session)
     {
         LogSessionStatus(session);
     }
 
-    private async void LogSessionStatus(AzureSession session)
+    private async void LogSessionStatus(RenderingSession session)
     {
         if (session != null)
         {
-            var sessionProperties = await session.GetPropertiesAsync().AsTask();
-            LogSessionStatus(sessionProperties);
+            var sessionProperties = await session.GetPropertiesAsync();
+            LogSessionStatus(sessionProperties.SessionProperties);
         }
         else
         {
@@ -171,7 +171,7 @@ public class RemoteRendering : MonoBehaviour
         if( arrService.CurrentActiveSession?.ConnectionStatus == ConnectionStatus.Connected )
         {
             DestroyModel();
-            arrService.CurrentActiveSession.DisconnectFromRuntime();
+            arrService.CurrentActiveSession.Disconnect();
         }
     }
 
@@ -179,13 +179,13 @@ public class RemoteRendering : MonoBehaviour
     {
         // The session must have its runtime pump updated.
         // The update will push messages to the server, receive messages, and update the frame-buffer with the remotely rendered content.
-        arrService.CurrentActiveSession?.Actions.Update();
+        arrService.CurrentActiveSession?.Connection.Update();
     }
 
     private async Task LoadModel()
     {
         // create a root object to parent a loaded model to
-        Entity modelEntity = arrService.CurrentActiveSession.Actions.CreateEntity();
+        Entity modelEntity = arrService.CurrentActiveSession.Connection.CreateEntity();
 
         // get the game object representation of this entity
         modelEntityGO = modelEntity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
@@ -199,14 +199,13 @@ public class RemoteRendering : MonoBehaviour
         modelEntityGO.transform.localScale = Vector3.one;
 
         // load a model that will be parented to the entity
-        var loadModelParams = new LoadModelFromSASParams(ModelName, modelEntity);
-        var async = arrService.CurrentActiveSession.Actions.LoadModelFromSASAsync(loadModelParams);
-        async.ProgressUpdated += (float progress) =>
+        var loadModelParams = new LoadModelFromSasOptions(ModelName, modelEntity);
+        var async = arrService.CurrentActiveSession.Connection.LoadModelFromSasAsync(loadModelParams, (float progress) =>
         {
             LogMessage($"Loading Model: {progress.ToString("P2", CultureInfo.InvariantCulture)}");
-        };
+        });
 
-        await async.AsTask();
+        await async;
     }
 
     private void PlaceModel()
@@ -288,7 +287,7 @@ public class RemoteRendering : MonoBehaviour
                     LogMessage($"Session ID: {sessionId} is in state: {props.Status}. Starting a new session.");
                 }
 
-                props = await arrService.StartSession(new RenderingSessionCreationParams(VMSize, MaxLeaseTimeHours, MaxLeaseTimeMinutes));
+                props = await arrService.StartSession(new RenderingSessionCreationOptions(VMSize, (int)MaxLeaseTimeHours, (int)MaxLeaseTimeMinutes));
 
                 if (props.Status != RenderingSessionStatus.Ready)
                 {
@@ -297,7 +296,7 @@ public class RemoteRendering : MonoBehaviour
                 }
             }
 
-            SessionId = arrService.CurrentActiveSession.SessionUUID;
+            SessionId = arrService.CurrentActiveSession.SessionUuid;
 
             if (!enabled)
             {
@@ -325,7 +324,7 @@ public class RemoteRendering : MonoBehaviour
                 return;
             }
 
-            Result res = await arrService.CurrentActiveSession.ConnectToRuntime(new ConnectToRuntimeParams()).AsTask();
+            ConnectionStatus res = await arrService.CurrentActiveSession.ConnectAsync(new RendererInitOptions());
 
             if (arrService.CurrentActiveSession.IsConnected)
             {

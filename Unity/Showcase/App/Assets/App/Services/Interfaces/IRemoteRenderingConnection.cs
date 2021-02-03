@@ -11,7 +11,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Event raised when the connections status changes
         /// </summary>
-        event ConnectionStatusHandler ConnectionStatusChanged;
+        event ConnectionStatusChangedEventHandler ConnectionStatusChanged;
 
         /// <summary>
         /// Get the connection status

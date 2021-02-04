@@ -105,7 +105,7 @@ public class ModelProgressStatus : ProgressStatus
 
     public void OnProgressUpdated(float progress)
     {
-
+        UpdateProgress(progress);
     }
 }
 

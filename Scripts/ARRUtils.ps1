@@ -37,7 +37,7 @@ function CheckPrerequisites()
 
     $azAccountsInstalled = Get-Module -ListAvailable -Name Az.Accounts
     if (-Not $azAccountsInstalled) {
-        WriteErrorResponse "Az.Accounts module is not installed - Install it via 'Install-Module -Name Az -AllowClobber'. $($docsAvailableString)" 
+        WriteErrorResponse "Az.Accounts module is not installed - Install it via 'Install-Module -Name Az -AllowClobber'. $($docsAvailableString)"
         return $False
     }
     return $True
@@ -46,11 +46,11 @@ function CheckPrerequisites()
 function CheckLogin()
 {
     $context = Get-AzContext
-    if (!$context) 
+    if (!$context)
     {
         WriteErrorResponse "Not logged into a subscription. You need to log in via the Connect-AzAccount command. $($docsAvailableString)"
         return $False
-    } 
+    }
     WriteSuccess "Using Subscription: '$($context.Name)' TenantId: '$($context.Tenant.Id)'"
     return $True
 }
@@ -90,7 +90,7 @@ function WriteProgress($activity, $status) {
 }
 
 function HandleException($exception) {
-    if ($exception.Response.Headers -ne $null -and $exception.Response.Headers.Contains("MS-CV")) {
+    if ($null -ne $exception.Response.Headers -and $exception.Response.Headers.Contains("MS-CV")) {
         $exceptionObject = "Response's MS-CV is '$($exception.Response.Headers.GetValues('MS-CV'))'`r`n"
     }
     else {
@@ -148,11 +148,7 @@ $defaultConfigContent = '{
       "inputAssetPath": "<the path to the asset under inputcontainer/inputfolderpath pointing to the input asset e.g. box.fbx>",
       "outputFolderPath": "<optional: base folderpath in the output container - the converted asset and log files will be placed here>",
       "outputAssetFileName": "<optional: filename for the converted asset, this will be placed in the output container under the outputpath>",
-      "storageAccountKey": null,
       "storageContext": null,
-      "storageContainer": null,
-      "blobEndPoint": null,
-      "outputStorageContainer": null,
       "outputContainerSAS": null,
       "inputContainerSAS": null
     }
@@ -176,7 +172,7 @@ function LoadConfig(
     [string] $StorageAccountName,
     [string] $ResourceGroup,
     [string] $BlobInputContainerName,
-    [string] $BlobOutputContainerName,    
+    [string] $BlobOutputContainerName,
     [string] $LocalAssetDirectoryPath,
     [string] $InputAssetPath,
     [string] $InputFolderPath,
@@ -193,19 +189,19 @@ function LoadConfig(
 
     $defaultConfig = GetDefaultConfig
     $config = $defaultConfig
-    if ([bool]($configFromFile -match "accountSettings")) {
+    if ([bool]($configFromFile | get-member -name "accountSettings")) {
         $configFromFile.accountSettings.psobject.properties | ForEach-Object {
             $config.accountSettings | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value -Force
         }
     }
 
-    if ([bool]($configFromFile -match "renderingSessionSettings")) {
+    if ([bool]($configFromFile | get-member -name "renderingSessionSettings")) {
         $configFromFile.renderingSessionSettings.psobject.properties | ForEach-Object {
             $config.renderingSessionSettings | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value -Force
         }
     }
 
-    if ([bool]($configFromFile -match "assetConversionSettings")) {
+    if ([bool]($configFromFile | get-member -name "assetConversionSettings")) {
         $configFromFile.assetConversionSettings.psobject.properties | ForEach-Object {
             $config.assetConversionSettings | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value -Force
         }
@@ -222,11 +218,11 @@ function LoadConfig(
     if (-Not [string]::IsNullOrEmpty($OutputAssetFileName)) {
         $config.assetConversionSettings.outputAssetFileName = $OutputAssetFileName
     }
-    
+
     if (-Not [string]::IsNullOrEmpty($InputFolderPath)) {
         $config.assetConversionSettings.inputFolderPath = $InputFolderPath
     }
-    
+
     if (-Not [string]::IsNullOrEmpty($OutputFolderPath)) {
         $config.assetConversionSettings.outputFolderPath = $OutputFolderPath
     }
@@ -426,12 +422,8 @@ function AddStorageAccountInformationToConfig($config) {
     WriteInformation ("Populating Storage Account information for file upload...")
     $resourceGroup = $config.assetConversionSettings.resourceGroup
     $storageAccountName = $config.assetConversionSettings.storageAccountName
-    $inputContainerName = $config.assetConversionSettings.blobInputContainerName
-    $outputContainerName = $config.assetConversionSettings.blobOutputContainerName
     $assetConversionSettings = $config.assetConversionSettings
 
-    $azureSettingsValid = $true
-    
     $storageAccountKeys = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroup -Name $storageAccountName -erroraction 'silentlycontinue')
     if ($null -ne $storageAccountKeys) {
         $storageAccountKey = $storageAccountKeys.Value[0]
@@ -447,52 +439,16 @@ function AddStorageAccountInformationToConfig($config) {
 
     $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
 
-    if ($null -ne $storageContext) {
-        $assetConversionSettings.blobEndPoint = $storageContext.BlobEndPoint
-        WriteSuccess("Retrieved Storage Context ...")
-    }
-    else {
-        WriteError("Could not retrieve storage account context for storage account '$storageAccountName' ")
-        return $null
-    }
-
-    $inputStorageContainer = Get-AzStorageContainer -Name $inputContainerName -Context $storageContext
-
-    if ($null -ne $inputStorageContainer) {
-        WriteSuccess("Retrieved input Storage Container ...")
-    }
-    else {
-        WriteError("Could not retrieve the input storage container '$inputContainerName' in storage account '$storageAccountName' ")
-        $azureSettingsValid = $false
-    }
-
-    $outputStorageContainer = Get-AzStorageContainer -Name $outputContainerName -Context $storageContext
-
-    if ($null -ne $outputStorageContainer) {
-        WriteSuccess("Retrieved output Storage Container ...")
-    }
-    else {
-        WriteError("Could not retrieve the output storage container '$outputContainerName' in storage account '$storageAccountName' ")
-        $azureSettingsValid = $false
-    }
-
-    $assetConversionSettings.storageAccountKey = $storageAccountKey
     $assetConversionSettings.storageContext = $storageContext
-    $assetConversionSettings.storageContainer = $inputStorageContainer
-    $assetConversionSettings.outputStorageContainer = $outputStorageContainer
 
-
-    if ($azureSettingsValid) {
-        WriteSuccess("Successfully added storage settings to the configurations ...")
-        if ([bool]($config -match "assetConversionSettings")) {
-            $assetConversionSettings.psobject.properties | ForEach-Object {
-                $config.assetConversionSettings | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value -Force
-            }
+    WriteSuccess("Successfully added storage settings to the configurations ...")
+    if ([bool]($config | get-member -name "assetConversionSettings")) {
+        $assetConversionSettings.psobject.properties | ForEach-Object {
+            $config.assetConversionSettings | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value -Force
         }
-        return $config
     }
-    return $null
-}	
+    return $config
+}
 
 function GenerateInputContainerSAS([string]$blobEndPoint, [string]$blobContainerName, $storageContext, [DateTime]$startTime = [DateTime]::Now, [Int]$TokenlifeTimeInHours = 24) {
     WriteLine
@@ -513,14 +469,13 @@ function GenerateInputContainerSAS([string]$blobEndPoint, [string]$blobContainer
     }
 }
 
-function GenerateOutputmodelSASUrl($convertedAssets, [string]$blobEndPoint, $storageContext, [DateTime]$startTime = [DateTime]::Now, [Int]$TokenlifeTimeInHours = 24) {
+function GenerateOutputmodelSASUrl([string]$containerName, [string]$blobPath, $storageContext, [DateTime]$startTime = [DateTime]::Now, [Int]$TokenlifeTimeInHours = 24) {
     WriteLine
     WriteInformation ("Generating SAS URI for ingested model - this URI is valid for $TokenlifeTimeInHours hours")
 
-    $startTime = [DateTime]::Now
     $endTime = $startTime.AddHours($TokenlifeTimeInHours)
 
-    $blobSASUri = New-AzStorageBlobSASToken -FullUri -Container $convertedAssets.blobContainerName -Blob $convertedAssets.assetFilePath -Permission r -StartTime $startTime -ExpiryTime $endTime -Context $storageContext
+    $blobSASUri = New-AzStorageBlobSASToken -FullUri -Container $containerName -Blob $blobPath -Permission r -StartTime $startTime -ExpiryTime $endTime -Context $storageContext
 
     if ($null -ne $blobSASUri) {
         WriteSuccess("Successfully generated model SAS URI")
@@ -575,10 +530,10 @@ function GetAuthenticationToken([string]$authenticationEndpoint, [GUID]$accountI
 }
 
 # SIG # Begin signature block
-# MIInLAYJKoZIhvcNAQcCoIInHTCCJxkCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIInKAYJKoZIhvcNAQcCoIInGTCCJxUCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCAwLOvCtxW9IhG
-# ja2BeEFJNpoBYuftKFEA6tfoOc5SDqCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBQ3SbaUdwqI3h+
+# 2y66YT4RwMe+quCdpgSlPHOl2ynxwKCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
 # OfXldyfqAAEAAAE5MA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMDEwMjEyMDM5MDZaFw0yMTA5MTUyMTQzMDNaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -671,117 +626,117 @@ function GetAuthenticationToken([string]$authenticationEndpoint, [GUID]$accountI
 # lt075qTroz0Nt680pXvVhsRSdNnzW2hfQu2xuOLg8zKGVOD/rr0GgeyhODjKgL2G
 # Hxctbb9XaVSDf6ocdB//aDYjiabmWd/WYmy7fQ127KuasMh5nSV2orMcAed8CbIV
 # I3NYu+sahT1DRm/BGUN2hSpdsPQeO73wYvp1N7DdLaZyz7XsOCx1quCwQ+bojWVQ
-# TmKLGegSoUpZNfmP9MtSMYIVHTCCFRkCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
+# TmKLGegSoUpZNfmP9MtSMYIVGTCCFRUCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
 # R0JMMRMwEQYKCZImiZPyLGQBGRYDQU1FMRUwEwYDVQQDEwxBTUUgQ1MgQ0EgMDEC
 # EzYAAAE5eMY59eV3J+oAAQAAATkwDQYJYIZIAWUDBAIBBQCgga4wGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# LwYJKoZIhvcNAQkEMSIEIOjdRc/bSWW0Gl1MoEedhEBPFXXOzVzjNjmhCpRrpwfv
+# LwYJKoZIhvcNAQkEMSIEIL2DFhZBEBxJX4ptY3dBgwl/ZrzlBGSBtAPZHDaS55af
 # MEIGCisGAQQBgjcCAQwxNDAyoBSAEgBNAGkAYwByAG8AcwBvAGYAdKEagBhodHRw
-# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEADRKkKWj0Y+rS
-# /b9nP/+PHSDVNv9T5iugWJKOySYq1UDirRUnXrTqKLIlZAGktlTQyJgYUb04avgH
-# k2Cpy6LLg2pSFAuTYYKrBNTYBdhwI2EC8pHSpImNK+Hiy7xMAYw1t8O7RG1KSE01
-# E/HSMQ/xfmg1jdUp3Pw4gF7yKFCKkdvkhGL+lFLvXzAj8rdxh/OshaU+Rqh1CGTw
-# vQ3ngaFky6H3Rv5TCEgpsRMme5kb5gds04yrt/Px8i6RxmQae0UTKRuwbFcjoV4u
-# JctuAZ+9YNZ0a1A3rMhdCB0nTjMm65WO+JlziIcXBYPCWSilYW5wPbWuo4mgVQRO
-# +nCqJf0zrKGCEuUwghLhBgorBgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCC
-# Er4wghK6AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAE
-# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCCTnJFRnLAd
-# vAbxsMVjdoIToyAEHhpKfhcBRJN1DkozbgIGYBiDUwFjGBMyMDIxMDIxMDE0NDAw
-# My41MDNaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
-# aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
-# cnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25z
-# MSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo3QkYxLUUzRUEtQjgwODElMCMGA1UE
-# AxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaCCDjwwggTxMIID2aADAgEC
-# AhMzAAABUcNQ51lsqsanAAAAAAFRMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYT
-# AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
-# VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBU
-# aW1lLVN0YW1wIFBDQSAyMDEwMB4XDTIwMTExMjE4MjYwNFoXDTIyMDIxMTE4MjYw
-# NFowgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQH
-# EwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNV
-# BAsTHE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxl
-# cyBUU1MgRVNOOjdCRjEtRTNFQS1CODA4MSUwIwYDVQQDExxNaWNyb3NvZnQgVGlt
-# ZS1TdGFtcCBTZXJ2aWNlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
-# n9KH76qErjvvOIkjWbHptMkYDjmG+JEmzguyr/VxjZgZ/ig8Mk47jqSJP5RxH/sD
-# yqhYu7jPSO86siZh8u7DBX9L8I+AB+8fPPvD4uoLKD22BpoFl4B8Fw5K7Suibvbx
-# GN7adL1/zW+sWXlVvpDhEPIKDICvEdNjGTLhktfftjefg9lumBMUBJ2G4/g4ad0d
-# DvRNmKiMZXXe/Ll4Qg/oPSzXCUEYoSSqa5D+5MRimVe5/YTLj0jVr8iF45V0hT7V
-# H8OJO4YImcnZhq6Dw1G+w6ACRGePFmOWqW8tEZ13SMmOquJrTkwyy8zyNtVttJAX
-# 7diFLbR0SvMlbJZWK0KHdwIDAQABo4IBGzCCARcwHQYDVR0OBBYEFMV3/+NoUGKT
-# NGg6OMyE6fN1ROptMB8GA1UdIwQYMBaAFNVjOlyKMZDzQ3t8RhvFM2hahW1VMFYG
-# A1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kvY3Js
-# L3Byb2R1Y3RzL01pY1RpbVN0YVBDQV8yMDEwLTA3LTAxLmNybDBaBggrBgEFBQcB
-# AQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kv
-# Y2VydHMvTWljVGltU3RhUENBXzIwMTAtMDctMDEuY3J0MAwGA1UdEwEB/wQCMAAw
-# EwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggEBACv99cAVg5nx
-# 0SqjvLfQzmugMj5cJ9NE60duSH1LpxHYim9Ls3UfiYd7t0JvyEw/rRTEKHbznV6L
-# FLlX++lHJMGKzZnHtTe2OI6ZHFnNiFhtgyWuYDJrm7KQykNi1G1LbuVie9MehmoK
-# +hBiZnnrcfZSnBSokrvO2QEWHC1xnZ5wM82UEjprFYOkchU+6RcoCjjmIFGfgSzN
-# j1MIbf4lcJ5FoV1Mg6FwF45CijOXHVXrzkisMZ9puDpFjjEV6TAY6INgMkhLev/A
-# Vow0sF8MfQztJIlFYdFEkZ5NF/IyzoC2Yb9iw4bCKdBrdD3As6mvoGSNjCC6lOdz
-# 6EerJK3NhFgwggZxMIIEWaADAgECAgphCYEqAAAAAAACMA0GCSqGSIb3DQEBCwUA
-# MIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
-# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQD
-# EylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAxMDAeFw0x
-# MDA3MDEyMTM2NTVaFw0yNTA3MDEyMTQ2NTVaMHwxCzAJBgNVBAYTAlVTMRMwEQYD
-# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1w
-# IFBDQSAyMDEwMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqR0NvHcR
-# ijog7PwTl/X6f2mUa3RUENWlCgCChfvtfGhLLF/Fw+Vhwna3PmYrW/AVUycEMR9B
-# GxqVHc4JE458YTBZsTBED/FgiIRUQwzXTbg4CLNC3ZOs1nMwVyaCo0UN0Or1R4HN
-# vyRgMlhgRvJYR4YyhB50YWeRX4FUsc+TTJLBxKZd0WETbijGGvmGgLvfYfxGwScd
-# JGcSchohiq9LZIlQYrFd/XcfPfBXday9ikJNQFHRD5wGPmd/9WbAA5ZEfu/QS/1u
-# 5ZrKsajyeioKMfDaTgaRtogINeh4HLDpmc085y9Euqf03GS9pAHBIAmTeM38vMDJ
-# RF1eFpwBBU8iTQIDAQABo4IB5jCCAeIwEAYJKwYBBAGCNxUBBAMCAQAwHQYDVR0O
-# BBYEFNVjOlyKMZDzQ3t8RhvFM2hahW1VMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIA
-# QwBBMAsGA1UdDwQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFNX2
-# VsuP6KJcYmjRPZSQW9fOmhjEMFYGA1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwu
-# bWljcm9zb2Z0LmNvbS9wa2kvY3JsL3Byb2R1Y3RzL01pY1Jvb0NlckF1dF8yMDEw
-# LTA2LTIzLmNybDBaBggrBgEFBQcBAQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93
-# d3cubWljcm9zb2Z0LmNvbS9wa2kvY2VydHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYt
-# MjMuY3J0MIGgBgNVHSABAf8EgZUwgZIwgY8GCSsGAQQBgjcuAzCBgTA9BggrBgEF
-# BQcCARYxaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL1BLSS9kb2NzL0NQUy9kZWZh
-# dWx0Lmh0bTBABggrBgEFBQcCAjA0HjIgHQBMAGUAZwBhAGwAXwBQAG8AbABpAGMA
-# eQBfAFMAdABhAHQAZQBtAGUAbgB0AC4gHTANBgkqhkiG9w0BAQsFAAOCAgEAB+aI
-# UQ3ixuCYP4FxAz2do6Ehb7Prpsz1Mb7PBeKp/vpXbRkws8LFZslq3/Xn8Hi9x6ie
-# JeP5vO1rVFcIK1GCRBL7uVOMzPRgEop2zEBAQZvcXBf/XPleFzWYJFZLdO9CEMiv
-# v3/Gf/I3fVo/HPKZeUqRUgCvOA8X9S95gWXZqbVr5MfO9sp6AG9LMEQkIjzP7QOl
-# lo9ZKby2/QThcJ8ySif9Va8v/rbljjO7Yl+a21dA6fHOmWaQjP9qYn/dxUoLkSbi
-# OewZSnFjnXshbcOco6I8+n99lmqQeKZt0uGc+R38ONiU9MalCpaGpL2eGq4EQoO4
-# tYCbIjggtSXlZOz39L9+Y1klD3ouOVd2onGqBooPiRa6YacRy5rYDkeagMXQzafQ
-# 732D8OE7cQnfXXSYIghh2rBQHm+98eEA3+cxB6STOvdlR3jo+KhIq/fecn5ha293
-# qYHLpwmsObvsxsvYgrRyzR30uIUBHoD7G4kqVDmyW9rIDVWZeodzOwjmmC3qjeAz
-# LhIp9cAvVCch98isTtoouLGp25ayp0Kiyc8ZQU3ghvkqmqMRZjDTu3QyS99je/WZ
-# ii8bxyGvWbWu3EQ8l1Bx16HSxVXjad5XwdHeMMD9zOZN+w2/XU/pnR4ZOC+8z1gF
-# Lu8NoFA12u8JJxzVs341Hgi62jbb01+P3nSISRKhggLOMIICNwIBATCB+KGB0KSB
-# zTCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcT
+# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAWqmDHgnzuHTq
+# EpO98UEf4T3rdeYqw6Fk5PFKnriBrwZrVvytAYyIUP4vFirEddy512EPwuvK/3EQ
+# KODWu05pLy0qBenGenjKdpQjej/T1Fub3vY1YmneTIzLZYdLkLkUpjOq9at/IzTt
+# 1NvfHQ1LD2T1PVZMqn/PqPsmzbtEiyjWEgWnvtq6yccpKqYav8TEEMQ31lOhXA6O
+# O2P2y5CUz11TBa/ObVTBKOMNqeIDT96qlhUXwhY9kbnzuLE82jVYJCpzW62fjoFb
+# 2Jctr6bJc6lEXp+b6wMOa71i7UAG/4XFJf4UMG2jTA5jnR2La9baDw/uBr4LiXDM
+# KZ3cihWLUKGCEuEwghLdBgorBgEEAYI3AwMBMYISzTCCEskGCSqGSIb3DQEHAqCC
+# ErowghK2AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFQBgsqhkiG9w0BCRABBKCCAT8E
+# ggE7MIIBNwIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCBsbK5lSl3O
+# CD7CKIUNUySXfcpzUrO9Jh3fXnmrIHMD7wIGYCWJOdLDGBIyMDIxMDIxNzIzNTQz
+# NC4zOFowBIACAfSggdCkgc0wgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
+# cG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMx
+# JjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOkFFMkMtRTMyQi0xQUZDMSUwIwYDVQQD
+# ExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2aWNloIIOOTCCBPEwggPZoAMCAQIC
+# EzMAAAFIoohFVrwvgL8AAAAAAUgwDQYJKoZIhvcNAQELBQAwfDELMAkGA1UEBhMC
+# VVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNV
+# BAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRp
+# bWUtU3RhbXAgUENBIDIwMTAwHhcNMjAxMTEyMTgyNTU2WhcNMjIwMjExMTgyNTU2
+# WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcT
 # B1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UE
 # CxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVz
-# IFRTUyBFU046N0JGMS1FM0VBLUI4MDgxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1l
-# LVN0YW1wIFNlcnZpY2WiIwoBATAHBgUrDgMCGgMVAKCir3PxP6RCCyVMJSAVoMV6
-# 1yNeoIGDMIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24x
-# EDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlv
-# bjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwDQYJKoZI
-# hvcNAQEFBQACBQDjzjZBMCIYDzIwMjEwMjEwMTgzODU3WhgPMjAyMTAyMTExODM4
-# NTdaMHcwPQYKKwYBBAGEWQoEATEvMC0wCgIFAOPONkECAQAwCgIBAAICC9ECAf8w
-# BwIBAAICEbwwCgIFAOPPh8ECAQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGE
-# WQoDAqAKMAgCAQACAwehIKEKMAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQDT
-# g+3VyKt7oN2kQ6EttIcAG7IjYSAyI7b7mR+CHGpKkGIOSvhoCmadHVYIOwzYam5+
-# CBt23KND2pSdw7muK2Qn+LZ2Qw8BWkPndlvc56cUXrY50fsCu0Hv74AAR4yCXsQ5
-# YVrvZnqevT7vT1H4m2AAyGWcjAE1RsuUgaJInKkVDzGCAw0wggMJAgEBMIGTMHwx
-# CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1p
-# Y3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUcNQ51lsqsanAAAAAAFR
-# MA0GCWCGSAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQw
-# LwYJKoZIhvcNAQkEMSIEIIO//11aTunAbN9C0JR5T1Ji6+jnXRarWCY19tfVKajo
-# MIH6BgsqhkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgLs1cmYj41sFZBwCmFvv9ScP5
-# tuuUhxsv/t0B9XF65UEwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMK
-# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
-# IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0Eg
-# MjAxMAITMwAAAVHDUOdZbKrGpwAAAAABUTAiBCCbckIA6FZlZ0tTZcJPfnjtTZP3
-# wie3lw1FASs2NGsTJDANBgkqhkiG9w0BAQsFAASCAQBMRx6jM8vdeyhby0cUT151
-# 3zGWQeXFlqlrpfMSkDqe9U4J9W0N6aUrAYjQYmBwXDI6EeKJXHRwmHOxnuK91M3G
-# WOFXoWhfCv8WBXGmnzrLUqO3Tef8P2lBDplPmAcodoMKCwACXGQvAGBcPOWCB+0T
-# lY9/CNRlYzUlQrQzCzpqxDH6ntSOu8mbf+dk1QJ9FNMQATrK44gtqMJiHyl2NjDM
-# Qq7RpKIoMNY8NZ5T2Aw7ZK9LTMjGI2zo64b1MgEzgpkqn/eVPlwBtM1O8yWJkhN5
-# m9JTG+6ptfFX9FmPE4yBzjlJDyrh2RirpNrlChvgernhP9IDd+Dj0wiBpFo8797X
+# IFRTUyBFU046QUUyQy1FMzJCLTFBRkMxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1l
+# LVN0YW1wIFNlcnZpY2UwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQD3
+# /3ivFYSK0dGtcXaZ8pNLEARbraJewryi/JgbaKlq7hhFIU1EkY0HMiFRm2/Wsukt
+# 62k25zvDxW16fphg5876+l1wYnClge/rFlrR2Uu1WwtFmc1xGpy4+uxobCEMeIFD
+# GhL5DNTbbOisLrBUYbyXr7fPzxbVkEwJDP5FG2n0ro1qOjegIkLIjXU6qahduQxT
+# fsPOEp8jgqMKn++fpH6fvXKlewWzdsfvhiZ4H4Iq1CTOn+fkxqcDwTHYkYZYgqm+
+# 1X1x7458rp69qjFeVP3GbAvJbY3bFlq5uyxriPcZxDZrB6f1wALXrO2/IdfVEdwT
+# WqJIDZBJjTycQhhxS3i1AgMBAAGjggEbMIIBFzAdBgNVHQ4EFgQUhzLwaZ8OBLRJ
+# H0s9E63pIcWJokcwHwYDVR0jBBgwFoAU1WM6XIoxkPNDe3xGG8UzaFqFbVUwVgYD
+# VR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwv
+# cHJvZHVjdHMvTWljVGltU3RhUENBXzIwMTAtMDctMDEuY3JsMFoGCCsGAQUFBwEB
+# BE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9j
+# ZXJ0cy9NaWNUaW1TdGFQQ0FfMjAxMC0wNy0wMS5jcnQwDAYDVR0TAQH/BAIwADAT
+# BgNVHSUEDDAKBggrBgEFBQcDCDANBgkqhkiG9w0BAQsFAAOCAQEAZhKWwbMnC9Qy
+# wcrlgs0qX9bhxiZGve+8JED27hOiyGa8R9nqzHg4+q6NKfYXfS62uMUJp2u+J7tI
+# NUTf/1ugL+K4RwsPVehDasSJJj+7boIxZP8AU/xQdVY7qgmQGmd4F+c5hkJJtl6N
+# ReYE908Q698qj1mDpr0Mx+4LhP/tTqL6HpZEURlhFOddnyLStVCFdfNI1yGHP9n0
+# yN1KfhGEV3s7MBzpFJXwOflwgyE9cwQ8jjOTVpNRdCqL/P5ViCAo2dciHjd1u1i1
+# Q4QZ6xb0+B1HdZFRELOiFwf0sh3Z1xOeSFcHg0rLE+rseHz4QhvoEj7h9bD8VN7/
+# HnCDwWpBJTCCBnEwggRZoAMCAQICCmEJgSoAAAAAAAIwDQYJKoZIhvcNAQELBQAw
+# gYgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
+# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMT
+# KU1pY3Jvc29mdCBSb290IENlcnRpZmljYXRlIEF1dGhvcml0eSAyMDEwMB4XDTEw
+# MDcwMTIxMzY1NVoXDTI1MDcwMTIxNDY1NVowfDELMAkGA1UEBhMCVVMxEzARBgNV
+# BAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jv
+# c29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAg
+# UENBIDIwMTAwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCpHQ28dxGK
+# OiDs/BOX9fp/aZRrdFQQ1aUKAIKF++18aEssX8XD5WHCdrc+Zitb8BVTJwQxH0Eb
+# GpUdzgkTjnxhMFmxMEQP8WCIhFRDDNdNuDgIs0Ldk6zWczBXJoKjRQ3Q6vVHgc2/
+# JGAyWGBG8lhHhjKEHnRhZ5FfgVSxz5NMksHEpl3RYRNuKMYa+YaAu99h/EbBJx0k
+# ZxJyGiGKr0tkiVBisV39dx898Fd1rL2KQk1AUdEPnAY+Z3/1ZsADlkR+79BL/W7l
+# msqxqPJ6Kgox8NpOBpG2iAg16HgcsOmZzTznL0S6p/TcZL2kAcEgCZN4zfy8wMlE
+# XV4WnAEFTyJNAgMBAAGjggHmMIIB4jAQBgkrBgEEAYI3FQEEAwIBADAdBgNVHQ4E
+# FgQU1WM6XIoxkPNDe3xGG8UzaFqFbVUwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBD
+# AEEwCwYDVR0PBAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZW
+# y4/oolxiaNE9lJBb186aGMQwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5t
+# aWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAt
+# MDYtMjMuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3
+# dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0y
+# My5jcnQwgaAGA1UdIAEB/wSBlTCBkjCBjwYJKwYBBAGCNy4DMIGBMD0GCCsGAQUF
+# BwIBFjFodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vUEtJL2RvY3MvQ1BTL2RlZmF1
+# bHQuaHRtMEAGCCsGAQUFBwICMDQeMiAdAEwAZQBnAGEAbABfAFAAbwBsAGkAYwB5
+# AF8AUwB0AGEAdABlAG0AZQBuAHQALiAdMA0GCSqGSIb3DQEBCwUAA4ICAQAH5ohR
+# DeLG4Jg/gXEDPZ2joSFvs+umzPUxvs8F4qn++ldtGTCzwsVmyWrf9efweL3HqJ4l
+# 4/m87WtUVwgrUYJEEvu5U4zM9GASinbMQEBBm9xcF/9c+V4XNZgkVkt070IQyK+/
+# f8Z/8jd9Wj8c8pl5SpFSAK84Dxf1L3mBZdmptWvkx872ynoAb0swRCQiPM/tA6WW
+# j1kpvLb9BOFwnzJKJ/1Vry/+tuWOM7tiX5rbV0Dp8c6ZZpCM/2pif93FSguRJuI5
+# 7BlKcWOdeyFtw5yjojz6f32WapB4pm3S4Zz5Hfw42JT0xqUKloakvZ4argRCg7i1
+# gJsiOCC1JeVk7Pf0v35jWSUPei45V3aicaoGig+JFrphpxHLmtgOR5qAxdDNp9Dv
+# fYPw4TtxCd9ddJgiCGHasFAeb73x4QDf5zEHpJM692VHeOj4qEir995yfmFrb3ep
+# gcunCaw5u+zGy9iCtHLNHfS4hQEegPsbiSpUObJb2sgNVZl6h3M7COaYLeqN4DMu
+# Ein1wC9UJyH3yKxO2ii4sanblrKnQqLJzxlBTeCG+SqaoxFmMNO7dDJL32N79ZmK
+# LxvHIa9Zta7cRDyXUHHXodLFVeNp3lfB0d4wwP3M5k37Db9dT+mdHhk4L7zPWAUu
+# 7w2gUDXa7wknHNWzfjUeCLraNtvTX4/edIhJEqGCAsswggI0AgEBMIH4oYHQpIHN
+# MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
+# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
+# ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
+# VFNTIEVTTjpBRTJDLUUzMkItMUFGQzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAhyuClrocWf4SIcRafAEX1Rhs
+# 6zmggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
+# MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
+# MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
+# 9w0BAQUFAAIFAOPX8BcwIhgPMjAyMTAyMTgwMzQyMTVaGA8yMDIxMDIxOTAzNDIx
+# NVowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA49fwFwIBADAHAgEAAgIQhjAHAgEA
+# AgIRVDAKAgUA49lBlwIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
+# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAFGC53K/
+# US3FOWaZVdHAcX/vgg2aLfQx8kkdS+dKAN4OcHQcFNko5PBYCVsPNp+jNaKYoBJP
+# qdezjJa7XVsduZCc5kqJifi4Qf6W3J7NkZ+YNT08JQ3tHo2Zy+X35Wplda41ZVTc
+# bEHt0OKwrpQH5zIxwI7zZQTpi2aivDVmtPSeMYIDDTCCAwkCAQEwgZMwfDELMAkG
+# A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
+# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9z
+# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAFIoohFVrwvgL8AAAAAAUgwDQYJ
+# YIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkq
+# hkiG9w0BCQQxIgQgAhkeWKfKffF5CdsDByVUn2CfgMTD30gEUl+13uSwCzYwgfoG
+# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCCpkBrqjHmhvyYf5tTcTvD5Y4a+V79T
+# wVV6T1aAwdto2DCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
+# cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
+# AhMzAAABSKKIRVa8L4C/AAAAAAFIMCIEIA3MvSdG2FMJYeL+uWPkb6hmpuozwfzT
+# LRdAAwhXrHnLMA0GCSqGSIb3DQEBCwUABIIBABWOs+3BOJnoIT3d1SJodANAKiSM
+# e7c4Nezd/WttGNkz6yXfNwHZJP1rhZCHuRnhR+GvHMfZJUas5UcN7qV9yrGeR3Mt
+# YebePyqsDhf11JZ63lmTspg/f3r8Vp7Kl/xGIL47dsaDS5XhT3QfNSpRqQUgjM3K
+# ebL5K83MpQ4uJM29k7Ha/dBYguePTTt+zXvEkBttJzO8o9dZfG/mznuQmzTLxb3w
+# OoMrfx4rI38bsYKyqdm16VGxHfqGKg3w/lo5YRl6FO1tYLWSWmymyF9DHt9Pg3ba
+# 5rGHdrvBvMDNoMoLXa6d7UI4SRGyu6oJPsnqszH/s/EZAMSGez9wWFhBrEs=
 # SIG # End signature block

@@ -1,34 +1,34 @@
 # This Powershell script is an example for the usage of the Azure Remote Rendering service
 # Documentation: https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts
 #
-# Usage: 
+# Usage:
 # Fill out the accountSettings and renderingSessionSettings in arrconfig.json next to this file!
-# This script is using the ARR REST API to start a rendering session 
+# This script is using the ARR REST API to start a rendering session
 
-# RenderingSession.ps1 
+# RenderingSession.ps1
 #   Will call the ARR REST interface to create a rendering session and poll its status until the rendering session is ready or an error occurs
 #   Will print the hostname of the spun up rendering session on completion
 
-# RenderingSession.ps1 -CreateSession 
+# RenderingSession.ps1 -CreateSession
 #   Will call the ARR REST interface to create a rendering session. Will print a session id which can be used to poll for its status
 
 # RenderingSession.ps1 -GetSessionProperties [sessionID] [-Poll]
 #   Will call the session properties REST API to retrieve the status of the rendering session with the given sessionID
 #   If no sessionID is provided will prompt the user to enter a sessionID
 #   Prints the current status of the session
-#   If -Poll is specified will poll until the session is ready or an error occurs 
+#   If -Poll is specified will poll until the session is ready or an error occurs
 
 # RenderingSession.ps1 -UpdateSession -MaxLeaseTime <hh:mm:ss> -Id [sessionID]
-#   Updates the MaxLeaseTime of an already running session. 
+#   Updates the MaxLeaseTime of an already running session.
 #   Note this sets the maxLeaseTime and does not extend it by the given duration
 #   If no sessionID is provided the user will be asked to ender a sessionID
 
-# RenderingSession.ps1 -StopSession -Id [sessionID] 
+# RenderingSession.ps1 -StopSession -Id [sessionID]
 #   Will call the stop session REST API to terminate an ongoing rendering session
 #   If no sessionID is provided the user will be asked to ender a sessionID
 
-# RenderingSession.ps1 -GetSessions -Id [sessionID] 
-#   Will list all currently running sessions and their properties 
+# RenderingSession.ps1 -GetSessions -Id [sessionID]
+#   Will list all currently running sessions and their properties
 
 #The following individual parameters can be used to override values in the config file to create a session
 # -VmSize <size>
@@ -70,39 +70,43 @@ if (-Not $LoggedIn) {
     WriteError("User not logged in - Exiting.")
     exit 1
 }
-# Create a Session by calling REST API <endpoint>/v1/accounts/<accountId>/sessions/create/
-# returns a session GUID which can be used to retrieve session status
-function CreateRenderingSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $vmSize = "standard", $directConnectionSession = "false", $maxLeaseTime = "4:0:0", $additionalParameters) {
+# Create a Session by calling REST API <endpoint>/accounts/<accountId>/sessions/<sessionId>/
+# returns a session ID which can be used to retrieve session status
+function CreateRenderingSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $vmSize = "standard", $maxLeaseTime = "4:0:0", $additionalParameters, $sessionId) {
     try {
+        $maxLeaseTimeInMinutes = ([timespan]$config.renderingSessionSettings.maxLeaseTime).TotalMinutes
+
         $body =
         @{
             # defaults to 4 Hours
-            maxLeaseTime = $maxLeaseTime;
+            maxLeaseTimeMinutes = $maxLeaseTimeInMinutes;
             # defaults to "standard"
             size         = $vmSize;
-            # defaults to "false"
-            directConnectionSession = $directConnectionSession;
         }
 
         if ($additionalParameters) {
             $additionalParameters.Keys | % { $body += @{ $_ = $additionalParameters.Item($_) } }
         }
 
-        $url = "$serviceEndpoint/v1/accounts/$accountId/sessions/create/"
+        if ([string]::IsNullOrEmpty($sessionId))
+        {
+            $sessionId = "Sample-Session-$(New-Guid)"
+        }
+
+        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         WriteInformation("Creating Rendering Session ...")
         WriteInformation("  Authentication endpoint: $authenticationEndpoint")
         WriteInformation("  Service endpoint: $serviceEndpoint")
+        WriteInformation("  sessionId: $sessionId")
         WriteInformation("  maxLeaseTime: $maxLeaseTime")
         WriteInformation("  size: $vmSize")
-        WriteInformation("  directConnectionSession: $directConnectionSession")
         WriteInformation("  additionalParameters: $($additionalParameters | ConvertTo-Json)")
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
 
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method POST -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PUT -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
 
-        $sessionId = (GetResponseBody($response)).SessionId
         WriteSuccess("Successfully created the session with Id: $sessionId")
         WriteSuccessResponse($response.RawContent)
 
@@ -115,10 +119,10 @@ function CreateRenderingSession($authenticationEndpoint, $serviceEndpoint, $acco
     }
 }
 
-#call REST API <endpoint>/v1/accounts/<accountId>/sessions/<SessionId>/properties/ 
-function GetSessionProperties($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $SessionId) {
+#call REST API <endpoint>/accounts/<accountId>/sessions/<SessionId>
+function GetSessionProperties($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId) {
     try {
-        $url = "$serviceEndpoint/v1/accounts/$accountId/sessions/${SessionId}/properties/"
+        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
@@ -134,10 +138,31 @@ function GetSessionProperties($authenticationEndpoint, $serviceEndpoint, $accoun
     }
 }
 
-#call REST API <endpoint>/v1/accounts/<accountId>/sessions/
-function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $SessionId) {
+function WriteSessionProperties($session)
+{
+    WriteInformation("    sessionId:                  $($session.id)")
+    WriteInformation("    elapsedTimeMinutes:         $($session.elapsedTimeMinutes)")
+    if ([bool]($session | get-member -name "hostname")) {
+        WriteInformation("    sessionHostname:            $($session.hostname)")
+    }
+    if ([bool]($session | get-member -name "arrInspectorPort")) {
+        WriteInformation("    arrInspectorPort:           $($session.arrInspectorPort)")
+    }
+    if ([bool]($session | get-member -name "handshakePort")) {
+        WriteInformation("    handshakePort:              $($session.handshakePort)")
+    }
+    WriteInformation("    sessionMaxLeaseTimeMinutes: $($session.maxLeaseTimeMinutes)")
+    WriteInformation("    sessionSize:                $($session.size)")
+    WriteInformation("    sessionStatus:              $($session.status)")
+    if ([bool]($session | get-member -name "error")) {
+        WriteInformation("    error:                      $($session.error)")
+    }
+}
+
+#call REST API <endpoint>/accounts/<accountId>/sessions/
+function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey) {
     try {
-        $url = "$serviceEndpoint/v1/accounts/$accountId/sessions/"
+        $url = "$serviceEndpoint/accounts/$accountId/sessions?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
@@ -150,15 +175,7 @@ function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $acc
             WriteSuccessResponse("Currently there are $($responseFromJson.sessions.Length) sessions:")
 
             foreach ($session in $responseFromJson.sessions) {
-                WriteInformation("    sessionId:           $($session.sessionId)")
-                WriteInformation("    message:             $($session.message)")
-                WriteInformation("    sessionElapsedTime:  $($session.sessionElapsedTime)")
-                WriteInformation("    sessionHostname:     $($session.sessionHostname)")
-                WriteInformation("    arrInspectorPort:    $($session.arrInspectorPort)")
-                WriteInformation("    handshakePort:       $($session.handshakePort)")
-                WriteInformation("    sessionMaxLeaseTime: $($session.sessionMaxLeaseTime)")
-                WriteInformation("    sessionSize:         $($session.sessionSize)")
-                WriteInformation("    sessionStatus:       $($session.sessionStatus)")          
+                WriteSessionProperties($session)
                 WriteInformation("")
             }
 
@@ -172,21 +189,26 @@ function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $acc
     }
 }
 
-#call REST API <endpoint>/v1/accounts/<accountId>/sessions/<SessionId>/ with PATCH to updat a session
+#call REST API <endpoint>/accounts/<accountId>/sessions/<SessionId> with PATCH to update a session
 # currently only updates the leaseTime
 # $MaxLeaseTime has to be strictly larger than the existing lease time of the session
-function UpdateSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $SessionId, $MaxLeaseTime) {
+function UpdateSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId, [timespan] $maxLeaseTime) {
     try {
         $body =
         @{
-            maxLeaseTime = $MaxLeaseTime;
+            maxLeaseTimeMinutes = $maxLeaseTime.TotalMinutes;
         } | ConvertTo-Json
-        $url = "$serviceEndpoint/v1/accounts/$accountId/sessions/${SessionId}" 
+        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PATCH -ContentType "application/json" -Body $body -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)
+
+        $responseFromJson = ($response | ConvertFrom-Json)
+
+        WriteInformation("Successfully updated session. Session properties:")
+        WriteSessionProperties($responseFromJson)
 
         return $response
     }
@@ -198,15 +220,16 @@ function UpdateSession($authenticationEndpoint, $serviceEndpoint, $accountId, $a
 }
 
 
-# call "<endPoint>/v1/accounts/<accountId>/sessions/<SessionId>" with Method DELETE to stop a session
-function StopSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $SessionId) {
+# call "<endPoint>/accounts/<accountId>/sessions/<sessionId>/:stop" with Method POST to stop a session
+function StopSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId) {
     try {
-        $url = "$serviceEndpoint/v1/accounts/$accountId/sessions/${SessionId}"
+        $url = "$serviceEndpoint/accounts/$accountId/sessions/$sessionId/:stop?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method DELETE -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method POST -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)
+        WriteInformation("Successfully stopped session.")
 
         return $response
     }
@@ -218,28 +241,21 @@ function StopSession($authenticationEndpoint, $serviceEndpoint, $accountId, $acc
 }
 
 # retrieves GetSessionProperties until error or ready status of rendering session are achieved
-function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $SessionId) {
+function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId) {
     $sessionStatus = "Starting"
-    $sessionProperties = $null
     $sessionProgress = 0
     $startTime = $(Get-Date)
 
-    WriteInformation("Provisioning a VM for rendering session '$SessionId' ...")
+    WriteInformation("Provisioning a VM for rendering session '$sessionId' ...")
 
     while ($true) {
-        WriteProgress -Activity "Preparing VM for rendering session '$SessionId' ..." -Status: "Preparing for $($sessionProgress * 10) Seconds"
+        WriteProgress -Activity "Preparing VM for rendering session '$sessionId' ..." -Status: "Preparing for $($sessionProgress * 10) Seconds"
 
-        $response = GetSessionProperties $authenticationEndpoint $serviceEndpoint $accountId $accountKey $SessionId
+        $response = GetSessionProperties $authenticationEndpoint $serviceEndpoint $accountId $accountKey $sessionId
         $responseContent = $response.Content | ConvertFrom-Json
-        $sessionProperties =
-        @{
-            Message         = $responseContent.message;
-            SessionHostname = $responseContent.sessionHostname;
-            SessionStatus   = $responseContent.sessionStatus;
-        }
 
-        $sessionStatus = $sessionProperties.SessionStatus
-        if ("ready" -eq $sessionStatus.ToLower() -or "error" -eq $sessionStatus.ToLower()) {
+        $sessionStatus = $responseContent.status
+        if ($sessionStatus -iin "ready", "error") {
             break
         }
         Start-Sleep -Seconds 10
@@ -247,34 +263,32 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
     }
 
     $totalTimeElapsed = $(New-TimeSpan $startTime $(get-date)).TotalSeconds
-    if ("ready" -eq $sessionStatus.ToLower()) {
-		WriteInformation ("")
-		Write-Host -ForegroundColor Green "Session is ready.";
-		WriteInformation ("")
-        WriteInformation ("SessionId: $SessionId")
-		WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
-		WriteInformation ("")
-		WriteInformation ("Response details:")
+    if ("ready" -ieq $sessionStatus) {
+        WriteInformation ("")
+        Write-Host -ForegroundColor Green "Session is ready.";
+        WriteInformation ("")
+        WriteSessionProperties($responseContent)
+        WriteInformation ("")
+        WriteInformation ("Response details:")
         WriteInformation($response)
-        return $sessionProperties
     }
 
-    if ("error" -eq $sessionStatus.ToLower()) {
+    if ("error" -ieq $sessionStatus) {
         WriteInformation ("The attempt to create a new session resulted in an error.")
-        WriteInformation ("SessionId: $SessionId")
+        WriteInformation ("SessionId: $sessionId")
         WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
         WriteInformation($response)
         exit 1
     }
 
-    if ("expired" -eq $sessionStatus.ToLower()) {
+    if ("expired" -ieq $sessionStatus) {
         WriteInformation ("The attempt to create a new session expired before it became ready. Check the settings in your configuration (arrconfig.json).")
-        WriteInformation ("SessionId: $SessionId")
+        WriteInformation ("SessionId: $sessionId")
         WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
         WriteInformation($response)
         exit 1
     }
-    
+
 }
 
 
@@ -309,7 +323,7 @@ if ($false -eq $accountOkay) {
 
 if (-Not ($GetSessionProperties -or $GetSessions -or $StopSession -or ($UpdateSession -and -Not $MaxLeaseTime))) {
     #to get session properties etc we do not need to have proper renderingsessionsettings
-    #otherwise we need to check them    
+    #otherwise we need to check them
     $vmSettingsOkay = VerifyRenderingSessionSettings $config $defaultConfig
     if (-Not $vmSettingsOkay) {
         WriteError("renderSessionSettings not valid. please ensure valid renderSessionSettings in $ConfigFile or commandline parameters - Exiting.")
@@ -327,7 +341,12 @@ if ($GetSessionProperties) {
         PollSessionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
     }
     else {
-        GetSessionProperties -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+        $response = GetSessionProperties -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+
+        $responseFromJson = ($response | ConvertFrom-Json)
+
+        WriteInformation("Session Status:")
+        WriteSessionProperties($responseFromJson)
     }
     exit
 }
@@ -344,8 +363,9 @@ if ($StopSession) {
     if ([string]::IsNullOrEmpty($Id)) {
         $sessionId = Read-Host "Please enter Session Id"
     }
-    StopSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
-    
+
+    $null = StopSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+
     exit
 }
 
@@ -355,23 +375,23 @@ if ($UpdateSession) {
     if ([string]::IsNullOrEmpty($Id)) {
         $sessionId = Read-Host "Please enter Session Id"
     }
-    UpdateSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime
-    
+    $null = UpdateSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime
+
     exit
 }
 
 # Create a Session and Poll for Completion
-$sessionId = $sessionId = CreateRenderingSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -vmSize $config.renderingSessionSettings.vmSize -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime -AdditionalParameters $AdditionalParameters
+$sessionId = CreateRenderingSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -vmSize $config.renderingSessionSettings.vmSize -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime -AdditionalParameters $AdditionalParameters -sessionId $Id
 if ($CreateSession -and ($false -eq $Poll)) {
-    exit #do not poll if we asked to only create the session 
+    exit #do not poll if we asked to only create the session
 }
 PollSessionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
 
 # SIG # Begin signature block
-# MIInLAYJKoZIhvcNAQcCoIInHTCCJxkCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIInKQYJKoZIhvcNAQcCoIInGjCCJxYCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDcz8g4gElADSs3
-# wrkXbsA0+EiHRBFOlsHsMlv79Pi/KaCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAOWHNseeA3qmTI
+# ZrXdFlGej95QeThzHZfndrLryA6x26CCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
 # OfXldyfqAAEAAAE5MA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMDEwMjEyMDM5MDZaFw0yMTA5MTUyMTQzMDNaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -464,54 +484,54 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # lt075qTroz0Nt680pXvVhsRSdNnzW2hfQu2xuOLg8zKGVOD/rr0GgeyhODjKgL2G
 # Hxctbb9XaVSDf6ocdB//aDYjiabmWd/WYmy7fQ127KuasMh5nSV2orMcAed8CbIV
 # I3NYu+sahT1DRm/BGUN2hSpdsPQeO73wYvp1N7DdLaZyz7XsOCx1quCwQ+bojWVQ
-# TmKLGegSoUpZNfmP9MtSMYIVHTCCFRkCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
+# TmKLGegSoUpZNfmP9MtSMYIVGjCCFRYCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
 # R0JMMRMwEQYKCZImiZPyLGQBGRYDQU1FMRUwEwYDVQQDEwxBTUUgQ1MgQ0EgMDEC
 # EzYAAAE5eMY59eV3J+oAAQAAATkwDQYJYIZIAWUDBAIBBQCgga4wGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# LwYJKoZIhvcNAQkEMSIEILzsYb7XdDdws2RDyZjNooDjFSOqcbvtwiMRTkSKvB6P
+# LwYJKoZIhvcNAQkEMSIEIHbfHV2eBES5v79XjvCa7teijwiRoe31AEk0XspLspHR
 # MEIGCisGAQQBgjcCAQwxNDAyoBSAEgBNAGkAYwByAG8AcwBvAGYAdKEagBhodHRw
-# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEABmcaIikXX8X/
-# PpmD5cMfCd0vkYpah2Em2zKOj7VQvnmrQr2Zpe+9ZHTdi+4D6rHPDm5VYQ/IeDRA
-# WzVnjKZQuia5E18sEnQL2meSLwMm2jY4sP+b11hAivfCzNcmiaYwv6OvapIf34b/
-# IFo5kdezsUyyo7KuZhoatFaYl6JDbHi3YOMOLYYOIeg9vRmX2MwYoFubVgawOQyP
-# mf1/D/SCdc9rykINoa/CEuV//AN2jM3+ruzojwsS2AnxfvL2OosYRpDasEEf+CdV
-# 4HeKAGVG0iTiB2rtVPxTg8BErgXZIff8yLfLFmMOPcsmaGA/LFlnAq5HBfwzCe+4
-# M0d9Drx1faGCEuUwghLhBgorBgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCC
-# Er4wghK6AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAE
-# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCDEv0EOzc08
-# k8/LgiXH1J65VqEf+g+x3uPF1XizPEdw3wIGYBiDUwFzGBMyMDIxMDIxMDE0NDAw
-# My44NTlaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
+# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAXCpiZ9/spsQN
+# i30nVWSuFgw8byXU4Isnk6etE9IGTeR/TEXjfhkoy2NEuYKmaG3kjEaS8E3R8Jlx
+# 1Cy/fZIs7fLzF1I2Ulb40o9dy3UXzQ61HOuey77l0IiJq0eQVOnPrlWpyADMlGnQ
+# tUiMXSpxpwn7W8RGVRR9+lzmV6e5iLUnHLzsZeLoI7zu9EdV/Q0d4V2x5rdvyfRV
+# vWhtYRJsVwrZyVdYCZkAsGOSVHzfo5mDWi2jx5wYOV/ZXSNyeg7dmsqo5NMeUzTY
+# LKhCYXMV51kzGRBCAMSWibQBBsQdpfGT5NHUMDHVajjVIKZbkv1Abwi4YSvQlDvQ
+# 6CdPFwakhqGCEuIwghLeBgorBgEEAYI3AwMBMYISzjCCEsoGCSqGSIb3DQEHAqCC
+# ErswghK3AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAE
+# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCC0CZnw4KdR
+# zI0sMhF47C8gLEQ1TDOPIfhSZuH7fZ7Z7gIGYCWJOdLBGBMyMDIxMDIxNzIzNTQz
+# NC4yNzVaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
 # aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
 # cnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25z
-# MSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo3QkYxLUUzRUEtQjgwODElMCMGA1UE
-# AxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaCCDjwwggTxMIID2aADAgEC
-# AhMzAAABUcNQ51lsqsanAAAAAAFRMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYT
+# MSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjpBRTJDLUUzMkItMUFGQzElMCMGA1UE
+# AxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaCCDjkwggTxMIID2aADAgEC
+# AhMzAAABSKKIRVa8L4C/AAAAAAFIMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYT
 # AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
 # VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBU
-# aW1lLVN0YW1wIFBDQSAyMDEwMB4XDTIwMTExMjE4MjYwNFoXDTIyMDIxMTE4MjYw
-# NFowgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQH
+# aW1lLVN0YW1wIFBDQSAyMDEwMB4XDTIwMTExMjE4MjU1NloXDTIyMDIxMTE4MjU1
+# NlowgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQH
 # EwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNV
 # BAsTHE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxl
-# cyBUU1MgRVNOOjdCRjEtRTNFQS1CODA4MSUwIwYDVQQDExxNaWNyb3NvZnQgVGlt
+# cyBUU1MgRVNOOkFFMkMtRTMyQi0xQUZDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGlt
 # ZS1TdGFtcCBTZXJ2aWNlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
-# n9KH76qErjvvOIkjWbHptMkYDjmG+JEmzguyr/VxjZgZ/ig8Mk47jqSJP5RxH/sD
-# yqhYu7jPSO86siZh8u7DBX9L8I+AB+8fPPvD4uoLKD22BpoFl4B8Fw5K7Suibvbx
-# GN7adL1/zW+sWXlVvpDhEPIKDICvEdNjGTLhktfftjefg9lumBMUBJ2G4/g4ad0d
-# DvRNmKiMZXXe/Ll4Qg/oPSzXCUEYoSSqa5D+5MRimVe5/YTLj0jVr8iF45V0hT7V
-# H8OJO4YImcnZhq6Dw1G+w6ACRGePFmOWqW8tEZ13SMmOquJrTkwyy8zyNtVttJAX
-# 7diFLbR0SvMlbJZWK0KHdwIDAQABo4IBGzCCARcwHQYDVR0OBBYEFMV3/+NoUGKT
-# NGg6OMyE6fN1ROptMB8GA1UdIwQYMBaAFNVjOlyKMZDzQ3t8RhvFM2hahW1VMFYG
+# 9/94rxWEitHRrXF2mfKTSxAEW62iXsK8ovyYG2ipau4YRSFNRJGNBzIhUZtv1rLp
+# LetpNuc7w8Vten6YYOfO+vpdcGJwpYHv6xZa0dlLtVsLRZnNcRqcuPrsaGwhDHiB
+# QxoS+QzU22zorC6wVGG8l6+3z88W1ZBMCQz+RRtp9K6Najo3oCJCyI11OqmoXbkM
+# U37DzhKfI4KjCp/vn6R+n71ypXsFs3bH74YmeB+CKtQkzp/n5ManA8Ex2JGGWIKp
+# vtV9ce+OfK6evaoxXlT9xmwLyW2N2xZaubssa4j3GcQ2awen9cAC16ztvyHX1RHc
+# E1qiSA2QSY08nEIYcUt4tQIDAQABo4IBGzCCARcwHQYDVR0OBBYEFIcy8GmfDgS0
+# SR9LPROt6SHFiaJHMB8GA1UdIwQYMBaAFNVjOlyKMZDzQ3t8RhvFM2hahW1VMFYG
 # A1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kvY3Js
 # L3Byb2R1Y3RzL01pY1RpbVN0YVBDQV8yMDEwLTA3LTAxLmNybDBaBggrBgEFBQcB
 # AQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kv
 # Y2VydHMvTWljVGltU3RhUENBXzIwMTAtMDctMDEuY3J0MAwGA1UdEwEB/wQCMAAw
-# EwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggEBACv99cAVg5nx
-# 0SqjvLfQzmugMj5cJ9NE60duSH1LpxHYim9Ls3UfiYd7t0JvyEw/rRTEKHbznV6L
-# FLlX++lHJMGKzZnHtTe2OI6ZHFnNiFhtgyWuYDJrm7KQykNi1G1LbuVie9MehmoK
-# +hBiZnnrcfZSnBSokrvO2QEWHC1xnZ5wM82UEjprFYOkchU+6RcoCjjmIFGfgSzN
-# j1MIbf4lcJ5FoV1Mg6FwF45CijOXHVXrzkisMZ9puDpFjjEV6TAY6INgMkhLev/A
-# Vow0sF8MfQztJIlFYdFEkZ5NF/IyzoC2Yb9iw4bCKdBrdD3As6mvoGSNjCC6lOdz
-# 6EerJK3NhFgwggZxMIIEWaADAgECAgphCYEqAAAAAAACMA0GCSqGSIb3DQEBCwUA
+# EwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggEBAGYSlsGzJwvU
+# MsHK5YLNKl/W4cYmRr3vvCRA9u4ToshmvEfZ6sx4OPqujSn2F30utrjFCadrvie7
+# SDVE3/9boC/iuEcLD1XoQ2rEiSY/u26CMWT/AFP8UHVWO6oJkBpneBfnOYZCSbZe
+# jUXmBPdPEOvfKo9Zg6a9DMfuC4T/7U6i+h6WRFEZYRTnXZ8i0rVQhXXzSNchhz/Z
+# 9MjdSn4RhFd7OzAc6RSV8Dn5cIMhPXMEPI4zk1aTUXQqi/z+VYggKNnXIh43dbtY
+# tUOEGesW9PgdR3WRURCzohcH9LId2dcTnkhXB4NKyxPq7Hh8+EIb6BI+4fWw/FTe
+# /x5wg8FqQSUwggZxMIIEWaADAgECAgphCYEqAAAAAAACMA0GCSqGSIb3DQEBCwUA
 # MIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
 # UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQD
 # EylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAxMDAeFw0x
@@ -545,36 +565,36 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # qYHLpwmsObvsxsvYgrRyzR30uIUBHoD7G4kqVDmyW9rIDVWZeodzOwjmmC3qjeAz
 # LhIp9cAvVCch98isTtoouLGp25ayp0Kiyc8ZQU3ghvkqmqMRZjDTu3QyS99je/WZ
 # ii8bxyGvWbWu3EQ8l1Bx16HSxVXjad5XwdHeMMD9zOZN+w2/XU/pnR4ZOC+8z1gF
-# Lu8NoFA12u8JJxzVs341Hgi62jbb01+P3nSISRKhggLOMIICNwIBATCB+KGB0KSB
+# Lu8NoFA12u8JJxzVs341Hgi62jbb01+P3nSISRKhggLLMIICNAIBATCB+KGB0KSB
 # zTCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcT
 # B1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UE
 # CxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVz
-# IFRTUyBFU046N0JGMS1FM0VBLUI4MDgxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1l
-# LVN0YW1wIFNlcnZpY2WiIwoBATAHBgUrDgMCGgMVAKCir3PxP6RCCyVMJSAVoMV6
-# 1yNeoIGDMIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24x
+# IFRTUyBFU046QUUyQy1FMzJCLTFBRkMxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1l
+# LVN0YW1wIFNlcnZpY2WiIwoBATAHBgUrDgMCGgMVAIcrgpa6HFn+EiHEWnwBF9UY
+# bOs5oIGDMIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24x
 # EDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlv
 # bjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwDQYJKoZI
-# hvcNAQEFBQACBQDjzjZBMCIYDzIwMjEwMjEwMTgzODU3WhgPMjAyMTAyMTExODM4
-# NTdaMHcwPQYKKwYBBAGEWQoEATEvMC0wCgIFAOPONkECAQAwCgIBAAICC9ECAf8w
-# BwIBAAICEbwwCgIFAOPPh8ECAQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGE
-# WQoDAqAKMAgCAQACAwehIKEKMAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQDT
-# g+3VyKt7oN2kQ6EttIcAG7IjYSAyI7b7mR+CHGpKkGIOSvhoCmadHVYIOwzYam5+
-# CBt23KND2pSdw7muK2Qn+LZ2Qw8BWkPndlvc56cUXrY50fsCu0Hv74AAR4yCXsQ5
-# YVrvZnqevT7vT1H4m2AAyGWcjAE1RsuUgaJInKkVDzGCAw0wggMJAgEBMIGTMHwx
-# CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1p
-# Y3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUcNQ51lsqsanAAAAAAFR
-# MA0GCWCGSAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQw
-# LwYJKoZIhvcNAQkEMSIEIG9fFvVJ5SM9j4mEU4VaZWGs7wjVx/ehPdFbdUmuST9i
-# MIH6BgsqhkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgLs1cmYj41sFZBwCmFvv9ScP5
-# tuuUhxsv/t0B9XF65UEwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMK
-# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
-# IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0Eg
-# MjAxMAITMwAAAVHDUOdZbKrGpwAAAAABUTAiBCCbckIA6FZlZ0tTZcJPfnjtTZP3
-# wie3lw1FASs2NGsTJDANBgkqhkiG9w0BAQsFAASCAQAEvT9637Zw3gwQFctxVaa8
-# siFH93S+I+UQiT49JPPtprio2hcMvBoEfbAORssxU0T2DYU3LpREdCWFAtxuF80j
-# qp7+q353xAGnYDSkhEJk2BhIYzHWPEtRtdgpmAaxUsNoS8Ec4dlOj9VSD7pzhIj6
-# glaB5/Rfn6sO9Gci77UyFAe32q4EE9FlleM5uxmptjr8rnqck3dLBx1OLnjKBTBL
-# JNtOllp+1pAxI461v1C7Q2EN51iFssRe6M1XQNavCJz95Hbnua5ct+JLSI0u3xtU
-# kZk6hCftVIzAu03FOfSbxLRHtRqWLZrwed8isf9BEZr1+sH9e/JCkuJF9tJ6R+O3
+# hvcNAQEFBQACBQDj1/AXMCIYDzIwMjEwMjE4MDM0MjE1WhgPMjAyMTAyMTkwMzQy
+# MTVaMHQwOgYKKwYBBAGEWQoEATEsMCowCgIFAOPX8BcCAQAwBwIBAAICEIYwBwIB
+# AAICEVQwCgIFAOPZQZcCAQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGEWQoD
+# AqAKMAgCAQACAwehIKEKMAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQBRgudy
+# v1EtxTlmmVXRwHF/74INmi30MfJJHUvnSgDeDnB0HBTZKOTwWAlbDzafozWimKAS
+# T6nXs4yWu11bHbmQnOZKiYn4uEH+ltyezZGfmDU9PCUN7R6Nmcvl9+VqZXWuNWVU
+# 3GxB7dDisK6UB+cyMcCO82UE6Ytmorw1ZrT0njGCAw0wggMJAgEBMIGTMHwxCzAJ
+# BgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25k
+# MR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jv
+# c29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABSKKIRVa8L4C/AAAAAAFIMA0G
+# CWCGSAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQwLwYJ
+# KoZIhvcNAQkEMSIEIH7/jPO6E6LVVxHzlgVBC0eUL8vJI4TtBpxvfLDYbdgVMIH6
+# BgsqhkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgqZAa6ox5ob8mH+bU3E7w+WOGvle/
+# U8FVek9WgMHbaNgwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
+# aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
+# cnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAx
+# MAITMwAAAUiiiEVWvC+AvwAAAAABSDAiBCANzL0nRthTCWHi/rlj5G+oZqbqM8H8
+# 0y0XQAMIV6x5yzANBgkqhkiG9w0BAQsFAASCAQC3Vzt279f/lxd6Dh4O451MaPVy
+# tnLUudBej2SwdBGU5JrHffaMHd2SwWyJhTi68fZ+YAlS7YtWIAqVUkKSRX0R/CaT
+# e20uuBSrKagZzr1Qayp2KML62fv+61J5sf/s2cqYQEj7EBlyRcZ09ge6CKQvCn6B
+# Ktr990ovU51N4cL8e/4Vf1RC+j/yV8Q2YAR4V5T6tAfxNQCkn5bKBK3uWzS7IQi9
+# OhLcnnM5um4CeNjkU1TikSpVNiI5sCcHoBnuLnXkSk1N5fC4PlTuvuHHj78tayrC
+# 9NPi5e1+rVQHZTOmy2kVnrle2gRR/jjMrD6QNHZB3yh6lX6uAVaraof1pSs7
 # SIG # End signature block

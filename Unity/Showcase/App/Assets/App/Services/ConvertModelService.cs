@@ -195,8 +195,12 @@ public class ConvertModelService : MonoBehaviour
             }
 
             // Conversion parameters
-            var inputParams = new AssetConversionInputOptions(loadedProfile.StorageAccountName, inputContainerName, folderName, modelFile);
-            var outputParams = new AssetConversionOutputOptions(loadedProfile.StorageAccountName, outputContainerName, folderName, outputFile);
+            string inputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{inputContainerName}";
+            string outputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{outputContainerName}";
+
+            var inputParams = new AssetConversionInputOptions(inputUri, null, folderName, modelFile);
+            var outputParams = new AssetConversionOutputOptions(outputUri, null, folderName, outputFile);
+            var options = new AssetConversionOptions(null, inputParams, outputParams);
 
             // Azure authentication
             var client = await loadedProfile.GetClient(loadedProfile.PreferredDomain);
@@ -206,7 +210,7 @@ public class ConvertModelService : MonoBehaviour
             Debug.Log(msg);
 
             // Start conversion
-            var conversion = client.StartAssetConversionAsync(inputParams, outputParams);
+            var conversion = client.StartAssetConversionAsync(options);
             await conversion;
 
             string conversionId;

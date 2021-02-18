@@ -1,15 +1,6 @@
 {
-  "scopedRegistries": [
-    {
-      "name": "Azure Mixed Reality Services", 
-      "url": "https://api.bintray.com/npm/microsoft/AzureMixedReality-NPM/", 
-      "scopes": [
-        "com.microsoft.azure"
-      ]
-    }
-  ], 
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "0.1.81", 
+    "com.microsoft.azure.remote-rendering": "file:../../MRPackages/com.microsoft.azure.remote-rendering-0.1.82.tgz", 
     "com.unity.2d.sprite": "1.0.0", 
     "com.unity.2d.tilemap": "1.0.0", 
     "com.unity.ads": "2.0.8", 

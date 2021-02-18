@@ -1,219 +1,238 @@
-#.SYNOPSIS
-# This Powershell script demonstrates how to validate the ConversionSettings and MaterialOverrides JSON files in advance of triggering ARR conversion.
-
-#.EXAMPLE
-# ValidateConversionJson.ps1
-#   This will check the two types of conversion JSON files in the input container, corresponding to the settings in arrconfig.json.
-
-#.EXAMPLE
-# ValidateConversionJson.ps1 -Local
-#   Checks the files in the specified LocalAssetsDirectory instead of checking the files in blob storage.
-
-#.OUTPUTS
-# $True if all of the schemas it found were valid
-
-#The Test-Json cmdlet is in 6.1.
-#Requires -Version 6.1
-
 Param(
-    [switch] $Local, # the local assets in the LocalAssetDirectoryPath should be checked instead of the remote ones
-    [string] $ConfigFile, # Use the specified config file instead of arrconfig.json.
-    [string] $ResourceGroup, # optional override for resourceGroup of assetConversionSettings in config file
-    [string] $StorageAccountName, # optional override for storageAccountName of assetConversionSettings in config file
-    [string] $BlobInputContainerName, # optional override for blobInputContainer of assetConversionSettings in config file
-    [string] $InputAssetPath, # path under inputcontainer/InputFolderPath pointing to the asset to be converted e.g model\box.fbx 
-    [string] $InputFolderPath, # optional path in input container
-    [string] $LocalAssetDirectoryPath # Path to directory containing all input asset data (e.g. fbx and textures referenced by it)
+    [string] $DownloadDestDir = (Join-Path $PSScriptRoot "/../Unity/MRPackages"),
+    [string] $DependenciesJson = (Join-Path $PSScriptRoot "unity_sample_dependencies.json")
 )
 
-. "$PSScriptRoot\ARRUtils.ps1"
+. "$PSScriptRoot\ARRUtils.ps1" #include ARRUtils for Logging
 
-Set-StrictMode -Version Latest
-$PrerequisitesInstalled = CheckPrerequisites
-if (-Not $PrerequisitesInstalled) {
-    WriteError("Prerequisites not installed - Exiting.")
-    exit 1
-}
+$success = $True
 
-$LoggedIn = CheckLogin
-if (-Not $LoggedIn) {
-    WriteError("User not logged in - Exiting.")
-    exit 1
-}
-
-# Contains the Test-Json cmdlet
-Import-Module Microsoft.PowerShell.Utility
-
-$SchemaRelativeDirectory = Join-Path ".." "JsonSchemas"
-$SchemaDirectory = Join-Path $PSScriptRoot $SchemaRelativeDirectory
-$ConversionSettingsSchemaFilename = "ConversionSettingsSchema.json"
-$MaterialOverridesSchemaFilename = "MaterialOverridesSchema.json"
-$ConversionSettingsSchemaPath = Join-Path $SchemaDirectory $ConversionSettingsSchemaFilename
-$MaterialOverridesSchemaPath = Join-Path $SchemaDirectory $MaterialOverridesSchemaFilename
-
-if (-Not (Test-Path -Path $ConversionSettingsSchemaPath))
+function NormalizePath([string] $path)
 {
-    WriteError "The required schema files $($ConversionSettingsSchemaFilename) was not found."
-    WriteError "This script expects the schemas to be located in the relative location $($SchemaRelativeDirectory)"
-    exit 1
-}
-if (-Not (Test-Path -Path $MaterialOverridesSchemaPath))
-{
-    WriteError "The required schema files $($MaterialOverridesSchemaFilename) was not found."
-    WriteError "This script expects the schemas to be located in the relative location $($SchemaRelativeDirectory)"
-    exit 1
+    if (-not [System.IO.Path]::IsPathRooted($path))
+    {
+        $wd = Get-Location
+        $joined = Join-Path $wd $path
+        $path = ([System.IO.Path]::GetFullPath($joined))
+    }
+    return $path
 }
 
-$ConversionSettingsSchema = Get-Content $ConversionSettingsSchemaPath -Raw
-$MaterialOverridesSchema = Get-Content $MaterialOverridesSchemaPath -Raw
+$DownloadDestDir = NormalizePath($DownloadDestDir)
+$DependenciesJson = NormalizePath($DependenciesJson)
 
-# Just in case the schemas got corrupted somehow
-if (-Not (Test-Json -Json $ConversionSettingsSchema))
+if (-not (Test-Path $DownloadDestDir -PathType Container))
 {
-    WriteError "The schema $($ConversionSettingsSchemaPath) is not valid JSON."
-    exit 1
-}
-if (-Not (Test-Json -Json $MaterialOverridesSchema))
-{
-    WriteError "The schema $($MaterialOverridesSchemaPath) is not valid JSON."
-    exit 1
+    New-Item -Path $DownloadDestDir -ItemType Directory | Out-Null
 }
 
-# Call Test-Json with a work-around and some additional output
-function IsValidAgainstSchema($json, $schema, $pathForMessage)
+function GetPackageDownloadDetails([string] $registry, [string] $package, [string] $version = "latest") 
 {
+    $details = $null
+    $uri = "$registry/$package"
     try
     {
-        # Work around a limitation of Test-Json, which can't parse top-level arrays:
-        # Wrap the actual json as the value of a single property "_" in an object.
-        # This is not intended to be completely general, but should be sufficient for the
-        # JSON files used by the ARR Conversion service.
-        $schemaPrefix = "{`"type`":`"object`",`"properties`":{`"_`":"
-        $schemaBody = $schema -replace "`"\`$ref`"\s*:\s*`"#/", "`"`$ref`":`"#/properties/_/"
-        $schemaSuffix = "}}"
-        $wrappedSchema = $schemaPrefix + $schemaBody + $schemaSuffix
-        $wrappedJson = "{`"_`":" + $json +"}"
-        Test-Json -Json $wrappedJson -Schema $wrappedSchema -ErrorAction Stop
-        WriteSuccess "$($pathForMessage) validates against its schema"
-        return $True
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $uri
+        $json = $response | ConvertFrom-Json
+
+        if ($version -like "latest")
+        {
+            $version = $json.'dist-tags'.latest
+        }
+
+        $versionInfo = $json.versions.($version)
+        if ($null -eq $versionInfo)
+        {
+            WriteError "No info found for version $version of package $package."
+        }
+        $details = $json.versions.($version).dist
     }
     catch
     {
-        # Have to unwrap the path in any schema error
-        $schemaError = ([string]$_).Replace("#/_.", "#/").Replace("#/_[", "#/[")
-        WriteError "$($pathForMessage): $($_.Exception.Message) $($schemaError)"
-        return $False
+        WriteError "Web request to $uri failed."
+        WriteError $_
+    }
+    return $details
+}
+
+# supress progress bar for API requests
+$oldProgressPreference = $ProgressPreference
+$ProgressPreference = 'SilentlyContinue'
+
+
+$packages = ((Get-Content $DependenciesJson) | ConvertFrom-Json).packages| ForEach-Object {
+    $package = $_
+
+    $details = GetPackageDownloadDetails $package.registry $package.name $package.version
+    if ($null -eq $details)
+    {
+        WriteError "Failed to get details for $($package.name)@$($package.version) from $($package.registry)."
+        $success = $False
+        return
+    }
+    
+    $packageUrl = $details.tarball
+    $fileName = [System.IO.Path]::GetFileName($packageUrl)
+    $downloadPath = Join-Path $DownloadDestDir $fileName
+    $downloadPath = [System.IO.Path]::GetFullPath($downloadPath)
+
+    [PSCustomObject]@{
+        Name = $package.name
+        Version = $package.version
+        Registry = $package.registry
+        Url = $packageUrl
+        Sha1sum = $details.shasum
+        DownloadPath = $downloadPath
     }
 }
 
-# Validate the file corresponding to the conversionSettings file, except with its extension replaced.
-# If the file is not present, a message is written, but $true is still returned.
-function ValidateConversionFile($assetConversionSettings, $extension, $schema)
-{
-    $isValid = $True
-    $pathSplit = $assetConversionSettings.inputAssetPath -split "\."
-    if ($pathSplit.Count -lt 2)
-    {
-        WriteError "The inputAssetPath is expected to have an extension"
-        exit 1
-    }
-    $inputAssetPathWithoutExtension = $pathSplit[0..($pathSplit.Count - 2)] -join "."
-    $filePath = $inputAssetPathWithoutExtension + $extension
+# restore progress preference
+$ProgressPreference = $oldProgressPreference
 
-    # If local storage has been specified, validate the file there.
-    if ($Local)
+$DownloadFile = {
+    param([string] $url, [string] $dest)
+    try
     {
-        $filePathInLocalDir = if ($assetConversionSettings.localAssetDirectoryPath) { Join-Path $assetConversionSettings.localAssetDirectoryPath $filePath } Else { $filePath }
-        if (Test-Path -Path $filePathInLocalDir)
+        $uri = New-Object "System.Uri" "$url"
+        $request = [System.Net.HttpWebRequest]::Create($uri)
+    
+        $response = $request.GetResponse()
+        $responseStream = $response.GetResponseStream()
+        $contentLength = $response.get_ContentLength()
+    
+        $destStream = New-Object -TypeName System.IO.FileStream -ArgumentList $dest, Create
+        $buf = new-object byte[] 16KB
+    
+        $srcFileName = [System.IO.Path]::GetFileName($url)
+        
+        $readBytesTotal = $readBytes = $responseStream.Read($buf, 0, $buf.length)
+        while ($readBytes -gt 0)
         {
-            $json = Get-Content $filePathInLocalDir -Raw
-            if (-Not (IsValidAgainstSchema $json $schema $filePathInLocalDir))
-            {
-                $isValid = $False
-            }
+            $destStream.Write($buf, 0, $readBytes)
+            $readBytes = $responseStream.Read($buf, 0, $buf.length)
+            $readBytesTotal = $readBytesTotal + $readBytes
+            $percentComplete = (($readBytesTotal / $contentLength)  * 100)
+            $status = "Downloaded {0:N2} MB of  {1:N2} MB" -f ($readBytesTotal/1MB), ($contentLength/1MB)
+            Write-Progress -Activity "Downloading '$($srcFileName)'" -Status $status -PercentComplete $percentComplete
         }
-        else
-        {
-            Write-Information "No file $($filePathInLocalDir) found in the local asset directory"
-        }
+        Write-Progress -Completed -Activity "Finished downloading '$($srcFileName)'"
+
+        $destStream.Flush()
+        $destStream.Close()
+        $destStream.Dispose()
+    
+        $responseStream.Dispose()        
+    }
+    catch {
+        Write-Error "Error downloading $($package.Name)@$($package.Version) from $($package.Url)"
+        Write-Error "$_"
+    }
+
+}
+
+$jobs = @()
+foreach ($package in $packages)
+{
+    if (-not (Test-Path $package.DownloadPath -PathType Leaf))
+    {
+        WriteInformation "Downloading $($package.Name)@$($package.Version) from $($package.Url)."
+        $jobs += Start-Job -ScriptBlock $DownloadFile -ArgumentList @($package.Url, $package.DownloadPath)
+        $progressId++
     }
     else
     {
-        # Test in the input storage
-        $filePathInInputDir = if ($assetConversionSettings.inputFolderPath) { Join-Path $assetConversionSettings.inputFolderPath $filePath } Else { $filePath }
-        $remoteBlobpath = $filePathInInputDir.Replace("\", "/")
+        WriteInformation "$($package.DownloadPath) already exists. Skipping download."
+    }
+}
 
-        try
+function WriteJobProgress
+{
+    param($job)
+    # Make sure the first child job exists
+    if($null -ne $job.ChildJobs[0])
+    {
+        # Extracts the latest progress of the job and writes the progress
+        $jobProgressHistory = $job.ChildJobs[0].Progress;
+
+        if ($jobProgressHistory.count -gt 0)
         {
-            # Copy the json to a temporary file and check it there.
-            $fileCopy = New-TemporaryFile
-            $blob = Get-AzStorageBlobContent -Container $assetConversionSettings.blobInputContainerName -Context $assetConversionSettings.storageContext -Blob $remoteBlobpath -Destination $fileCopy -ErrorAction Stop -Force
-            $json = Get-Content $fileCopy -Raw
-            if (-Not (IsValidAgainstSchema $json $schema $remoteBlobpath))
+            $latest = $jobProgressHistory | select-object -last 1
+            $latestActivity = $latest | Select-Object -expand Activity;
+            $latestStatus = $latest | Select-Object -expand StatusDescription;
+            $latestPercentComplete = $latest | Select-Object -expand PercentComplete;
+
+            if ($latest.RecordType -eq 'Completed')
             {
-                $isValid = $False
+                Write-Progress -ParentId 0 -Completed -Id $job.Id -Activity $latestActivity
             }
-            Remove-Item $fileCopy
-        }
-        catch [Microsoft.WindowsAzure.Commands.Storage.Common.ResourceNotFoundException]
-        {
-            Write-Information "No file $($remoteBlobpath) found in the input container" 
+            else
+            {
+                Write-Progress -ParentId 0 -Id $job.Id -Activity $latestActivity -Status $latestStatus -PercentComplete $latestPercentComplete;
+            }
         }
     }
-    return $isValid
 }
 
-if ([string]::IsNullOrEmpty($ConfigFile)) {
-    $ConfigFile = "$PSScriptRoot\arrconfig.json"
+if ($jobs.Count -gt 0)
+{
+    do
+    {
+        Start-Sleep -milliseconds 250
+    
+        $jobsProgress = $jobs | Select-Object Id,State, @{ N='RecordType'; E={$_.ChildJobs[0].Progress | Select-Object -Last 1 -Exp RecordType}}
+        $running = @( $jobsProgress | Where-Object{$_.State -eq 'Running' -or $_.RecordType -ne 'Completed'} )
+        $completedCount = ($jobs.Count - $running.Count)
+    
+        $complete = (($completedCount / $jobs.Count) * 100)
+        $status = "$($completedCount) / $($jobs.Count) Completed"
+        Write-Progress -Id 0 -Activity "Downloading Packages" -Status $status -PercentComplete $complete
+        $jobs | ForEach-Object{ WriteJobProgress($_) }
+    }
+    while ( $completedCount -lt $jobs.Count )
+    
+    Write-Progress -Completed -Id 0 -Activity "Downloading Packages"
+    
+    foreach ($job in $jobs)
+    {
+        #Propagate messages and errors
+        if($null -ne $job.ChildJobs[0])
+        {
+            $Job.ChildJobs[0].Information | Foreach-Object { WriteInformation $_ }
+            $Job.ChildJobs[0].Error | Foreach-Object { WriteError $_ }
+        }
+    }
+
+    $jobs | Remove-Job
 }
 
-$config = LoadConfig `
-    -fileLocation $ConfigFile `
-    -StorageAccountName $StorageAccountName `
-    -ResourceGroup $ResourceGroup `
-    -BlobInputContainerName $BlobInputContainerName `
-    -LocalAssetDirectoryPath $LocalAssetDirectoryPath `
-    -InputAssetPath $InputAssetPath `
-    -InputFolderPath $InputFolderPath `
+foreach ($package in $packages)
+{        
+    $packageShasum = $package.Sha1sum.ToLower()
+    $localShasum = (Get-FileHash -Algorithm SHA1 $package.DownloadPath).Hash.ToLower()
+    if (-not ($packageShasum -like $localShasum))
+    {
+        WriteInformation ""
+        WriteError "SHA1 hashes for $($package.Name)@$($package.Version) and $($package.DownloadPath) do not match."
+        WriteError "$packageShasum != $localShasum"
+        $success = $False
+    }
+}
 
-if ($null -eq $config) {
-    WriteError("Error reading config file - Exiting.")
+if ($success)
+{
+    WriteSuccess "Downloading dependency packages succeeded."
+}
+else
+{
+    WriteError "Downloading dependency packages failed."
     exit 1
 }
-
-$defaultConfig = GetDefaultConfig
-
-$storageSettingsOkay = VerifyStorageSettings $config $defaultConfig
-if ($false -eq $storageSettingsOkay) {
-    WriteError("Error reading assetConversionSettings in $ConfigFile - Exiting.")
-    exit 1
-}
-
-# if we do any conversion related things we need to validate storage settings
-$isValid = ValidateConversionSettings $config $defaultConfig (-not $Local)
-if ($false -eq $isValid) {
-    WriteError("The config file is not valid. Please ensure the required values are filled in - Exiting.")
-    exit 1
-}
-WriteSuccess("Successfully Loaded Configurations from file : $ConfigFile ...")
-
-$config = AddStorageAccountInformationToConfig $config
-
-if ($null -eq $config) {
-    WriteError("Azure settings not valid. Please ensure the required values are filled in correctly in the config file $ConfigFile")
-    exit 1
-}
-
-$conversionSettingsWasValid = ValidateConversionFile $config.assetConversionSettings ".ConversionSettings.json" $ConversionSettingsSchema
-$materialOverridesWasValid = ValidateConversionFile $config.assetConversionSettings ".MaterialOverrides.json" $MaterialOverridesSchema
-
-return $conversionSettingsWasValid -and $materialOverridesWasValid
 
 # SIG # Begin signature block
 # MIInLAYJKoZIhvcNAQcCoIInHTCCJxkCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAm5H8lix9H7Cgu
-# rtdwRiBfsrysWyHeoz7gQ6z5+eaeuaCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDDMH8+ySdPkn/B
+# 6DbxelBSSSugGGF9Bdw/WrLH3KjLtqCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
 # OfXldyfqAAEAAAE5MA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMDEwMjEyMDM5MDZaFw0yMTA5MTUyMTQzMDNaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -310,19 +329,19 @@ return $conversionSettingsWasValid -and $materialOverridesWasValid
 # R0JMMRMwEQYKCZImiZPyLGQBGRYDQU1FMRUwEwYDVQQDEwxBTUUgQ1MgQ0EgMDEC
 # EzYAAAE5eMY59eV3J+oAAQAAATkwDQYJYIZIAWUDBAIBBQCgga4wGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# LwYJKoZIhvcNAQkEMSIEIL53wkvOUjnixJjVQ6/7+cLN8PmwOOhO1quQ90cqEHZK
+# LwYJKoZIhvcNAQkEMSIEIO/p0NGf9niZf1dWjSdsJhjTb/nz1x4c/GMCpc7y6smg
 # MEIGCisGAQQBgjcCAQwxNDAyoBSAEgBNAGkAYwByAG8AcwBvAGYAdKEagBhodHRw
-# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAaYbW9o32O8CS
-# 2Wn7gcHTK7Kjmee+hIL4kcPPd/MSYec1YC8oF3kdMkN8oesL/EDZ5UE/0F21A59Y
-# V9jmBBfnIDShqr0Yb0A1OmhHvSNB1vCl1qR6zzXJXo4UFUyhaL6KGXVmnH0C0wea
-# JdRup+d2eo8uBYDRw1fcXFOeOpJP0eAlG4E4A6lVpyu1bHYfOrON/9Zyqia1ahy3
-# 3mTqNOtYH/UHTdHXhrViBk3YiiAHKottFsDXTP8lfec2av5wEJmF1K6/kzQtHcse
-# Q40fXp4WwUwtJEPuxaVfUhQBSUWzNuf6OqL3IH8n6R4meW8E1/QKTyEfdzwlN4xq
-# q7BhmK0l0aGCEuUwghLhBgorBgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCC
+# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAR/AQREPsjiLn
+# K48fSERStsda3VxGIgs1VTMeIMOrudz9wrLfBeHc4w3bcSxDG9AjzTBlAF3EMLri
+# PLUD9fIcweSEYOFLy2LaBLm1z2cZLLMPELYFFpxE3KDC/V574GapFnk2yNGBd6Z8
+# /9YPPCcnFiZWgrpH0f/mXdW68L84VamOzSWVPr2P9dkmWZAuff4fQbb/KjT2vkKJ
+# Kq0OQn30Tm3ufpsS0Kw9+2Jhbut4EZHPq/lfySFI38DApgYSd9IeUXI+ekPS0zyg
+# D9dooCxu9IwCcBOtN2Rm1u55Im7UmW2csUejAH1L5ucPd4GsXbzbt3/yuXMMorOn
+# x5ZKMIkE8KGCEuUwghLhBgorBgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCC
 # Er4wghK6AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAE
-# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCANrzksJ1/W
-# XEloeePkVvamSwx43JX4dKdkThUvtNNTfwIGYCWc/VnWGBMyMDIxMDIxNzIzNTQz
-# NC4zNjlaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
+# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCDQGCpWlVIh
+# q5+zNAZE/Y6ZUB6IbOHIjZloHyHea/0enAIGYCWc/VvGGBMyMDIxMDIxNzIzNTQ0
+# Ni42NTdaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
 # aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
 # cnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25z
 # MSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo3QkYxLUUzRUEtQjgwODElMCMGA1UE
@@ -407,16 +426,16 @@ return $conversionSettingsWasValid -and $materialOverridesWasValid
 # b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1p
 # Y3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUcNQ51lsqsanAAAAAAFR
 # MA0GCWCGSAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQw
-# LwYJKoZIhvcNAQkEMSIEIPp5WrAXOKI7BTP1sSSD9JD3lpqEvFfQK1auesEboBIs
+# LwYJKoZIhvcNAQkEMSIEIM+lqMONN6uD1tH/UqetUtRO8ZU7aO39ZCsIFoc23js9
 # MIH6BgsqhkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgLs1cmYj41sFZBwCmFvv9ScP5
 # tuuUhxsv/t0B9XF65UEwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMK
 # V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
 # IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0Eg
 # MjAxMAITMwAAAVHDUOdZbKrGpwAAAAABUTAiBCCOtp+8y8rnaALDNRAGlI3oyQl/
-# +hCxAdsb1XpkVDEM0jANBgkqhkiG9w0BAQsFAASCAQAuKgVgKWmarTHQkQUaCUfp
-# gssNdr64vwZ6FXQ0uiNsU5aukQhMStNr64jiU3VSpbzvAnh/4lPthsYCV8dlfnlW
-# FWMqx8qa2bYUg7KDjcwR7rIxGECw2vWoiGIzIBhqCIUwV+IhvyUYhcFwLon3QL19
-# GePhSRFsgH9/gjbWEq5XMoNG4DkZPbYG3C+TiJbTmBjbHB2k1g51YXidUP2hWwae
-# lm2xSYYe1Cuolj85/oaeAGfy46HSl9iiW3siW6PKdApsgcYY6XSYZ/QZOyyffu2G
-# Liavkj2wrX6IDjInzasbfaZBqZ3vhrg9rJqwKnWmxNSambIAFsbnliWpF/NYDrWu
+# +hCxAdsb1XpkVDEM0jANBgkqhkiG9w0BAQsFAASCAQBO2slDHUi0zS5EuAY5Y9l/
+# 6GJzXBPJn0kOG3ABuwqnRkzwRFXH1kL86CqviwJrtGfLUNm5YR/mBO1khNNAuSLr
+# IhiVNizgjHT+ivDNyIQwUTvsBNmwxz+M+KiYgErsKRBKW1R42qE4QofWwdQHZyyn
+# wV6CMOFm4g3chzOrkVRiYDDAT0OmVT0bNZ+OGJlwnab7hoDwUfGPHKLU1C9KUsQD
+# Ph3CiqgLdLJsWWCd98FdR3Cxf3wAATyWk94kbMrWcH9L4C6BLeU7QsJEjXiG+dlj
+# fyiL6arLx3Mj/0pGFQm1HcDdREfxwt4UE+8GJqOqPHzm5qLBhtur9aWb4jM+IAXv
 # SIG # End signature block

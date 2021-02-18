@@ -1,36 +1,36 @@
 # This Powershell script is an example for the usage of the Azure Remote Rendering service
 # Documentation: https://docs.microsoft.com/en-us/azure/remote-rendering/samples/powershell-example-scripts
 #
-# Usage: 
-# Fill out the assetConversionSettings in arrconfig.json next to this file or provide all necessary parameters on the commandline 
+# Usage:
+# Fill out the assetConversionSettings in arrconfig.json next to this file or provide all necessary parameters on the commandline
 # This script is using the ARR REST API to convert assets to the asset format used in rendering sessions
 
 # Conversion.ps1 [-ConfigFile <pathtoconfig>]
-#   Requires that the ARR account has access to the storage account. The documentation explains how to grant access. 
+#   Requires that the ARR account has access to the storage account. The documentation explains how to grant access.
 #   Will:
 #   - Load config from arrconfig.json or optional file provided by the -ConfigFile parameter
 #   - Retrieve Azure Storage credentials for the configured storage account and logged in user
 #   - Upload the directory pointed to in assetConversionSettings.localAssetDirectoryPath to the storage input container
 #      using the provided storage account.
-#   - Start a conversion using the ARR Conversion REST API and retrieves a conversion Id 
+#   - Start a conversion using the ARR Conversion REST API and retrieves a conversion Id
 #   - Poll the conversion status until the conversion succeeded or failed
 
 # Conversion.ps1 -UseContainerSas [-ConfigFile <pathtoconfig>]
-#   The -UseContainerSas will convert the input asset using the conversions/createWithSharedAccessSignature REST API. 
-#   Will also perform upload and polling of conversion status. 
-#   The script will access the provided storage account and generate SAS URIs which are used in the call to give access to the 
+#   The -UseContainerSas will convert the input asset using the conversions/createWithSharedAccessSignature REST API.
+#   Will also perform upload and polling of conversion status.
+#   The script will access the provided storage account and generate SAS URIs which are used in the call to give access to the
 #   blob containers of the storage account.
 
-# The individual stages -Upload -ConvertAsset and -GetConversionStatus can be executed individually like: 
+# The individual stages -Upload -ConvertAsset and -GetConversionStatus can be executed individually like:
 # Conversion.ps1 -Upload
-#   Only executes the Upload of the asset directory to the input storage container and terminates 
+#   Only executes the Upload of the asset directory to the input storage container and terminates
 
 # Conversion.ps1 -ConvertAsset
 #  Only executes the convert asset step
 
 # Conversion.ps1 -GetConversionStatus -Id <ConversionId> [-Poll]
-#   Retrieves the status of the conversion with the provided conversion id. 
-#   -Poll will poll the conversion with given id until the conversion succeeds or fails 
+#   Retrieves the status of the conversion with the provided conversion id.
+#   -Poll will poll the conversion with given id until the conversion succeeds or fails
 
 # Optional parameters:
 # individual settings in the config file can be overridden on the command line:
@@ -50,7 +50,7 @@ Param(
     [string] $StorageAccountName, # optional override for storageAccountName of assetConversionSettings in config file
     [string] $BlobInputContainerName, # optional override for blobInputContainer of assetConversionSettings in config file
     [string] $BlobOutputContainerName, # optional override for blobOutputContainerName of assetConversionSettings in config file
-    [string] $InputAssetPath, # path under inputcontainer/InputFolderPath pointing to the asset to be converted e.g model\box.fbx 
+    [string] $InputAssetPath, # path under inputcontainer/InputFolderPath pointing to the asset to be converted e.g model\box.fbx
     [string] $InputFolderPath, # optional path in input container, all data under this path will be retrieved by the conversion service , if empty all data from the input storage container will copied
     [string] $OutputFolderPath, # optional override for the path in output container, conversion result will be copied there
     [string] $OutputAssetFileName, # optional filename of the outputAssetFileName of assetConversionSettings in config file. needs to end in .arrAsset
@@ -95,7 +95,7 @@ function UploadAssetDirectory($assetSettings) {
     }
 
     WriteInformation ("Uploading asset directory from $($assetSettings.localAssetDirectoryPath) to blob storage input container ...")
-    
+
     if ($assetSettings.localAssetDirectoryPath -notmatch '\\$') {
         $assetSettings.localAssetDirectoryPath += '\'
     }
@@ -104,9 +104,9 @@ function UploadAssetDirectory($assetSettings) {
     if ($false -eq $inputDirExists) {
         WriteError("Unable to upload files from asset directory $($assetSettings.localAssetDirectoryPath). Directory does not exist.")
         return $false
-    }        
-    
-    $filesToUpload = @(Get-ChildItem -Path $assetSettings.localAssetDirectoryPath -File -Recurse) 
+    }
+
+    $filesToUpload = @(Get-ChildItem -Path $assetSettings.localAssetDirectoryPath -File -Recurse)
 
     if (0 -eq $filesToUpload.Length) {
         WriteError("Unable to upload files from asset directory $($assetSettings.localAssetDirectoryPath). Directory is empty.")
@@ -114,7 +114,7 @@ function UploadAssetDirectory($assetSettings) {
 
     WriteInformation ("Uploading $($filesToUpload.Length) files to input storage container")
     $filesUploaded = 0
-    
+
     foreach ($fileToUpload in $filesToUpload) {
         $relativePathInFolder = $fileToUpload.FullName.Substring($assetSettings.localAssetDirectoryPath.Length).Replace("\", "/")
         $remoteBlobpath = $assetSettings.inputFolderPath + $relativePathInFolder
@@ -135,138 +135,82 @@ function UploadAssetDirectory($assetSettings) {
 }
 
 # Asset Conversion
-# Starts a remote asset conversion by using the ARR conversion REST API <endPoint>/v1/accounts/<accountId>/conversions/createWithSharedAccessSignature
-# All files present in the input container under the (optional) folderPath will be copied to the ARR conversion service
-# the output .arrAsset file will be written back to the provided outputcontainer under the given (optional) folderPath
-# Immediately returns a conversion id which can be used to query the status of the conversion process (see below)
-function ConvertAssetWithSharedAccessSignature(
-    $accountSettings,
-    $authenticationEndpoint, 
-    $serviceEndpoint, 
-    $accountId, 
-    $accountKey,
-    $assetConversionSettings,
-    $inputAssetPath,
-    $additionalParameters) {
-    try {
-        WriteLine
-        $body = 
-        @{ 
-            input  =
-            @{
-                storageAccountName   = $assetConversionSettings.storageAccountName;
-                blobContainerName    = $assetConversionSettings.blobInputContainerName;
-                containerReadListSas = $assetConversionSettings.inputContainerSAS;
-                folderPath           = $assetConversionSettings.inputFolderPath;
-                inputAssetPath       = $assetConversionSettings.inputAssetPath;
-            };
-            output =
-            @{
-                storageAccountName  = $assetConversionSettings.storageAccountName;
-                blobContainerName   = $assetConversionSettings.blobOutputContainerName;
-                containerWriteSas   = $assetConversionSettings.outputContainerSAS;
-                folderPath          = $assetConversionSettings.outputFolderPath;
-                outputAssetFileName = $assetConversionSettings.outputAssetFileName;
-            }
-        }
-        
-        if ($additionalParameters) {
-            $additionalParameters.Keys | % { $body += @{ $_ = $additionalParameters.Item($_) } }
-        }
-
-        $url = "$serviceEndpoint/v1/accounts/$accountId/conversions/createWithSharedAccessSignature"
-
-        WriteInformation("Converting Asset using container Shared Access Signatures ...")
-        WriteInformation("  authentication endpoint: $authenticationEndpoint")
-        WriteInformation("  service endpoint: $serviceEndpoint")
-        WriteInformation("  accountId: $accountId")
-        WriteInformation("Input:")       
-        WriteInformation("    storageAccount: $($assetConversionSettings.storageAccountName)")  
-        WriteInformation("    inputContainer: $($assetConversionSettings.blobInputContainerName)") 
-        WriteInformation("    inputContainerSAS: $($assetConversionSettings.inputContainerSAS)")   
-        WriteInformation("    folderPath: $($assetConversionSettings.inputFolderPath)") 
-        WriteInformation("    inputAssetPath: $($assetConversionSettings.inputAssetPath)")
-        WriteInformation("Output:")       
-        WriteInformation("    storageAccount: $($assetConversionSettings.storageAccountName)")  
-        WriteInformation("    outputContainer: $($assetConversionSettings.blobOutputContainerName)") 
-        WriteInformation("    outputContainerSAS: $($assetConversionSettings.outputContainerSAS)")   
-        WriteInformation("    folderPath: $($assetConversionSettings.outputFolderPath)") 
-        WriteInformation("    outputAssetFilename: $($assetConversionSettings.outputAssetFileName)")
-
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method POST -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
-        $conversionId = (GetResponseBody($response)).conversionId
-        WriteSuccess("Successfully started the conversion with Id: $conversionId")
-        WriteSuccessResponse($response.RawContent)
-
-        return $conversionId
-    }
-    catch {
-        WriteError("Unable to start conversion of the asset ...")
-        HandleException($_.Exception)
-        throw
-    }
-}
-
-# Asset Conversion
-# Starts a remote asset conversion by using the ARR conversion REST API <endPoint>/v1/accounts/<accountId>/conversions/create
-# The ARR account needs to be granted access to the storage account for this to work. Consult documentation how to grant access.
+# Starts a remote asset conversion by using the ARR conversion REST API <endPoint>/accounts/<accountId>/conversions/<conversionId>
 # All files present in the input container under the (optional) folderPath will be copied to the ARR conversion service
 # the output .arrAsset file will be written back to the provided outputcontainer under the given (optional) folderPath
 # Immediately returns a conversion id which can be used to query the status of the conversion process (see below)
 function ConvertAsset(
     $accountSettings,
-    $authenticationEndpoint, 
-    $serviceEndpoint, 
-    $accountId, 
-    $accountKey, 
+    $authenticationEndpoint,
+    $serviceEndpoint,
+    $accountId,
+    $accountKey,
     $assetConversionSettings,
     $inputAssetPath,
+    [switch] $useContainerSas,
+    $conversionId,
     $additionalParameters) {
     try {
         WriteLine
-        $body = 
-        @{ 
-            input  =
+        $inputContainerUri = "https://$($assetConversionSettings.storageAccountName).blob.core.windows.net/$($assetConversionSettings.blobInputContainerName)"
+        $outputContainerUri = "https://$($assetConversionSettings.storageAccountName).blob.core.windows.net/$($assetConversionSettings.blobOutputContainerName)"
+        $settings =
+        @{
+            inputLocation  =
             @{
-                storageAccountName = $assetConversionSettings.storageAccountName;
-                blobContainerName  = $assetConversionSettings.blobInputContainerName;
-                folderPath         = $assetConversionSettings.inputFolderPath;
-                inputAssetPath     = $assetConversionSettings.inputAssetPath;
+                storageContainerUri    = $inputContainerUri;
+                blobPrefix             = $assetConversionSettings.inputFolderPath;
+                relativeInputAssetPath = $assetConversionSettings.inputAssetPath;
             };
-            output =
+            outputLocation =
             @{
-                storageAccountName  = $assetConversionSettings.storageAccountName;
-                blobContainerName   = $assetConversionSettings.blobOutputContainerName;
-                folderPath          = $assetConversionSettings.outputFolderPath;
-                outputAssetFileName = $assetConversionSettings.outputAssetFileName;
+                storageContainerUri    = $outputContainerUri;
+                blobPrefix             = $assetConversionSettings.outputFolderPath;
+                outputAssetFilename    = $assetConversionSettings.outputAssetFileName;
             }
         }
-        
-        if ($additionalParameters) {
-            $additionalParameters.Keys | % { $body += @{ $_ = $additionalParameters.Item($_) } }
+
+        if ($useContainerSas)
+        {
+            $settings.inputLocation  += @{ storageContainerReadListSas = $assetConversionSettings.inputContainerSAS }
+            $settings.outputLocation += @{ storageContainerWriteSas    = $assetConversionSettings.outputContainerSAS }
         }
 
-        $url = "$serviceEndpoint/v1/accounts/$accountId/conversions/create"
+        if ($additionalParameters) {
+            $additionalParameters.Keys | % { $settings += @{ $_ = $additionalParameters.Item($_) } }
+        }
 
-        WriteInformation("Converting Asset using linked storage account ...")
+        $body =
+        @{
+            settings = $settings
+        }
+
+        if ([string]::IsNullOrEmpty($conversionId))
+        {
+            $conversionId = "Sample-Conversion-$(New-Guid)"
+        }
+
+        $url = "$serviceEndpoint/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
+
+        $conversionType = if ($useContainerSas) {"container Shared Access Signatures"} else {"linked storage account"}
+
+        WriteInformation("Converting Asset using $conversionType ...")
         WriteInformation("  authentication endpoint: $authenticationEndpoint")
         WriteInformation("  service endpoint: $serviceEndpoint")
         WriteInformation("  accountId: $accountId")
-        WriteInformation("Input:")       
-        WriteInformation("    storageAccount: $($assetConversionSettings.storageAccountName)")  
-        WriteInformation("    inputContainer: $($assetConversionSettings.blobInputContainerName)") 
-        WriteInformation("    folderPath: $($assetConversionSettings.inputFolderPath)") 
-        WriteInformation("    inputAssetPath: $($assetConversionSettings.inputAssetPath)")
-        WriteInformation("Output:")       
-        WriteInformation("    storageAccount: $($assetConversionSettings.storageAccountName)")  
-        WriteInformation("    outputContainer: $($assetConversionSettings.blobOutputContainerName)") 
-        WriteInformation("    folderPath: $($assetConversionSettings.outputFolderPath)") 
+        WriteInformation("Input:")
+        WriteInformation("    storageContainerUri: $inputContainerUri")
+        if ($useContainerSas) { WriteInformation("    inputContainerSAS: $($assetConversionSettings.inputContainerSAS)") }
+        WriteInformation("    blobPrefix: $($assetConversionSettings.inputFolderPath)")
+        WriteInformation("    relativeInputAssetPath: $($assetConversionSettings.inputAssetPath)")
+        WriteInformation("Output:")
+        WriteInformation("    storageContainerUri: $outputContainerUri")
+        if ($useContainerSas) { WriteInformation("    outputContainerSAS: $($assetConversionSettings.outputContainerSAS)") }
+        WriteInformation("    blobPrefix: $($assetConversionSettings.outputFolderPath)")
         WriteInformation("    outputAssetFilename: $($assetConversionSettings.outputAssetFileName)")
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method POST -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
-        $conversionId = (GetResponseBody($response)).conversionId
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PUT -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
         WriteSuccess("Successfully started the conversion with Id: $conversionId")
         WriteSuccessResponse($response.RawContent)
 
@@ -279,11 +223,11 @@ function ConvertAsset(
     }
 }
 
-# calls the conversion status ARR REST API "<endPoint>/v1/accounts/<accountId>/conversions/<conversionId>"
-# returns if the conversion process is still running, succeeded or failed
+# calls the conversion status ARR REST API "<endPoint>/accounts/<accountId>/conversions/<conversionId>"
+# returns the conversion process state
 function GetConversionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $conversionId) {
     try {
-        $url = "$serviceEndpoint/v1/accounts/$accountId/conversions/${conversionId}"
+        $url = "$serviceEndpoint/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
@@ -303,7 +247,8 @@ function PollConversionStatus($authenticationEndpoint, $serviceEndpoint, $accoun
     $conversionStatus = "Running"
     $startTime = Get-Date
 
-    $convertedAsset = $null
+    $conversionResponse = $null
+    $conversionSucceeded = $true;
 
     while ($true) {
         Start-Sleep -Seconds 10
@@ -311,35 +256,36 @@ function PollConversionStatus($authenticationEndpoint, $serviceEndpoint, $accoun
 
         $response = GetConversionStatus $authenticationEndpoint $serviceEndpoint $accountId $accountKey $conversionId
         $responseJson = ($response.Content | ConvertFrom-Json)
+
         $conversionStatus = $responseJson.status
 
-        if ("success" -eq $conversionStatus.ToLower()) {
-            $convertedAsset = $responseJson.convertedAsset
+        if ("succeeded" -ieq $conversionStatus) {
+            $conversionResponse = $responseJson
             break
         }
 
-        if ("failure" -eq $conversionStatus.ToLower()) {
+        if ($conversionStatus -iin "failed", "cancelled") {
+            $conversionSucceeded = false
             break
         }
     }
-   
+
     $totalTimeElapsed = $(New-TimeSpan $startTime $(get-date)).TotalSeconds
 
-
-    if ("success" -eq $conversionStatus.ToLower()) {
+    if ($conversionSucceeded) {
         WriteProgress -activity "Your asset conversion is complete" -status "Completed..."
         WriteSuccess("The conversion with Id: $conversionId was successful ...")
         WriteInformation ("Total time elapsed: $totalTimeElapsed  ...")
         WriteInformation($response)
     }
-    if ("failure" -eq $conversionStatus.ToLower()) {
+    else {
         WriteError("The asset conversion with Id: $conversionId resulted in an error")
         WriteInformation ("Total time elapsed: $totalTimeElapsed  ...")
         WriteInformation($response)
         exit 1
     }
 
-    return $convertedAsset
+    return $conversionResponse
 }
 
 # Execution of script starts here
@@ -383,7 +329,7 @@ if ($ConvertAsset -or $Upload -or $UseContainerSas) {
         WriteError("Error reading assetConversionSettings in $ConfigFile - Exiting.")
         exit 1
     }
-    
+
     # if we do any conversion related things we need to validate storage settings
     # we do not need the storage settings if we only want to spin up a session
     $isValid = ValidateConversionSettings $config $defaultConfig $ConvertAsset
@@ -392,9 +338,9 @@ if ($ConvertAsset -or $Upload -or $UseContainerSas) {
         exit 1
     }
     WriteSuccess("Successfully Loaded Configurations from file : $ConfigFile ...")
-    
+
     $config = AddStorageAccountInformationToConfig $config
-    
+
     if ($null -eq $config) {
         WriteError("Azure settings not valid. Please ensure the required values are filled in correctly in the config file $ConfigFile")
         exit 1
@@ -410,7 +356,7 @@ if ($Upload) {
 }
 
 if ($ConvertAsset) {
-    if ($UseContainerSas) { 
+    if ($UseContainerSas) {
         # Generate SAS and provide it in rest call - this is used if your storage account is not connected with your ARR account
         $inputContainerSAS = GenerateInputContainerSAS $config.assetConversionSettings.storageContext.BlobEndPoint $config.assetConversionSettings.blobInputContainerName $config.assetConversionSettings.storageContext
         $config.assetConversionSettings.inputContainerSAS = $inputContainerSAS
@@ -418,52 +364,51 @@ if ($ConvertAsset) {
         $outputContainerSAS = GenerateOutputContainerSAS -blobEndPoint $config.assetConversionSettings.storageContext.blobEndPoint  -blobContainerName $config.assetConversionSettings.blobOutputContainerName -storageContext $config.assetConversionSettings.storageContext
         $config.assetConversionSettings.outputContainerSAS = $outputContainerSAS
 
-        $Id = ConvertAssetWithSharedAccessSignature -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings -AdditionalParameters $AdditionalParameters
+        $Id = ConvertAsset -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings -useContainerSas -conversionId $Id -AdditionalParameters $AdditionalParameters 
     }
-    else { 
+    else {
         # The ARR account has read/write access to the blob containers of the storage account - so we do not need to generate SAS tokens for access
-        $Id = ConvertAsset -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings -AdditionalParameters $AdditionalParameters
+        $Id = ConvertAsset -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings  -conversionId $Id -AdditionalParameters $AdditionalParameters
     }
 }
 
-$convertedAssetLocation = $null
+$conversionResponse = $null
 if ($GetConversionStatus) {
     if ([string]::IsNullOrEmpty($Id)) {
         $Id = Read-Host "Please enter the conversion Id"
     }
 
     if ($Poll) {
-        $convertedAssetLocation = PollConversionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
+        $conversionResponse = PollConversionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
     }
     else {
         $response = GetConversionStatus -serviceEndpoint $config.accountSettings.serviceEndpoint -authenticationEndpoint $config.accountSettings.authenticationEndpoint -accountId  $config.accountSettings.arrAccountId  -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
         $responseJson = ($response.Content | ConvertFrom-Json)
         $conversionStatus = $responseJson.status
 
-        if ("success" -eq $conversionStatus.ToLower()) {
-            $convertedAssetLocation = $responseJson.convertedAsset
+        if ("succeeded" -ieq $conversionStatus) {
+            $conversionResponse = $responseJson
         }
     }
 }
 
-if ($null -ne $convertedAssetLocation) {
-    WriteSuccess("Successfully converted asset. Converted asset uploaded to:")
-    WriteSuccess("  storage account: $($convertedAssetLocation.storageAccountName)")
-    WriteSuccess("  output blob container: $($convertedAssetLocation.blobContainerName)")
-    WriteSuccess("  converted asset file path: $($convertedAssetLocation.assetFilePath)")
-    
+if ($null -ne $conversionResponse) {
+    WriteSuccess("Successfully converted asset.")
+    WriteSuccess("Converted asset uri: $($conversionResponse.output.outputAssetUri)")
+
     if ($UseContainerSas) {
+        $blobPath = "$($conversionResponse.settings.outputLocation.blobPrefix)$($conversionResponse.settings.outputLocation.outputAssetFilename)"
         # now retrieve the converted model SAS URI - you will need to call the ARR SDK API with a URL to your model to load a model in your application
-        $sasUrl = GenerateOutputmodelSASUrl $convertedAssetLocation $config.assetConversionSettings.storageContext.BlobEndPoint $config.assetConversionSettings.storageContext
+        $sasUrl = GenerateOutputmodelSASUrl $config.assetConversionSettings.blobOutputContainerName $blobPath $config.assetConversionSettings.storageContext
         WriteInformation("model SAS URI: $sasUrl")
     }
 }
 
 # SIG # Begin signature block
-# MIInLAYJKoZIhvcNAQcCoIInHTCCJxkCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIInKwYJKoZIhvcNAQcCoIInHDCCJxgCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCdWwCUX1hj/rtB
-# dKlVDejW5IOmng/NeO5wlh5WswkNbqCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBfmBcjSMtn6PcK
+# GATx1yyChPUHBC5xUVtEwi1BGixwnKCCEWUwggh3MIIHX6ADAgECAhM2AAABOXjG
 # OfXldyfqAAEAAAE5MA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMDEwMjEyMDM5MDZaFw0yMTA5MTUyMTQzMDNaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -556,117 +501,117 @@ if ($null -ne $convertedAssetLocation) {
 # lt075qTroz0Nt680pXvVhsRSdNnzW2hfQu2xuOLg8zKGVOD/rr0GgeyhODjKgL2G
 # Hxctbb9XaVSDf6ocdB//aDYjiabmWd/WYmy7fQ127KuasMh5nSV2orMcAed8CbIV
 # I3NYu+sahT1DRm/BGUN2hSpdsPQeO73wYvp1N7DdLaZyz7XsOCx1quCwQ+bojWVQ
-# TmKLGegSoUpZNfmP9MtSMYIVHTCCFRkCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
+# TmKLGegSoUpZNfmP9MtSMYIVHDCCFRgCAQEwWDBBMRMwEQYKCZImiZPyLGQBGRYD
 # R0JMMRMwEQYKCZImiZPyLGQBGRYDQU1FMRUwEwYDVQQDEwxBTUUgQ1MgQ0EgMDEC
 # EzYAAAE5eMY59eV3J+oAAQAAATkwDQYJYIZIAWUDBAIBBQCgga4wGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# LwYJKoZIhvcNAQkEMSIEIMUmgZrTbIdyw0kniB5TgY6SVDLtrMXE4j1oHy/DbE26
+# LwYJKoZIhvcNAQkEMSIEIHxiDvLOJ6hW1K7mL0eLRGlQuuAZaosNP5jcYKoC8nUN
 # MEIGCisGAQQBgjcCAQwxNDAyoBSAEgBNAGkAYwByAG8AcwBvAGYAdKEagBhodHRw
-# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAdGg1PEts82JD
-# c9AZsAXyHsLR3M7qNWYFEkmSMSYXa08vCrbLHRV44NLGdm/zIzpDXZciPIh8r/cO
-# 4jGOC8/NBBjOBGlMnke1F1mTvof7ZC7MHYUwKj/sjqlnq2NvE0Q78kJnuoDLV7M9
-# FnjJsCSZdGxC6LQ5riF/cH8y569+O6SCLb8S1ysYXNl66uxaWnTTApltEGIh3rj9
-# cWkD+wC8jRw6izS8PZ/lB3L/1y9hFq0LAM4urq8ZleCIQhzPYO3JKRrZamgN68Zw
-# WpRpzmtKMeUX4U+klsEnswgMw1+h7eVBQ5enWdedHrHJnW7UiSU1Rk7k1dq1q1FH
-# M5K5od0Hi6GCEuUwghLhBgorBgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCC
-# Er4wghK6AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAE
-# ggE8MIIBOAIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCCvWGgkN1K5
-# iLZ2WjSjRdi+eA8KLhJyvyFoIPzJJb+eSgIGYBiDUv/BGBMyMDIxMDIxMDE0Mzk1
-# MC4xOTFaMASAAgH0oIHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
-# aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
-# cnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25z
-# MSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo3QkYxLUUzRUEtQjgwODElMCMGA1UE
-# AxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaCCDjwwggTxMIID2aADAgEC
-# AhMzAAABUcNQ51lsqsanAAAAAAFRMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYT
-# AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
-# VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBU
-# aW1lLVN0YW1wIFBDQSAyMDEwMB4XDTIwMTExMjE4MjYwNFoXDTIyMDIxMTE4MjYw
-# NFowgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQH
-# EwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNV
-# BAsTHE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxl
-# cyBUU1MgRVNOOjdCRjEtRTNFQS1CODA4MSUwIwYDVQQDExxNaWNyb3NvZnQgVGlt
-# ZS1TdGFtcCBTZXJ2aWNlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
-# n9KH76qErjvvOIkjWbHptMkYDjmG+JEmzguyr/VxjZgZ/ig8Mk47jqSJP5RxH/sD
-# yqhYu7jPSO86siZh8u7DBX9L8I+AB+8fPPvD4uoLKD22BpoFl4B8Fw5K7Suibvbx
-# GN7adL1/zW+sWXlVvpDhEPIKDICvEdNjGTLhktfftjefg9lumBMUBJ2G4/g4ad0d
-# DvRNmKiMZXXe/Ll4Qg/oPSzXCUEYoSSqa5D+5MRimVe5/YTLj0jVr8iF45V0hT7V
-# H8OJO4YImcnZhq6Dw1G+w6ACRGePFmOWqW8tEZ13SMmOquJrTkwyy8zyNtVttJAX
-# 7diFLbR0SvMlbJZWK0KHdwIDAQABo4IBGzCCARcwHQYDVR0OBBYEFMV3/+NoUGKT
-# NGg6OMyE6fN1ROptMB8GA1UdIwQYMBaAFNVjOlyKMZDzQ3t8RhvFM2hahW1VMFYG
-# A1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kvY3Js
-# L3Byb2R1Y3RzL01pY1RpbVN0YVBDQV8yMDEwLTA3LTAxLmNybDBaBggrBgEFBQcB
-# AQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kv
-# Y2VydHMvTWljVGltU3RhUENBXzIwMTAtMDctMDEuY3J0MAwGA1UdEwEB/wQCMAAw
-# EwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggEBACv99cAVg5nx
-# 0SqjvLfQzmugMj5cJ9NE60duSH1LpxHYim9Ls3UfiYd7t0JvyEw/rRTEKHbznV6L
-# FLlX++lHJMGKzZnHtTe2OI6ZHFnNiFhtgyWuYDJrm7KQykNi1G1LbuVie9MehmoK
-# +hBiZnnrcfZSnBSokrvO2QEWHC1xnZ5wM82UEjprFYOkchU+6RcoCjjmIFGfgSzN
-# j1MIbf4lcJ5FoV1Mg6FwF45CijOXHVXrzkisMZ9puDpFjjEV6TAY6INgMkhLev/A
-# Vow0sF8MfQztJIlFYdFEkZ5NF/IyzoC2Yb9iw4bCKdBrdD3As6mvoGSNjCC6lOdz
-# 6EerJK3NhFgwggZxMIIEWaADAgECAgphCYEqAAAAAAACMA0GCSqGSIb3DQEBCwUA
-# MIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
-# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQD
-# EylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAxMDAeFw0x
-# MDA3MDEyMTM2NTVaFw0yNTA3MDEyMTQ2NTVaMHwxCzAJBgNVBAYTAlVTMRMwEQYD
-# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1w
-# IFBDQSAyMDEwMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqR0NvHcR
-# ijog7PwTl/X6f2mUa3RUENWlCgCChfvtfGhLLF/Fw+Vhwna3PmYrW/AVUycEMR9B
-# GxqVHc4JE458YTBZsTBED/FgiIRUQwzXTbg4CLNC3ZOs1nMwVyaCo0UN0Or1R4HN
-# vyRgMlhgRvJYR4YyhB50YWeRX4FUsc+TTJLBxKZd0WETbijGGvmGgLvfYfxGwScd
-# JGcSchohiq9LZIlQYrFd/XcfPfBXday9ikJNQFHRD5wGPmd/9WbAA5ZEfu/QS/1u
-# 5ZrKsajyeioKMfDaTgaRtogINeh4HLDpmc085y9Euqf03GS9pAHBIAmTeM38vMDJ
-# RF1eFpwBBU8iTQIDAQABo4IB5jCCAeIwEAYJKwYBBAGCNxUBBAMCAQAwHQYDVR0O
-# BBYEFNVjOlyKMZDzQ3t8RhvFM2hahW1VMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIA
-# QwBBMAsGA1UdDwQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFNX2
-# VsuP6KJcYmjRPZSQW9fOmhjEMFYGA1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwu
-# bWljcm9zb2Z0LmNvbS9wa2kvY3JsL3Byb2R1Y3RzL01pY1Jvb0NlckF1dF8yMDEw
-# LTA2LTIzLmNybDBaBggrBgEFBQcBAQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93
-# d3cubWljcm9zb2Z0LmNvbS9wa2kvY2VydHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYt
-# MjMuY3J0MIGgBgNVHSABAf8EgZUwgZIwgY8GCSsGAQQBgjcuAzCBgTA9BggrBgEF
-# BQcCARYxaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL1BLSS9kb2NzL0NQUy9kZWZh
-# dWx0Lmh0bTBABggrBgEFBQcCAjA0HjIgHQBMAGUAZwBhAGwAXwBQAG8AbABpAGMA
-# eQBfAFMAdABhAHQAZQBtAGUAbgB0AC4gHTANBgkqhkiG9w0BAQsFAAOCAgEAB+aI
-# UQ3ixuCYP4FxAz2do6Ehb7Prpsz1Mb7PBeKp/vpXbRkws8LFZslq3/Xn8Hi9x6ie
-# JeP5vO1rVFcIK1GCRBL7uVOMzPRgEop2zEBAQZvcXBf/XPleFzWYJFZLdO9CEMiv
-# v3/Gf/I3fVo/HPKZeUqRUgCvOA8X9S95gWXZqbVr5MfO9sp6AG9LMEQkIjzP7QOl
-# lo9ZKby2/QThcJ8ySif9Va8v/rbljjO7Yl+a21dA6fHOmWaQjP9qYn/dxUoLkSbi
-# OewZSnFjnXshbcOco6I8+n99lmqQeKZt0uGc+R38ONiU9MalCpaGpL2eGq4EQoO4
-# tYCbIjggtSXlZOz39L9+Y1klD3ouOVd2onGqBooPiRa6YacRy5rYDkeagMXQzafQ
-# 732D8OE7cQnfXXSYIghh2rBQHm+98eEA3+cxB6STOvdlR3jo+KhIq/fecn5ha293
-# qYHLpwmsObvsxsvYgrRyzR30uIUBHoD7G4kqVDmyW9rIDVWZeodzOwjmmC3qjeAz
-# LhIp9cAvVCch98isTtoouLGp25ayp0Kiyc8ZQU3ghvkqmqMRZjDTu3QyS99je/WZ
-# ii8bxyGvWbWu3EQ8l1Bx16HSxVXjad5XwdHeMMD9zOZN+w2/XU/pnR4ZOC+8z1gF
-# Lu8NoFA12u8JJxzVs341Hgi62jbb01+P3nSISRKhggLOMIICNwIBATCB+KGB0KSB
-# zTCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcT
+# Oi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAEggEAKrtXsKuzfM/Q
+# MzhUOrp0CxZtSjj2us4VdGNaTpX4bHDmgSUo41CvuHcMdtSffxotTPDOYfsBlF3D
+# NAidey95zuzcccavkJn75GfWKmLGVCRawdGQmGtrkolpAuVBtdMj4JFvBiDVcBGD
+# xvqAdQXDA1hZamdnF5JFiyLGWe4wnfNdLHsrBlKcUbUw+rDLqz1HrJS+vhrypRTe
+# e3B9i8wL0qyMZCSEhCdoa7Cd3/5g//Fq+T42c+YetTIzHGjiRUBpBocuMvXqRCLZ
+# 4Cm3K78JD+TxAHgpLCAq42aFK7bWbjOOdwYT3IWlt2flgxdV8mGTeyT74rsE45vE
+# XypZPGydcKGCEuQwghLgBgorBgEEAYI3AwMBMYIS0DCCEswGCSqGSIb3DQEHAqCC
+# Er0wghK5AgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFQBgsqhkiG9w0BCRABBKCCAT8E
+# ggE7MIIBNwIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQCAQUABCCjtMbQQsON
+# 8l2DUKMFRWLlbYMHguWapVPujEUGf5R2iAIGYCWc/VnbGBIyMDIxMDIxNzIzNTQz
+# NC40N1owBIACAfSggdCkgc0wgcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
+# cG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMx
+# JjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjdCRjEtRTNFQS1CODA4MSUwIwYDVQQD
+# ExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2aWNloIIOPDCCBPEwggPZoAMCAQIC
+# EzMAAAFRw1DnWWyqxqcAAAAAAVEwDQYJKoZIhvcNAQELBQAwfDELMAkGA1UEBhMC
+# VVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNV
+# BAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRp
+# bWUtU3RhbXAgUENBIDIwMTAwHhcNMjAxMTEyMTgyNjA0WhcNMjIwMjExMTgyNjA0
+# WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcT
 # B1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UE
 # CxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVz
 # IFRTUyBFU046N0JGMS1FM0VBLUI4MDgxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1l
-# LVN0YW1wIFNlcnZpY2WiIwoBATAHBgUrDgMCGgMVAKCir3PxP6RCCyVMJSAVoMV6
-# 1yNeoIGDMIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24x
-# EDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlv
-# bjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwDQYJKoZI
-# hvcNAQEFBQACBQDjzjZBMCIYDzIwMjEwMjEwMTgzODU3WhgPMjAyMTAyMTExODM4
-# NTdaMHcwPQYKKwYBBAGEWQoEATEvMC0wCgIFAOPONkECAQAwCgIBAAICC9ECAf8w
-# BwIBAAICEbwwCgIFAOPPh8ECAQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGE
-# WQoDAqAKMAgCAQACAwehIKEKMAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQDT
-# g+3VyKt7oN2kQ6EttIcAG7IjYSAyI7b7mR+CHGpKkGIOSvhoCmadHVYIOwzYam5+
-# CBt23KND2pSdw7muK2Qn+LZ2Qw8BWkPndlvc56cUXrY50fsCu0Hv74AAR4yCXsQ5
-# YVrvZnqevT7vT1H4m2AAyGWcjAE1RsuUgaJInKkVDzGCAw0wggMJAgEBMIGTMHwx
-# CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1p
-# Y3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUcNQ51lsqsanAAAAAAFR
-# MA0GCWCGSAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQw
-# LwYJKoZIhvcNAQkEMSIEILw+/7M7CDTZ3sg6PjBxQHTxJw8yy2AMfDTzjkDqZBX0
-# MIH6BgsqhkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgLs1cmYj41sFZBwCmFvv9ScP5
-# tuuUhxsv/t0B9XF65UEwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMK
-# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
-# IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0Eg
-# MjAxMAITMwAAAVHDUOdZbKrGpwAAAAABUTAiBCCbckIA6FZlZ0tTZcJPfnjtTZP3
-# wie3lw1FASs2NGsTJDANBgkqhkiG9w0BAQsFAASCAQBnnxo4EmQtj/eY1ZFzlbA3
-# iKN68wk58F+iYQgo0S2CX7glTw1jsQVLpARrIrJHvfyX/00p5ZgittME69DMg7IJ
-# 0UOLz9d3CbQqN9dLjw6kYwksvhW+VxXzCQk3tS2Vtzl2ebyUiCcHLrJpYjJt8atM
-# mm9Rx4BPm4b2QlM6JHHbHSkNS1ncAM2jDYV088u5GuB38UyMkwVyql9IH9G9DYrM
-# D2VvUuLJDqVHTjq7g7+ohzlgQzA4ikHjhEN4UfwSQWj/RilpybKxo3k0GtMLnxHy
-# l5QSrwj6yYP/QSWCT4Ephj6aFNr/7Byq54y35hZiXisGUJWZ5Si1stQj5NSqxuaa
+# LVN0YW1wIFNlcnZpY2UwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCf
+# 0ofvqoSuO+84iSNZsem0yRgOOYb4kSbOC7Kv9XGNmBn+KDwyTjuOpIk/lHEf+wPK
+# qFi7uM9I7zqyJmHy7sMFf0vwj4AH7x88+8Pi6gsoPbYGmgWXgHwXDkrtK6Ju9vEY
+# 3tp0vX/Nb6xZeVW+kOEQ8goMgK8R02MZMuGS19+2N5+D2W6YExQEnYbj+Dhp3R0O
+# 9E2YqIxldd78uXhCD+g9LNcJQRihJKprkP7kxGKZV7n9hMuPSNWvyIXjlXSFPtUf
+# w4k7hgiZydmGroPDUb7DoAJEZ48WY5apby0RnXdIyY6q4mtOTDLLzPI21W20kBft
+# 2IUttHRK8yVsllYrQod3AgMBAAGjggEbMIIBFzAdBgNVHQ4EFgQUxXf/42hQYpM0
+# aDo4zITp83VE6m0wHwYDVR0jBBgwFoAU1WM6XIoxkPNDe3xGG8UzaFqFbVUwVgYD
+# VR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwv
+# cHJvZHVjdHMvTWljVGltU3RhUENBXzIwMTAtMDctMDEuY3JsMFoGCCsGAQUFBwEB
+# BE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9j
+# ZXJ0cy9NaWNUaW1TdGFQQ0FfMjAxMC0wNy0wMS5jcnQwDAYDVR0TAQH/BAIwADAT
+# BgNVHSUEDDAKBggrBgEFBQcDCDANBgkqhkiG9w0BAQsFAAOCAQEAK/31wBWDmfHR
+# KqO8t9DOa6AyPlwn00TrR25IfUunEdiKb0uzdR+Jh3u3Qm/ITD+tFMQodvOdXosU
+# uVf76UckwYrNmce1N7Y4jpkcWc2IWG2DJa5gMmubspDKQ2LUbUtu5WJ70x6Gagr6
+# EGJmeetx9lKcFKiSu87ZARYcLXGdnnAzzZQSOmsVg6RyFT7pFygKOOYgUZ+BLM2P
+# Uwht/iVwnkWhXUyDoXAXjkKKM5cdVevOSKwxn2m4OkWOMRXpMBjog2AySEt6/8BW
+# jDSwXwx9DO0kiUVh0USRnk0X8jLOgLZhv2LDhsIp0Gt0PcCzqa+gZI2MILqU53Po
+# R6skrc2EWDCCBnEwggRZoAMCAQICCmEJgSoAAAAAAAIwDQYJKoZIhvcNAQELBQAw
+# gYgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
+# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMT
+# KU1pY3Jvc29mdCBSb290IENlcnRpZmljYXRlIEF1dGhvcml0eSAyMDEwMB4XDTEw
+# MDcwMTIxMzY1NVoXDTI1MDcwMTIxNDY1NVowfDELMAkGA1UEBhMCVVMxEzARBgNV
+# BAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jv
+# c29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAg
+# UENBIDIwMTAwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCpHQ28dxGK
+# OiDs/BOX9fp/aZRrdFQQ1aUKAIKF++18aEssX8XD5WHCdrc+Zitb8BVTJwQxH0Eb
+# GpUdzgkTjnxhMFmxMEQP8WCIhFRDDNdNuDgIs0Ldk6zWczBXJoKjRQ3Q6vVHgc2/
+# JGAyWGBG8lhHhjKEHnRhZ5FfgVSxz5NMksHEpl3RYRNuKMYa+YaAu99h/EbBJx0k
+# ZxJyGiGKr0tkiVBisV39dx898Fd1rL2KQk1AUdEPnAY+Z3/1ZsADlkR+79BL/W7l
+# msqxqPJ6Kgox8NpOBpG2iAg16HgcsOmZzTznL0S6p/TcZL2kAcEgCZN4zfy8wMlE
+# XV4WnAEFTyJNAgMBAAGjggHmMIIB4jAQBgkrBgEEAYI3FQEEAwIBADAdBgNVHQ4E
+# FgQU1WM6XIoxkPNDe3xGG8UzaFqFbVUwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBD
+# AEEwCwYDVR0PBAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZW
+# y4/oolxiaNE9lJBb186aGMQwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5t
+# aWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAt
+# MDYtMjMuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3
+# dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0y
+# My5jcnQwgaAGA1UdIAEB/wSBlTCBkjCBjwYJKwYBBAGCNy4DMIGBMD0GCCsGAQUF
+# BwIBFjFodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vUEtJL2RvY3MvQ1BTL2RlZmF1
+# bHQuaHRtMEAGCCsGAQUFBwICMDQeMiAdAEwAZQBnAGEAbABfAFAAbwBsAGkAYwB5
+# AF8AUwB0AGEAdABlAG0AZQBuAHQALiAdMA0GCSqGSIb3DQEBCwUAA4ICAQAH5ohR
+# DeLG4Jg/gXEDPZ2joSFvs+umzPUxvs8F4qn++ldtGTCzwsVmyWrf9efweL3HqJ4l
+# 4/m87WtUVwgrUYJEEvu5U4zM9GASinbMQEBBm9xcF/9c+V4XNZgkVkt070IQyK+/
+# f8Z/8jd9Wj8c8pl5SpFSAK84Dxf1L3mBZdmptWvkx872ynoAb0swRCQiPM/tA6WW
+# j1kpvLb9BOFwnzJKJ/1Vry/+tuWOM7tiX5rbV0Dp8c6ZZpCM/2pif93FSguRJuI5
+# 7BlKcWOdeyFtw5yjojz6f32WapB4pm3S4Zz5Hfw42JT0xqUKloakvZ4argRCg7i1
+# gJsiOCC1JeVk7Pf0v35jWSUPei45V3aicaoGig+JFrphpxHLmtgOR5qAxdDNp9Dv
+# fYPw4TtxCd9ddJgiCGHasFAeb73x4QDf5zEHpJM692VHeOj4qEir995yfmFrb3ep
+# gcunCaw5u+zGy9iCtHLNHfS4hQEegPsbiSpUObJb2sgNVZl6h3M7COaYLeqN4DMu
+# Ein1wC9UJyH3yKxO2ii4sanblrKnQqLJzxlBTeCG+SqaoxFmMNO7dDJL32N79ZmK
+# LxvHIa9Zta7cRDyXUHHXodLFVeNp3lfB0d4wwP3M5k37Db9dT+mdHhk4L7zPWAUu
+# 7w2gUDXa7wknHNWzfjUeCLraNtvTX4/edIhJEqGCAs4wggI3AgEBMIH4oYHQpIHN
+# MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
+# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
+# ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
+# VFNTIEVTTjo3QkYxLUUzRUEtQjgwODElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAoKKvc/E/pEILJUwlIBWgxXrX
+# I16ggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
+# MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
+# MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
+# 9w0BAQUFAAIFAOPYBFQwIhgPMjAyMTAyMTgwNTA4MzZaGA8yMDIxMDIxOTA1MDgz
+# NlowdzA9BgorBgEEAYRZCgQBMS8wLTAKAgUA49gEVAIBADAKAgEAAgITdgIB/zAH
+# AgEAAgIRWjAKAgUA49lV1AIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZ
+# CgMCoAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBACm1
+# J98fh0l6ZznRrresuKVg0wWYzr5ZX9fxEMtmfZoXdquLPCPPmMq/3U/9qXvHTQbo
+# i3QdVhDpfIpK7VmHYK8HRDY7IIPwsXNCV/aQ1xLQ+1Jdxu2C5VZAn9dlfP84hNVE
+# 9VAuyd42mieYRwm1SHLva0M1rgHzdV1CvFSK/y/yMYIDDTCCAwkCAQEwgZMwfDEL
+# MAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1v
+# bmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWlj
+# cm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAFRw1DnWWyqxqcAAAAAAVEw
+# DQYJYIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAv
+# BgkqhkiG9w0BCQQxIgQglw1kHTBhcItRphg2pRvvX1jF5UtYwf3AnyfZHXVe/Kow
+# gfoGCyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCAuzVyZiPjWwVkHAKYW+/1Jw/m2
+# 65SHGy/+3QH1cXrlQTCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpX
+# YXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQg
+# Q29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAy
+# MDEwAhMzAAABUcNQ51lsqsanAAAAAAFRMCIEII62n7zLyudoAsM1EAaUjejJCX/6
+# ELEB2xvVemRUMQzSMA0GCSqGSIb3DQEBCwUABIIBADz+v27LQhT2JFu7NfA05sc9
+# 50so1mdlH0La2PJ6xImnUrNz8/IwEcOIDcccjiFpWS8RtjSPnCUCw4qIY0Kee3jk
+# zZu8+mPHaGGdhQeXV7AR5iDYhms3LIwPHSeebsS+2RpUFDzusvCkAB14qriLzUJO
+# kBXBbyftdheARPPXVDWmxb6ZGJN8HfVCsqlGDWidU15CsskQYd3Tnr21i6gyo4ZY
+# +ycMKghDSrYdkRR2h4bqtIUoeTbmdZWjhcgzmPSuvfPMF5gvybkn7pxl5kpCJ8Ty
+# Erdn3kNa33+wdQNh6VB/uQnu/zcWQS0zyW4QMI1SJ1T8XCT09mKEU7VjE2m2SLQ=
 # SIG # End signature block

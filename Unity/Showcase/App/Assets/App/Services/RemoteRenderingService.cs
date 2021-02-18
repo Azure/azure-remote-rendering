@@ -294,6 +294,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 if (!string.IsNullOrEmpty(LoadedProfile.UnsafeSizeOverride))
                 {
                     var sessionParms = new RenderingSessionCreationOptionsUnsafe(
+                        null,
                         LoadedProfile.UnsafeSizeOverride,
                         LoadedProfile.MaxLeaseTimespan.Hours,
                         LoadedProfile.MaxLeaseTimespan.Minutes);
@@ -303,6 +304,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 else
                 {
                     var sessionParms = new RenderingSessionCreationOptions(
+                        null,
                         LoadedProfile.Size,
                         LoadedProfile.MaxLeaseTimespan.Hours,
                         LoadedProfile.MaxLeaseTimespan.Minutes);
@@ -1470,7 +1472,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Get the session lease time
             /// </summary>
-            public TimeSpan MaxLeaseTime => new TimeSpan(_properties.Value.ElapsedTimeInMinutes / 60, _properties.Value.ElapsedTimeInMinutes % 60, 0);
+            public TimeSpan MaxLeaseTime => new TimeSpan(_properties.Value.MaxLeaseInMinutes / 60, _properties.Value.MaxLeaseInMinutes % 60, 0);
 
             /// <summary>
             /// Get the session expiration time in UTC

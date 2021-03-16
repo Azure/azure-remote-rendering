@@ -130,8 +130,11 @@ public class RemoteLight : BaseRemoteLight
 
     public override void UpdateRemoteLightSettings()
     {
-        remoteLightComponent.Color = localLight.color.toRemote();
-        remoteLightComponent.Intensity = localLight.intensity;
+        if (remoteLightComponent != null)
+        {
+            remoteLightComponent.Color = localLight.color.toRemote();
+            remoteLightComponent.Intensity = localLight.intensity;
+        }
     }
 
     public override void DestroyLight()

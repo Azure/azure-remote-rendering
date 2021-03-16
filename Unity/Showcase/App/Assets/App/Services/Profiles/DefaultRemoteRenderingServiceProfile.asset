@@ -13,26 +13,27 @@ MonoBehaviour:
   m_Name: DefaultRemoteRenderingServiceProfile
   m_EditorClassIdentifier: 
   isCustomProfile: 1
-  Size: 2
-  SessionOverride: 
-  MaxLeaseTime: 1800
-  AutoRenewLease: 1
-  AutoReconnect: 1
-  AutoReconnectRate: 15
-  AlwaysIncludeDefaultModels: 0
-  AccountDomains:
+  size: 2
+  sessionOverride: 
+  maxLeaseTime: 1800
+  autoRenewLease: 1
+  autoReconnect: 1
+  autoReconnectRate: 15
+  alwaysIncludeDefaultModels: 0
+  accountDomains:
   - westus2.mixedreality.azure.com
   - eastus.mixedreality.azure.com
   - westeurope.mixedreality.azure.com
   - southeastasia.mixedreality.azure.com
-  AccountDomainLabels:
+  accountDomainLabels:
   - West US 2
   - East US
   - West Europe
   - Southeast Asia
-  AccountId:
-  AccountAuthenticationDomain:
+  AccountId: 
+  AccountAuthenticationDomain: 
   AccountKey: 
-  StorageAccountName: 
+  storageAccountName: 
+  storageModelContainer: 
+  storageModelPathByUsername: 0
   StorageAccountKey: 
-  StorageModelContainer: 

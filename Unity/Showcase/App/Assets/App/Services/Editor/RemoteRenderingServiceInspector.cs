@@ -316,13 +316,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Editor
             if (loadedProfile != null &&
                 !string.IsNullOrEmpty(loadedProfile.SessionOverride))
             {
-                Guid sessionGuid = Guid.Empty;
-                if (Guid.TryParse(loadedProfile.SessionOverride, out sessionGuid))
+                if (machine == null || machine.Session.Id != loadedProfile.SessionOverride)
                 {
-                    if (machine == null || machine.Session.Id != loadedProfile.SessionOverride)
-                    {
-                        machine = await service.Open(loadedProfile.SessionOverride);
-                    }
+                    machine = await service.Open(loadedProfile.SessionOverride);
                 }
             }
             else if (machine == null)

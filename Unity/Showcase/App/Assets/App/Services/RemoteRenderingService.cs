@@ -87,13 +87,20 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     return "No primary session.";
                 }
-                else if (_primaryMachine.Session.Connection.ConnectionStatus != ConnectionStatus.Connected)
-                {
-                    return $"{_primaryMachine.Session.StatusMessage}{_primaryMachine.Session.Connection.ConnectionStatus}";
-                }
                 else
                 {
-                    return $"{_primaryMachine.ServiceStats?.GetStatsString()}\r\n{_primaryMachine.Session.StatusMessage}{_primaryMachine.Session.Connection.ConnectionStatus}";
+                    var sessionId = $"Session Id: {_primaryMachine.Session.Id}";
+                    var sessionStatus = $"{_primaryMachine.Session.StatusMessage}{_primaryMachine.Session.Connection.ConnectionStatus}";
+
+                    if (_primaryMachine.Session.Connection.ConnectionStatus != ConnectionStatus.Connected)
+                    {
+                        return $"{sessionId}\r\n{sessionStatus}";
+                    }
+                    else
+                    {
+                        var sessionStatistics = _primaryMachine.ServiceStats?.GetStatsString();
+                        return $"{sessionStatistics}\r\n{sessionId}\r\n{sessionStatus}";
+                    }
                 }
             }
         }
@@ -701,22 +708,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return;
             }
 
-            Guid sessionGuid = Guid.Empty;
-            if (Guid.TryParse(LoadedProfile.SessionOverride, out sessionGuid))
+            LastSession = new LastSessionData
             {
-                LastSession = new LastSessionData
-                {
-                    Id = LoadedProfile.SessionOverride,
-                    PreferredDomain = LoadedProfile.PreferredDomain,
-                    Size = LoadedProfile.Size
-                };
-            }
-            else
-            {
-                var msg = $"Could not parse session guid: {LoadedProfile.SessionOverride}";
-                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
-            }
+                Id = LoadedProfile.SessionOverride,
+                PreferredDomain = LoadedProfile.PreferredDomain,
+                Size = LoadedProfile.Size
+            };
         }
 
         /// <summary>

@@ -455,7 +455,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 #if PHOTON_INSTALLED
             return new Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon.PhotonSharingProvider(_loadedProfile);
 #else
-            var msg = "Photon is not installed. Inorder for the multi-user experence to function, please install the Photon PUN SDK. See this sample's documentation for details.";
+            var msg = "Photon is not installed. Inorder for the multi-user experience to function, please install the Photon Unity Networking SDK. See this sample's documentation for details.";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", msg);
             return null;

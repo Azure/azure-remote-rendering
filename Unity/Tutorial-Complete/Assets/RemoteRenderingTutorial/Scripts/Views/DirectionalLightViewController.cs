@@ -82,7 +82,7 @@ public class DirectionalLightViewController : BaseViewController<BaseRemoteLight
 
     public void IntensitySliderInteraction(SliderEventData args)
     {
-        if(baseObject != null) baseObject.SetIntensity(args.NewValue);
+        baseObject?.SetIntensity(args.NewValue);
     }
 
     private void ColorButtonInteraction(int color)

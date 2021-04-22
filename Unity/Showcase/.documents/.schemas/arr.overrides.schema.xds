@@ -29,16 +29,16 @@
 
   <xs:complexType name="RemoteRenderingServiceAccountData">
     <xs:sequence>
-      <xs:element type="RemoteRenderingServiceAccountDataAccountDomains" name="AccountDomains" minOccurs="0"/>
+      <xs:element type="RemoteRenderingServiceAccountRemoteRenderingDomains" name="RemoteRenderingDomains" minOccurs="0"/>
       <xs:element type="GUID" name="AccountId" minOccurs="0"/>
-      <xs:element type="xs:string" name="AccountAuthenticationDomain" minOccurs="0"/>
+      <xs:element type="xs:string" name="AccountDomain" minOccurs="0"/>
       <xs:element type="xs:string" name="AccountKey" minOccurs="0"/>
     </xs:sequence>
   </xs:complexType>
 
-  <xs:complexType name="RemoteRenderingServiceAccountDataAccountDomains">
+  <xs:complexType name="RemoteRenderingServiceAccountDataRemoteRenderingDomains">
     <xs:sequence>
-      <xs:element type="xs:string" name="AccountDomain" maxOccurs="unbounded" />
+      <xs:element type="xs:string" name="RemoteRenderingDomain" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 

@@ -19,12 +19,12 @@ public class RemoteRendering : MonoBehaviour
     // Fill out the variables with your account details. Note that these need to be set on the RemoteRendering object in the Unity scene.
     // Modifying these values in code has no effect.
 
-    // AccountDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
+    // RemoteRenderingDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
     // For the best suitable region near you, please refer to the "Reference > Regions" chapter in the documentation
-    public string AccountDomain = "westus2.mixedreality.azure.com";
-    // AccountAuthenticationDomain must be '<account_region>.mixedreality.azure.com' where '<account_region>' is the your Remote Rendering
+    public string RemoteRenderingDomain = "westus2.mixedreality.azure.com";
+    // AccountDomain must be '<account_region>.mixedreality.azure.com' where '<account_region>' is the your Remote Rendering
     // account location.
-    public string AccountAuthenticationDomain = "<enter your account authentication domain here>";
+    public string AccountDomain = "<enter your account domain here>";
     public string AccountId = "<enter your account id here>";
     public string AccountKey = "<enter your account key here>";
 
@@ -113,14 +113,14 @@ public class RemoteRendering : MonoBehaviour
         }
 
         // initialize the ARR service with our account details.
-        // Trim the strings in case they have been pasted into the inspector with trailing whitespaces
-        SessionConfiguration accountInfo = new SessionConfiguration();
-        accountInfo.AccountKey = AccountKey.Trim();
-        accountInfo.AccountId = AccountId.Trim();
-        accountInfo.RemoteRenderingDomain = AccountDomain.Trim();
-        accountInfo.AccountDomain = AccountAuthenticationDomain.Trim();
+        // Trim the strings in case they have been pasted into the inspector with trailing whitespace
+        SessionConfiguration sessionConfiguration = new SessionConfiguration();
+        sessionConfiguration.AccountKey = AccountKey.Trim();
+        sessionConfiguration.AccountId = AccountId.Trim();
+        sessionConfiguration.RemoteRenderingDomain = RemoteRenderingDomain.Trim();
+        sessionConfiguration.AccountDomain = AccountDomain.Trim();
 
-        arrService.Initialize(accountInfo);
+        arrService.Initialize(sessionConfiguration);
     }
 
     private void ARRService_OnSessionStatusChanged(ARRServiceUnity service, RenderingSession session)

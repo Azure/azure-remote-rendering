@@ -22,8 +22,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         public abstract string StorageAccountName { get; set; }
         public abstract string StorageModelContainer { get; set; }
         public abstract bool StorageModelPathByUsername { get; set; }
-        public abstract string[] AccountDomains { get; set; }
-        public abstract string[] AccountDomainLabels { get; set; }
+        public abstract string[] RemoteRenderingDomains { get; set; }
+        public abstract string[] RemoteRenderingDomainLabels { get; set; }
         public abstract BaseStorageAccountData StorageAccountData { get; }
         public abstract AuthenticationType AuthType { get; }
         public abstract RemoteRenderingServiceProfileFileData CreateFileData();

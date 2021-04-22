@@ -50,21 +50,21 @@ Two types of profiles exist to define a Remote Rendering Configuration: Developm
 #### Development Profile
 
 | Remote Rendering Account Settings (Development) | Description |
-| :---------------------- | :------------------------------------------------------------------------- |
-| Account Authentication Domain | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
-| Account Domains         | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
-| Account Id              | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
-| Account Key             | The [ARR account key](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information)
-| Storage Account Name    | The [ARR storage account name](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts). This account owns the *model container*.
-| Storage Account Key     | The Azure Storage Account key. Needed if the *model container* is private.
-| Storage Model Container | The Azure Storage Container that contains a set of arrAsset model files.
+| :----------------------- | :------------------------------------------------------------------------- |
+| Account Domain           | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| Remote Rendering Domains | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
+| Account Id               | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| Account Key              | The [ARR account key](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information)
+| Storage Account Name     | The [ARR storage account name](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts). This account owns the *model container*.
+| Storage Account Key      | The Azure Storage Account key. Needed if the *model container* is private.
+| Storage Model Container  | The Azure Storage Container that contains a set of arrAsset model files.
 
 #### Production Profile
 
 | Remote Rendering Account Settings (Production) | Description |
-| :---------------------- | :------------------------------------------------------------------------- |
-| Account Authentication Domain | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
-| Account Domains         | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
+| :----------------------- | :------------------------------------------------------------------------- |
+| Account Domain           | The [ARR account domain](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
+| Remote Rendering Domains | A list of (up to 4) full [ARR rendering domains](https://docs.microsoft.com/azure/remote-rendering/reference/regions) (e.g. westus2.mixedreality.azure.com). The list order defines the order in which the domains are tested.
 | Account Id                      | The [ARR account ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#retrieve-the-account-information).
 | App Id                          | The [Azure AD Application ID](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)
 | Tenant Id                       | The [Tenant ID of the Azure AD Application](https://docs.microsoft.com/azure/remote-rendering/how-tos/authentication#authentication-for-deployed-applications)
@@ -87,7 +87,7 @@ The *Temporary Overrides* settings apply to the currently playing app session, a
 
 | Temporary Setting | Description |
 | :------------------ | :------------------ |
-| Preferred Domain | If changed, this will be the account domain used when creating a new ARR session. By default this is the first domain in the *Account Domains* list. |
+| Preferred Domain | If changed, this will be the remote rendering domain used when creating a new ARR session. By default this is the first domain in the *Remote Rendering Domains* list. |
 | Session ID | If specified, the app will use this ARR session ID when connecting to the ARR service. This allows for starting a session using some other method, and then connecting to it within ARR Showcase. |
 
 > [!IMPORTANT]

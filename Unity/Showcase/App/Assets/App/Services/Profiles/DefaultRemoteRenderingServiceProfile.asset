@@ -20,18 +20,18 @@ MonoBehaviour:
   autoReconnect: 1
   autoReconnectRate: 15
   alwaysIncludeDefaultModels: 0
-  accountDomains:
+  remoteRenderingDomains:
   - westus2.mixedreality.azure.com
   - eastus.mixedreality.azure.com
   - westeurope.mixedreality.azure.com
   - southeastasia.mixedreality.azure.com
-  accountDomainLabels:
+  remoteRenderingDomainLabels:
   - West US 2
   - East US
   - West Europe
   - Southeast Asia
   AccountId: 
-  AccountAuthenticationDomain: 
+  AccountDomain: 
   AccountKey: 
   storageAccountName: 
   storageModelContainer: 

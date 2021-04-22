@@ -12,14 +12,6 @@ using UnityEngine;
 public class AADAuthentication : BaseARRAuthentication
 {
     [SerializeField]
-    private string accountDomain;
-    public string AccountDomain
-    {
-        get => accountDomain.Trim();
-        set => accountDomain = value;
-    }
-
-    [SerializeField]
     private string activeDirectoryApplicationClientID;
     public string ActiveDirectoryApplicationClientID
     {
@@ -36,6 +28,14 @@ public class AADAuthentication : BaseARRAuthentication
     }
 
     [SerializeField]
+    private string azureRemoteRenderingDomain;
+    public string AzureRemoteRenderingDomain
+    {
+        get => azureRemoteRenderingDomain.Trim();
+        set => azureRemoteRenderingDomain = value;
+    }
+
+    [SerializeField]
     private string azureRemoteRenderingAccountID;
     public string AzureRemoteRenderingAccountID
     {
@@ -44,11 +44,11 @@ public class AADAuthentication : BaseARRAuthentication
     }
 
     [SerializeField]
-    private string azureRemoteRenderingAccountAuthenticationDomain;
-    public string AzureRemoteRenderingAccountAuthenticationDomain
+    private string azureRemoteRenderingAccountDomain;
+    public string AzureRemoteRenderingAccountDomain
     {
-        get => azureRemoteRenderingAccountAuthenticationDomain.Trim();
-        set => azureRemoteRenderingAccountAuthenticationDomain = value;
+        get => azureRemoteRenderingAccountDomain.Trim();
+        set => azureRemoteRenderingAccountDomain = value;
     }    
 
     public override event Action<string> AuthenticationInstructions;
@@ -57,7 +57,7 @@ public class AADAuthentication : BaseARRAuthentication
 
     string redirect_uri = "https://login.microsoftonline.com/common/oauth2/nativeclient";
 
-    string[] scopes => new string[] { "https://sts." + AzureRemoteRenderingAccountAuthenticationDomain + "/mixedreality.signin" };
+    string[] scopes => new string[] { "https://sts." + AzureRemoteRenderingAccountDomain + "/mixedreality.signin" };
 
     public void OnEnable()
     {
@@ -74,7 +74,7 @@ public class AADAuthentication : BaseARRAuthentication
 
             var AD_Token = result.AccessToken;
 
-            return await Task.FromResult(new SessionConfiguration(AzureRemoteRenderingAccountAuthenticationDomain, AccountDomain, AzureRemoteRenderingAccountID, "", AD_Token, ""));
+            return await Task.FromResult(new SessionConfiguration(AzureRemoteRenderingAccountDomain, AzureRemoteRenderingDomain, AzureRemoteRenderingAccountID, "", AD_Token, ""));
         }
         else
         {

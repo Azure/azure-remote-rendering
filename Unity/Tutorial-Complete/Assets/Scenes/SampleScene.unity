@@ -98,7 +98,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 0}
-  m_UseShadowmask: 1
+  m_UseShadowmask: 0
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -1943,9 +1943,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 921fa90b22fc3e74c9f94b59425b9ef5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  accountDomain: westus2.mixedreality.azure.com
+  remoteRenderingDomain: westus2.mixedreality.azure.com
   accountId: 
-  accountAuthenticationDomain: 
+  accountDomain: 
   accountKey: 
   renderingSessionVmSize: 2
   maxLeaseHours: 0
@@ -2004,8 +2004,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db4e3e03561e5f24a8585c15f03824cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  accountDomain: 
   activeDirectoryApplicationClientID: 
   azureTenantID: 
+  azureRemoteRenderingDomain: 
   azureRemoteRenderingAccountID: 
-  azureRemoteRenderingAccountAuthenticationDomain: 
+  azureRemoteRenderingAccountDomain: 

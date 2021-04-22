@@ -36,14 +36,14 @@ public class RemoteRenderingCoordinator : MonoBehaviour
 
     public static RemoteRenderingCoordinator instance;
 
-    // AccountDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
+    // RemoteRenderingDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
     // For most people '<region>' is either 'westus2' or 'westeurope'
     [SerializeField]
-    private string accountDomain = "westus2.mixedreality.azure.com";
-    public string AccountDomain
+    private string remoteRenderingDomain = "westus2.mixedreality.azure.com";
+    public string RemoteRenderingDomain
     {
-        get => accountDomain.Trim();
-        set => accountDomain = value;
+        get => remoteRenderingDomain.Trim();
+        set => remoteRenderingDomain = value;
     }
 
     [Header("Development Account Credentials")]
@@ -55,11 +55,11 @@ public class RemoteRenderingCoordinator : MonoBehaviour
     }
 
     [SerializeField]
-    private string accountAuthenticationDomain = "<enter your account authentication domain here>";
-    public string AccountAuthenticationDomain
+    private string accountDomain = "<enter your account domain here>";
+    public string AccountDomain
     {
-        get => accountAuthenticationDomain.Trim();
-        set => accountAuthenticationDomain = value;
+        get => accountDomain.Trim();
+        set => accountDomain = value;
     }    
 
     [SerializeField]
@@ -151,7 +151,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
     private async Task<SessionConfiguration> GetDevelopmentCredentials()
     {
         Debug.LogWarning("Using development credentials! Not recommended for production.");
-        return await Task.FromResult(new SessionConfiguration(AccountAuthenticationDomain, AccountDomain, AccountId, AccountKey));
+        return await Task.FromResult(new SessionConfiguration(AccountDomain, RemoteRenderingDomain, AccountId, AccountKey));
     }
 
     /// <summary>
@@ -252,11 +252,11 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         if (ARRCredentialGetter == null)
             ARRCredentialGetter = GetDevelopmentCredentials;
 
-        var accountInfo = await ARRCredentialGetter.Invoke();
+        var sessionConfiguration = await ARRCredentialGetter.Invoke();
 
         ARRSessionService.OnSessionStatusChanged += OnRemoteSessionStatusChanged;
 
-        ARRSessionService.Initialize(accountInfo);
+        ARRSessionService.Initialize(sessionConfiguration);
 
         CurrentCoordinatorState = RemoteRenderingState.NoSession;
     }

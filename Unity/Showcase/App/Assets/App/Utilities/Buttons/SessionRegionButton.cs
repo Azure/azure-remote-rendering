@@ -16,7 +16,7 @@ public class SessionRegionButton : ClickableButton
     private string _domain;
 
     /// <remarks>
-    /// This should be updated to use the list of supported account domains (see IRemoteREnderingSession.LoadedProfile.AccountDomains)
+    /// This should be updated to use the list of supported remote rendering domains (see IRemoteREnderingSession.LoadedProfile.RemoteRenderingDomains)
     /// </remarks>
     public enum SessionLocation
     {
@@ -129,10 +129,10 @@ public class SessionRegionButton : ClickableButton
         if (loadedProfile != null)
         {
             int domainIndex = (int)location;
-            if (domainIndex < loadedProfile.AccountDomains.Length && domainIndex < loadedProfile.AccountDomainLabels.Length)
+            if (domainIndex < loadedProfile.RemoteRenderingDomains.Length && domainIndex < loadedProfile.RemoteRenderingDomainLabels.Length)
             {
-                _domain = loadedProfile.AccountDomains[domainIndex] ?? _domain;
-                LocationName = loadedProfile.AccountDomainLabels[domainIndex] ?? LocationName;
+                _domain = loadedProfile.RemoteRenderingDomains[domainIndex] ?? _domain;
+                LocationName = loadedProfile.RemoteRenderingDomainLabels[domainIndex] ?? LocationName;
             }
             else
             {

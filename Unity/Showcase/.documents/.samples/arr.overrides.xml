@@ -9,14 +9,14 @@
       <AutoReconnectRate>10</AutoReconnectRate>
   </Session>
   <Account>
-    <AccountDomains>
-      <AccountDomain>eastus.mixedreality.azure.com</AccountDomain>
-      <AccountDomain>southeastasia.mixedreality.azure.com</AccountDomain>
-      <AccountDomain>westeurope.mixedreality.azure.com</AccountDomain>
-      <AccountDomain>westus2.mixedreality.azure.com</AccountDomain>
-    </AccountDomains>
+    <RemoteRenderingDomains>
+      <RemoteRenderingDomain>eastus.mixedreality.azure.com</RemoteRenderingDomain>
+      <RemoteRenderingDomain>southeastasia.mixedreality.azure.com</RemoteRenderingDomain>
+      <RemoteRenderingDomain>westeurope.mixedreality.azure.com</RemoteRenderingDomain>
+      <RemoteRenderingDomain>westus2.mixedreality.azure.com</RemoteRenderingDomain>
+    </RemoteRenderingDomains>
     <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
-    <AccountAuthenticationDomain>mixedreality.azure.com</AccountAuthenticationDomain>
+    <AccountDomain>mixedreality.azure.com</AccountDomain>
     <AccountKey>=</AccountKey>
   </Account>
   <Storage>

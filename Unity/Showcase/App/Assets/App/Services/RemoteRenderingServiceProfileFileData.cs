@@ -69,19 +69,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     [Serializable]
     public class RemoteRenderingServiceAccountData
     {
-        [Tooltip("The list Azure remote rendering account domain supported by this account. The first entry is the perferred one.")]
-        [XmlArrayItem("AccountDomain")]
-        public string[] AccountDomains;
+        [Tooltip("The list of Azure remote rendering domains supported by this account. The first entry is the preferred one.")]
+        [XmlArrayItem("RemoteRenderingDomain")]
+        public string[] RemoteRenderingDomains;
 
-        [Tooltip("The default labels for the Azure remote rendering account domains.")]
-        [XmlArrayItem("AccountDomainLabel")]
-        public string[] AccountDomainLabels = { "West US 2", "West Europe", "East US", "Southeast Asia" };
+        [Tooltip("The default labels for the Azure remote rendering domains.")]
+        [XmlArrayItem("RemoteRenderingDomainLabel")]
+        public string[] RemoteRenderingDomainLabels = { "West US 2", "West Europe", "East US", "Southeast Asia" };
 
         [Tooltip("The default Azure remote rendering account id to use.")]
         public string AccountId;
 
         [Tooltip("The domain of the Azure remote rendering account.")]
-        public string AccountAuthenticationDomain;
+        public string AccountDomain;
 
         //Used in development
         [Tooltip("The development Azure remote rendering account key to use.")]
@@ -95,7 +95,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [Tooltip("The Tenant to authenticate against.")]
         public string TenantId;
 
-        public bool ShouldSerializeAccountDomains() { return AccountDomains != null && AccountDomains.Length > 0; }
+        public bool ShouldSerializeRemoteRenderingDomains() { return RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0; }
 
         public bool ShouldSerializeAccountId()
         {
@@ -103,7 +103,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             return Guid.TryParse(AccountId, out id) && id != Guid.Empty;
         }
 
-        public bool ShouldSerializeAccountAuthenticationDomain() { return !string.IsNullOrEmpty(AccountAuthenticationDomain); }
+        public bool ShouldSerializeAccountDomain() { return !string.IsNullOrEmpty(AccountDomain); }
 
         public bool ShouldSerializeTenantId()
         {

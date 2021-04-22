@@ -120,22 +120,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     var devResult = (RemoteRenderingServiceDevelopmentProfile)result;
                     // Copy all or nothing from remote rendering account credentials
                     if (fileData.Account.ShouldSerializeAccountId() &&
-                        fileData.Account.ShouldSerializeAccountAuthenticationDomain() &&
+                        fileData.Account.ShouldSerializeAccountDomain() &&
                         fileData.Account.ShouldSerializeAccountKey())
                     {
                         devResult.AccountId = fileData.Account.AccountId;
                         devResult.AccountKey = fileData.Account.AccountKey;
-                        devResult.AccountAuthenticationDomain = fileData.Account.AccountAuthenticationDomain;
+                        devResult.AccountDomain = fileData.Account.AccountDomain;
                     }
 
-                    if (fileData.Account.ShouldSerializeAccountDomains())
+                    if (fileData.Account.ShouldSerializeRemoteRenderingDomains())
                     {
-                        devResult.AccountDomains = fileData.Account.AccountDomains;
+                        devResult.RemoteRenderingDomains = fileData.Account.RemoteRenderingDomains;
                     }
 
-                    if (fileData.Account.ShouldSerializeAccountDomainLabels())
+                    if (fileData.Account.ShouldSerializeRemoteRenderingDomainLabels())
                     {
-                        devResult.AccountDomainLabels = fileData.Account.AccountDomainLabels;
+                        devResult.RemoteRenderingDomainLabels = fileData.Account.RemoteRenderingDomainLabels;
                     }
                     result = devResult;
                 }
@@ -150,19 +150,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         relResult.AppId = fileData.Account.AppId;
                     }
 
-                    if (fileData.Account.ShouldSerializeAccountDomains())
+                    if (fileData.Account.ShouldSerializeRemoteRenderingDomains())
                     {
-                        relResult.AccountDomains = fileData.Account.AccountDomains;
+                        relResult.RemoteRenderingDomains = fileData.Account.RemoteRenderingDomains;
                     }
 
-                    if (fileData.Account.ShouldSerializeAccountAuthenticationDomain())
+                    if (fileData.Account.ShouldSerializeAccountDomain())
                     {
-                        relResult.AccountAuthenticationDomain = fileData.Account.AccountAuthenticationDomain;
+                        relResult.AccountDomain = fileData.Account.AccountDomain;
                     }
 
-                    if (fileData.Account.ShouldSerializeAccountDomainLabels())
+                    if (fileData.Account.ShouldSerializeRemoteRenderingDomainLabels())
                     {
-                        relResult.AccountDomainLabels = fileData.Account.AccountDomainLabels;
+                        relResult.RemoteRenderingDomainLabels = fileData.Account.RemoteRenderingDomainLabels;
                     }
                     result = relResult;
                 }

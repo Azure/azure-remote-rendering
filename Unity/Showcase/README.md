@@ -7,7 +7,7 @@ This sample app is a simple model viewer that demonstrates various Azure Remote 
 4.  Find the *MixedRealityToolkit* object within the scene hierarchy, select it to show the MRTK configuration in the inspector window.\
 ![Editor Image](.documents/.images/editor-arr-service-config.jpg)
 
-5.  In the *RemoteRenderingService* configuration, enter your Azure Remote Rendering Account Domains, Authentication Domain, ID, and Key. 
+5.  In the *RemoteRenderingService* configuration, enter your Azure Remote Rendering Domains, Account Domain, ID, and Key.
 6.  (Optional) In the *RemoteRenderingService* configuration, enter your Azure Storage Account Name, Key, and Container Name. This information is optional. If provided, all arrAsset models in the Azure container will be listed within the app's model menu.
 
 # Required Software

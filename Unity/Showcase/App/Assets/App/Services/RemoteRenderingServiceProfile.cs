@@ -86,19 +86,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Header("Remote Rendering Account Settings")]
 
-        [Tooltip("The default Azure remote rendering account domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
-        public string[] accountDomains = { "westus2.mixedreality.azure.com", "eastus.mixedreality.azure.com", "westeurope.mixedreality.azure.com", "southeastasia.mixedreality.azure.com" };
-        public override string[] AccountDomains { get => accountDomains; set => accountDomains = value; }
+        [Tooltip("The default Azure remote rendering domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public string[] remoteRenderingDomains = { "westus2.mixedreality.azure.com", "eastus.mixedreality.azure.com", "westeurope.mixedreality.azure.com", "southeastasia.mixedreality.azure.com" };
+        public override string[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
 
-        [Tooltip("The default labels for the Azure remote rendering account domains.")]
-        public string[] accountDomainLabels = { "West US 2", "East US", "West Europe", "Southeast Asia" };
-        public override string[] AccountDomainLabels { get => accountDomainLabels; set => accountDomainLabels = value; }
+        [Tooltip("The default labels for the Azure remote rendering domains.")]
+        public string[] remoteRenderingDomainLabels = { "West US 2", "East US", "West Europe", "Southeast Asia" };
+        public override string[] RemoteRenderingDomainLabels { get => remoteRenderingDomainLabels; set => remoteRenderingDomainLabels = value; }
 
         [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountId = Guid.Empty.ToString();
 
-        [Tooltip("The default Azure remote rendering account's location. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
-        public string AccountAuthenticationDomain = string.Empty;        
+        [Tooltip("The default Azure remote rendering account domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public string AccountDomain = string.Empty;        
 
         [Tooltip("The Azure Active Directory Application ID to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AppId = string.Empty;
@@ -138,7 +138,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Get the preferred account domain.
+        /// Get the preferred remote rendering domain.
         /// </summary>
         private string _preferredDomain;
         public override string PreferredDomain
@@ -150,12 +150,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return _preferredDomain;
                 }
 
-                if (AccountDomains == null || AccountDomains.Length == 0)
+                if (RemoteRenderingDomains == null || RemoteRenderingDomains.Length == 0)
                 {
                     return string.Empty;
                 }
 
-                _preferredDomain = AccountDomains[0];
+                _preferredDomain = RemoteRenderingDomains[0];
                 return _preferredDomain;
             }
 
@@ -163,17 +163,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 if (_preferredDomain != value)
                 {
-                    if (string.IsNullOrEmpty(value) && AccountDomains != null && AccountDomains.Length > 0)
+                    if (string.IsNullOrEmpty(value) && RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0)
                     {
-                        value = AccountDomains[0];
+                        value = RemoteRenderingDomains[0];
                     }
-                    else if (AccountDomains == null)
+                    else if (RemoteRenderingDomains == null)
                     {
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", "'AccountDomains' is null.");
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", "'RemoteRenderingDomains' is null.");
                     }
-                    else if (Array.IndexOf(AccountDomains, value) < 0)
+                    else if (Array.IndexOf(RemoteRenderingDomains, value) < 0)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"'AccountDomains' doesn't contain the preferred domain, '{value}'.");
+                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"'RemoteRenderingDomains' doesn't contain the preferred domain, '{value}'.");
                     }
 
                     _preferredDomain = value;
@@ -197,7 +197,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 AccessToken = string.Empty, //STS Access token
                 RemoteRenderingDomain = domain.Trim(),
                 AccountId = AccountId.Trim(),
-                AccountDomain = AccountAuthenticationDomain.Trim(),
+                AccountDomain = AccountDomain.Trim(),
                 AccountKey = string.Empty,
                 AuthenticationToken = accessToken, //Active Directory Access Token
             });
@@ -223,9 +223,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 validateMessages = "Azure Remote Rendering account id hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
                 return false;
             }
-            else if (string.IsNullOrEmpty(AccountAuthenticationDomain))
+            else if (string.IsNullOrEmpty(AccountDomain))
             {
-                validateMessages = "Azure Remote Rendering account authentication domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
+                validateMessages = "Azure Remote Rendering account domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
                 return false;
             }            
             else if (string.IsNullOrEmpty(AppId))
@@ -235,7 +235,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             else if (string.IsNullOrEmpty(PreferredDomain))
             {
-                validateMessages = "Azure Remote Rendering account domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
+                validateMessages = "Azure Remote Rendering domain hasn't been specified. Please check 'RemoteRenderingService' MRTK extension configuration.";
                 return false;
             }
             validateMessages = null;
@@ -255,17 +255,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             sessionData.UnsafeSizeOverride = UnsafeSizeOverride;
             sessionData.SessionOverride = SessionOverride;
 
-            if (AccountDomains?.Length > 0 ||
-                AccountDomainLabels?.Length > 0 ||
+            if (RemoteRenderingDomains?.Length > 0 ||
+                RemoteRenderingDomainLabels?.Length > 0 ||
                 !string.IsNullOrEmpty(AccountId) ||
-                !string.IsNullOrEmpty(AccountAuthenticationDomain) ||
+                !string.IsNullOrEmpty(AccountDomain) ||
                 !string.IsNullOrEmpty(AppId))
             {
                 var accountData = result.Account = new RemoteRenderingServiceAccountData();
-                accountData.AccountDomains = AccountDomains;
-                accountData.AccountDomainLabels = AccountDomainLabels;
+                accountData.RemoteRenderingDomains = RemoteRenderingDomains;
+                accountData.RemoteRenderingDomainLabels = RemoteRenderingDomainLabels;
                 accountData.AccountId = AccountId;
-                accountData.AccountAuthenticationDomain = AccountAuthenticationDomain;
+                accountData.AccountDomain = AccountDomain;
                 accountData.AppId = AppId;
                 accountData.TenantId = TenantId;
             }

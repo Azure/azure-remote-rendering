@@ -15,13 +15,13 @@ Within the app, you can also change the [session's size](https://docs.microsoft.
 
 ## Controlling & Configuring Remote Rendering Sessions in Editor
 
-Search for the *RemoteRenderingService* object under the *MixedRealityToolkit* node in the hierarchy window, and select this object. It holds the configuration properties as shown in the next paragraph.
+Select the *MixedRealityToolkit* node in the scene's *Hierarchy* window, then click on the *Extensions* button and scroll to the *Remote Rendering Service* section. It holds the configuration properties as shown in the next paragraph.
 
 ### Configuration
 
 The *RemoteRenderingService* object is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html). As with most MRTK services, the *RemoteRenderingService* object has a configuration profile.
 
-![Editor Image](.images/editor-arr-service-config.jpg)
+![Editor Image](.images/editor-arr-service-config.png)
 
 #### Remote Rendering Configuration Profiles
 
@@ -79,7 +79,7 @@ Changes to the configuration will be applied to *RemoteRenderingService* during 
 
 ### Play mode
 
-When in 'play' mode, the inspector also shows various buttons to interact with the session, including extend, stop, and forget the current session. Note that "forget" won't stop the remote session, but it'll prevent the app from using this session again.
+When in 'play' mode, the *RemoteRenderingSessionInfo* object in the scene hierarchy also shows various buttons to interact with the session, including extend, stop, and forget the current session. Note that "forget" won't stop the remote session, but it'll prevent the app from using this session again.
 
 ![Inspector buttons in play mode](.images/inspector-in-playmode.jpg)
 
@@ -103,9 +103,9 @@ Once the accounts are created, the MRTK's configuration UI can be used to config
 
 ### Azure Spatial Anchor Service
 
-The *AnchoringService* is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html). As with most MRTK services, the *AnchoringService* object has a configuration profile.
+The *AnchoringService* is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html). As with most MRTK services, the *AnchoringService* object has a configuration profile that can be accessed through the *MixedRealityToolkit* object in the scene hierarchy.
 
-![Anchoring Service Configuration](.images/editor-anchoring-service-config.jpg)
+![Anchoring Service Configuration](.images/editor-anchoring-service-config.png)
 
 #### Configuring Azure Spatial Anchor Service
 
@@ -129,9 +129,9 @@ The *AnchoringService* is a custom Mixed Reality Toolkit (MRTK) [extension servi
 
 ### Sharing Service: A Multi-User Experience
 
-The *SharingService* is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html) that provides a multi-user experience within the application. As with most MRTK services, the *SharingService* object has a configuration profile.
+The *SharingService* is a custom Mixed Reality Toolkit (MRTK) [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html) that provides a multi-user experience within the application. As with most MRTK services, the *SharingService* object has a configuration profile that can be accessed through the *MixedRealityToolkit* object in the scene hierarchy.
 
-![Anchoring Service Configuration](.images/editor-sharing-service-config.jpg)
+![Anchoring Service Configuration](.images/editor-sharing-service-config.png)
 
 The multi-user experience allows users to connect together, and share their ARR models. Model's are initially positioned via Azure Spatial Anchors, and then their transforms are shared to all connected users. Other data is also shared, such as scene lighting, model materials, and model explosions.
 

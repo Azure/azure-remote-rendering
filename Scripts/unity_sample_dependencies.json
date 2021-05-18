@@ -16,6 +16,11 @@
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     }, 
     {
+      "name": "com.microsoft.mixedreality.toolkit.extensions", 
+      "version": "2.5.1", 
+      "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
+    }, 
+    {
       "name": "com.microsoft.azure.spatial-anchors-sdk.core", 
       "version": "2.7.1", 
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
@@ -27,7 +32,7 @@
     }, 
     {
       "name": "com.microsoft.azure.remote-rendering", 
-      "version": "1.0.6", 
+      "version": "1.0.7", 
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     }
   ]

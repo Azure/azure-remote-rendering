@@ -20,6 +20,11 @@
         <Keyword Value="0x0000000300000000" />
       </Keywords>
     </EventProvider>
+    <EventProvider Id="Microsoft-Windows-Winsock-AFD" Name="E53C6823-7BB8-44BB-90DC-3F86090D48A6" Level="4" NonPagedMemory="true">
+      <Keywords>
+        <Keyword Value="0x40" /><!--AFD_KW_RIO-->
+      </Keywords>
+    </EventProvider>
 
     <Profile Id="AzureRemoteRenderingNetworkProfiling.Verbose.File" Name="AzureRemoteRenderingNetworkProfiling" Description="AzureRemoteRenderingNetworkProfiling" LoggingMode="File" DetailLevel="Verbose">
       <Collectors>
@@ -35,6 +40,7 @@
             <EventProviderId Value="Microsoft.Holographic.AppRemoting.HttpHandshake" />
             <EventProviderId Value="Microsoft-Windows-TCPIP" />
             <EventProviderId Value="Microsoft.Azure.RemoteRendering.API" />
+            <EventProviderId Value="Microsoft-Windows-Winsock-AFD" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>

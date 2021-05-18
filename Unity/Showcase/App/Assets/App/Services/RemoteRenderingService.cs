@@ -287,6 +287,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 client = await GetClient();
             }
+            catch (DllNotFoundException e)
+            {
+                var msg = $"Dll not found: {e.Message}";
+                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+            }
             catch (Exception ex)
             {
                 var msg = $"Error creating frontend: {ex.Message}";
@@ -319,7 +325,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 var resultSession = await sessionTask;
-                return AddMachine(resultSession.Session);
+                if (resultSession.ErrorCode == Result.Success)
+                {
+                    return AddMachine(resultSession.Session);
+                }
+                else
+                {
+                    string msg = $"Failed to create session. Reason: {resultSession.Context.Result.ToString()} - {resultSession.Context.ErrorMessage}";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+
+                }
             }
             catch (Exception ex)
             {

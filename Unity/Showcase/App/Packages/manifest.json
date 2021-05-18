@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.0.6.tgz", 
+    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.0.7.tgz", 
     "com.microsoft.azure.spatial-anchors-sdk.core": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.core-2.7.1.tgz", 
     "com.microsoft.azure.spatial-anchors-sdk.windows": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.windows-2.7.1.tgz", 
     "com.unity.analytics": "3.3.5", 
@@ -39,6 +39,10 @@
     "com.unity.modules.video": "1.0.0", 
     "com.unity.modules.vr": "1.0.0", 
     "com.unity.modules.wind": "1.0.0", 
-    "com.unity.modules.xr": "1.0.0"
+    "com.unity.modules.xr": "1.0.0", 
+    "com.microsoft.mixedreality.toolkit.extensions": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.extensions-2.5.1.tgz", 
+    "com.microsoft.mixedreality.toolkit.foundation": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.foundation-2.5.1.tgz", 
+    "com.microsoft.mixedreality.toolkit.tools": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.tools-2.5.1.tgz", 
+    "com.microsoft.mixedreality.toolkit.standardassets": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.standardassets-2.5.1.tgz"
   }
 }

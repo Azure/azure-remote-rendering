@@ -124,8 +124,7 @@ namespace App.Authentication
                     }
                     catch (MsalServiceException ex)
                     {
-                        Debug.LogError("MsalServiceException");
-                        Debug.LogException(ex);
+                        Debug.LogError($"MsalServiceException during Azure Active Directory Authentication: {ex.ErrorCode}");
                     }
                     catch (MsalClientException ex)
                     {
@@ -139,7 +138,7 @@ namespace App.Authentication
                         Debug.LogException(ex);
                     }
 
-                    selectedAccount = result.Account;
+                    selectedAccount = result?.Account;
 
                     return result;
                 }

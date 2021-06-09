@@ -311,6 +311,11 @@ public class RemoteRendering : MonoBehaviour
         {
             LogMessage($"General error creating session: {generalException.ErrorCode}", true);
         }
+        catch (ArgumentException argumentException)
+        {
+            var msg = argumentException.Message + "\nPlease check your Remote Rendering account configuration.";
+            LogMessage(msg, true);
+        }
 
         ConnectAndLoadModel();
     }

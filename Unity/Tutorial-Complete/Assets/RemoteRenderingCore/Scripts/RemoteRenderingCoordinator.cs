@@ -256,7 +256,17 @@ public class RemoteRenderingCoordinator : MonoBehaviour
 
         ARRSessionService.OnSessionStatusChanged += OnRemoteSessionStatusChanged;
 
-        ARRSessionService.Initialize(sessionConfiguration);
+        try
+        {
+            ARRSessionService.Initialize(sessionConfiguration);
+        }
+        catch (ArgumentException argumentException)
+        {
+            NotificationBar.Message("InitializeSessionService failed: SessionConfiguration is invalid.");
+            Debug.LogError(argumentException.Message);
+            CurrentCoordinatorState = RemoteRenderingState.NotAuthorized;
+            return;
+        }
 
         CurrentCoordinatorState = RemoteRenderingState.NoSession;
     }

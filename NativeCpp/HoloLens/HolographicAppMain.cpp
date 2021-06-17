@@ -489,10 +489,16 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
         // plane using overloads of this method.
         if (m_stationaryReferenceFrame != nullptr)
         {
-            renderingParameters.SetFocusPoint(
+            try
+            {
+              renderingParameters.SetFocusPoint(
                 m_stationaryReferenceFrame.CoordinateSystem(),
                 m_spinningCubeRenderer->GetPosition()
-            );
+              );
+            }
+            catch (...)
+            {
+            }
         }
 #endif
     }

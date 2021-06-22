@@ -491,10 +491,10 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
         {
             try
             {
-              renderingParameters.SetFocusPoint(
-                m_stationaryReferenceFrame.CoordinateSystem(),
-                m_spinningCubeRenderer->GetPosition()
-              );
+                renderingParameters.SetFocusPoint(
+                  m_stationaryReferenceFrame.CoordinateSystem(),
+                  m_spinningCubeRenderer->GetPosition()
+                );
             }
             catch (...)
             {

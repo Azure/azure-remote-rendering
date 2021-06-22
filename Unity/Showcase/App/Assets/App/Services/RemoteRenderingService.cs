@@ -877,7 +877,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void EditorUpdateTimer(object state)
         {
-            UnityEngine.WSA.Application.InvokeOnAppThread(Update, true);
+            MainThreadInvoker.Invoke(Update, true);
         }
 
 #if UNITY_EDITOR
@@ -1639,7 +1639,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             private void AutoUpdateProperties(object timerState)
             {
-                UnityEngine.WSA.Application.InvokeOnAppThread(async () =>
+                MainThreadInvoker.Invoke(async () =>
                 {
                     await UpdateProperties();
                     InitializeAutoUpdateTimer();
@@ -1679,7 +1679,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </summary>
             private void AutoRenewWithDefault(object timerState)
             {
-                UnityEngine.WSA.Application.InvokeOnAppThread(async () =>
+                MainThreadInvoker.Invoke(async () =>
                 {
                     const int maxRetry = 10;
                     int retry = 0;
@@ -1909,7 +1909,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         // This will throttle the update 
                         await _properties.TryUpdate();
 
-                        if(_properties.Value.Status == RenderingSessionStatus.Error || _properties.Value.Status == RenderingSessionStatus.Expired)
+                        if (_properties.Value.Status == RenderingSessionStatus.Error || _properties.Value.Status == RenderingSessionStatus.Expired)
                         {
                             return false;
                         }
@@ -2029,7 +2029,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <param name="timerState"></param>
             private void AutoReconnectWorker(object timerState)
             {
-                UnityEngine.WSA.Application.InvokeOnAppThread(async () =>
+                MainThreadInvoker.Invoke(async () =>
                 {
                     if (!CanAutoReconnect())
                     {

@@ -5,7 +5,7 @@ This sample app is a simple model viewer that demonstrates various Azure Remote 
 2.  Switch Unity's platform to "Universal Windows Platform" by using the *File > Build Settings...* menu item.
 3.  Open the *SampleScene* scene
 4.  Find the *MixedRealityToolkit* object within the scene hierarchy, select it to show the MRTK configuration in the inspector window.\
-![Editor Image](.documents/.images/editor-arr-service-config.jpg)
+![Editor Image](.documents/.images/editor-arr-service-config.png)
 
 5.  In the *RemoteRenderingService* configuration, enter your Azure Remote Rendering Domains, Account Domain, ID, and Key.
 6.  (Optional) In the *RemoteRenderingService* configuration, enter your Azure Storage Account Name, Key, and Container Name. This information is optional. If provided, all arrAsset models in the Azure container will be listed within the app's model menu.

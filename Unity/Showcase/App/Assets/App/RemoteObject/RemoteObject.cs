@@ -690,6 +690,8 @@ public class RemoteObject : MonoBehaviour
         {
             var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+            msg += "\r\nIf you're using a Azure Blob Storage, please check IAM of the storage in Azure Portal. Azure Remote Rendering require linking to storage via IAM.";
+            msg += "\r\nSee also: https://docs.microsoft.com/en-us/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts.";
             UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 

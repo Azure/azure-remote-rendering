@@ -455,7 +455,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         }
 
         //Load a model that will be parented to the entity
-        var loadModelParams = new LoadModelOptions($"{storageAccountName}.blob.core.windows.net", blobName, modelPath, modelEntity);
+        var loadModelParams = LoadModelOptions.CreateForBlobStorage($"{storageAccountName}.blob.core.windows.net", blobName, modelPath, modelEntity);
         var loadModelAsync = ARRSessionService.CurrentActiveSession.Connection.LoadModelAsync(loadModelParams, progress);
         var result = await loadModelAsync;
         return modelEntity;

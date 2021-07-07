@@ -1,0 +1,14 @@
+* text=auto
+*.cpp text
+*.h text
+*.inl text
+*.vcproj text
+*.vcxproj text
+*.sln text
+*.props text
+*.targets text
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+*.html text eol=lf
+*.adoc text eol=lf

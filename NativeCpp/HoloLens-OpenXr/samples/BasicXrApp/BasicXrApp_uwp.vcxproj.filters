@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="CubeGraphics.cpp" />
+    <ClCompile Include="OpenXrProgram.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="DxUtility.cpp" />
+    <ClCompile Include="Content\StatusDisplay.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="DxUtility.h" />
+    <ClInclude Include="OpenXrProgram.h" />
+    <ClInclude Include="Content\StatusDisplay.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Content\ShaderStructures.h">
+      <Filter>Content</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\SplashScreen.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square44x44Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Square150x150Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\StoreLogo.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\Wide310x150Logo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="Assets\LockScreenLogo.scale-200.png">
+      <Filter>Assets</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{ba51acbc-acf1-43fd-bb49-7c52d6095d7a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content">
+      <UniqueIdentifier>{931f7a7d-783e-477f-bb72-09f63b8de5da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Content\Shaders">
+      <UniqueIdentifier>{50b3d738-bd01-47e6-a500-7dba1a2afe6e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TemporaryKey.pfx">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="packages.config" />
+    <None Include="XrApiLayer_msft_holographic_remoting.json" />
+    <None Include="Content\VertexShaderShared_txt.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </None>
+    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
+    <None Include="$(NativeRRPackageRoot)\bin\$(RRPlatform)\release\RemoteRenderingClient.dll" />
+    <None Include="$(NativeRRPackageRoot)\bin\$(RRPlatform)\release\Microsoft.Holographic.HybridRemoting.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Content\PixelShader_txt.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\VertexShader_txt.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\VPRTVertexShader_txt.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\GeometryShader_txt.hlsl">
+      <Filter>Content\Shaders</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>

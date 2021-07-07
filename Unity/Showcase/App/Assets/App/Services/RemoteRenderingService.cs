@@ -2114,7 +2114,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 else
                 {
-                    return _arrSession.Connection.LoadModelAsync(new LoadModelOptions(
+                    return _arrSession.Connection.LoadModelAsync(LoadModelOptions.CreateForBlobStorage(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
                         AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
@@ -2144,7 +2144,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 else
                 {
-                    return _arrSession.Connection.LoadModelAsync(new LoadModelOptions(
+                    return _arrSession.Connection.LoadModelAsync(LoadModelOptions.CreateForBlobStorage(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
                         AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
@@ -2164,7 +2164,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return Task.FromResult<Remote.Texture>(null);
                 }
 
-                return _arrSession.Connection.LoadTextureAsync(new LoadTextureOptions(
+                return _arrSession.Connection.LoadTextureAsync(LoadTextureOptions.CreateForBlobStorage(
                     $"{storageAccountName}.blob.core.windows.net",
                     containerName,
                     blobPath,

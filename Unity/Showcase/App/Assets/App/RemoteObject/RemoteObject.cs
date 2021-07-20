@@ -690,6 +690,7 @@ public class RemoteObject : MonoBehaviour
         {
             var msg = $"Failed to load model from '{model.Url}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+            msg += "\r\nTo troubleshoot refer to: https://docs.microsoft.com/azure/remote-rendering/resources/troubleshoot#failed-to-load-model.";
             UnityEngine.Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
 

@@ -8,7 +8,8 @@ Full documentation for Azure Remote Rendering can be found here:
 
 This repository contains the following folders:
 
-* Unity - This folder contains sample projects for use in the Unity game engine
+* Unity - This folder contains sample projects for use in the Unity game engine. 
+   - Please note that you have to run a [script](https://docs.microsoft.com/azure/remote-rendering/quickstarts/render-model#clone-the-sample-app) before these projects can be opened in Unity.
 * NativeCpp - This folder contains sample projects using Remote Rendering with native C++
 * Scripts - This folder contains PowerShell scripts for interacting with the service (e.g. converting assets or launching rendering servers).
 * Tools - This folder contains auxiliary utilities for working with Remote Rendering (e.g. tracing profiles to gather tracing information).

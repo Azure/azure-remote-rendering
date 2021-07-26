@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.0.17.tgz", 
+    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.0.18.tgz", 
     "com.microsoft.azure.spatial-anchors-sdk.core": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.core-2.7.1.tgz", 
     "com.microsoft.azure.spatial-anchors-sdk.windows": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.windows-2.7.1.tgz", 
     "com.unity.analytics": "3.3.5", 

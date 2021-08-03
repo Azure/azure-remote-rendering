@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../MRPackages/com.microsoft.azure.remote-rendering-1.0.18.tgz", 
+    "com.microsoft.azure.remote-rendering": "file:../../MRPackages/com.microsoft.azure.remote-rendering-1.0.19.tgz", 
     "com.unity.2d.sprite": "1.0.0", 
     "com.unity.2d.tilemap": "1.0.0", 
     "com.unity.ads": "2.0.8", 

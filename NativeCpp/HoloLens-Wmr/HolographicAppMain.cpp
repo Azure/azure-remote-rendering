@@ -544,7 +544,13 @@ void HolographicApp::HolographicAppMain::StartModelLoading()
         [this](RR::Status status, RR::ApiHandle<RR::LoadModelResult> result)
         {
             m_modelLoadResult = RR::StatusToResult(status);
-            m_modelLoadFinished = true; // successful if m_modelLoadResult==RR::Result::Success
+            m_modelLoadFinished = true;
+
+            if (m_modelLoadResult == RR::Result::Success)
+            {
+                RR::Double3 pos = { 0.0, 0.0, -2.0 };
+                result->GetRoot()->SetPosition(pos);
+            }
         },
         // progress update callback
             [this](float progress)

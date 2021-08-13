@@ -142,9 +142,6 @@
     </AppxManifest>
     <None Include="packages.config" />
     <None Include="TemporaryKey.pfx" />
-    <None Include="XrApiLayer_msft_holographic_remoting.json">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</DeploymentContent>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\GeometryShader_txt.hlsl">

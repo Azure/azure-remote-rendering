@@ -57,7 +57,7 @@ public class AADAuthentication : BaseARRAuthentication
 
     string redirect_uri = "https://login.microsoftonline.com/common/oauth2/nativeclient";
 
-    string[] scopes => new string[] { "https://sts.mixedreality.azure.com/mixedreality.signin" };
+    string[] scopes => new string[] { "https://sts.mixedreality.azure.com//.default" };
 
     public void OnEnable()
     {

@@ -79,6 +79,8 @@
             "isDoubleSided": { "type" : "boolean" },
             "unlit": { "type" : "boolean" },
 
+            "transparencyWritesDepth": {"type": "boolean"},
+
             "ignoreTextureMaps": { "$ref" : "#/definitions/listOfMaps"}
         },
         "required": ["name"],

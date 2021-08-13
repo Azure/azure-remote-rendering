@@ -9,7 +9,7 @@ using Quaternion = UnityEngine.Quaternion;
 using System.Globalization;
 
 #if UNITY_WSA
-using UnityEngine.XR.WSA;
+using UnityEngine.XR.ARFoundation;
 #endif
 
 // ask Unity to automatically append an ARRServiceUnity component when a RemoteRendering script is attached
@@ -69,7 +69,7 @@ public class RemoteRendering : MonoBehaviour
     private GameObject modelEntityGO = null;
 
 #if UNITY_WSA
-    private WorldAnchor modelWorldAnchor = null;
+    private ARAnchor modelArAnchor = null;
 #endif
 
     private void Awake()
@@ -211,11 +211,11 @@ public class RemoteRendering : MonoBehaviour
     private void PlaceModel()
     {
 #if UNITY_WSA
-        if (modelWorldAnchor != null)
+        if (modelArAnchor != null)
         {
-            DestroyImmediate(modelWorldAnchor);
-
-            modelWorldAnchor = null;
+            DestroyImmediate(modelArAnchor);
+        
+            modelArAnchor = null;
         }
 #endif
 
@@ -225,7 +225,7 @@ public class RemoteRendering : MonoBehaviour
             modelEntityGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
 #if UNITY_WSA
             // anchor the model in the world
-            modelWorldAnchor = modelEntityGO.AddComponent<WorldAnchor>();
+            modelArAnchor = modelEntityGO.AddComponent<ARAnchor>();
 #endif    
         }
     }
@@ -238,11 +238,11 @@ public class RemoteRendering : MonoBehaviour
         }
 
 #if UNITY_WSA
-        if (modelWorldAnchor != null)
+        if (modelArAnchor != null)
         {
-            DestroyImmediate(modelWorldAnchor);
-
-            modelWorldAnchor = null;
+            DestroyImmediate(modelArAnchor);
+        
+            modelArAnchor = null;
         }
 #endif
 

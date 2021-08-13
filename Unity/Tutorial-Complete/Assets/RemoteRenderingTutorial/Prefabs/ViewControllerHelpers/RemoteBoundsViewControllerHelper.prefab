@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2435622464578839773}
   - component: {fileID: 6292472017559531355}
   - component: {fileID: -5062916955670790752}
+  - component: {fileID: 4831990821186603222}
   m_Layer: 0
   m_Name: RemoteBoundsViewControllerHelper
   m_TagString: Untagged
@@ -50,13 +51,21 @@ MonoBehaviour:
   manipulationType: -1
   twoHandedManipulationType: -1
   allowFarManipulation: 1
+  useForcesForNearManipulation: 0
   oneHandRotationModeNear: 1
   oneHandRotationModeFar: 0
   releaseBehavior: 3
-  smoothingActive: 1
+  transformSmoothingLogicType:
+    reference: Microsoft.MixedReality.Toolkit.Utilities.DefaultTransformSmoothingLogic,
+      Microsoft.MixedReality.Toolkit.SDK
+  smoothingFar: 1
+  smoothingNear: 1
   moveLerpTime: 0.001
   rotateLerpTime: 0.001
   scaleLerpTime: 0.001
+  enableConstraints: 1
+  constraintsManager: {fileID: 4831990821186603222}
+  elasticsManager: {fileID: 0}
   onManipulationStarted:
     m_PersistentCalls:
       m_Calls: []
@@ -147,3 +156,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7396e9cde0c66934f97d40cb3230c549, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &4831990821186603222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 174873224631495251}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a98de877dee5fc341b4eb59dfdab266c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  autoConstraintSelection: 1
+  selectedConstraints: []

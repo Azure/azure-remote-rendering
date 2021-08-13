@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.Events;
+using UnityEngine.Events; 
+using UnityEngine.InputSystem;
 
 #if ENABLE_WINMD_SUPPORT
 using Windows.UI.Input.Spatial;
@@ -56,7 +57,7 @@ public class AirTapDetector : MonoBehaviour
     private void Update()
     {
         // simulated airtap
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Keyboard.current?.spaceKey.wasPressedThisFrame ?? false)
         {
             TriggerEvent();
         }

@@ -7,8 +7,7 @@ using Microsoft.MixedReality.Toolkit.UI;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using UnityEngine;
 #if UNITY_WSA
-using UnityEngine.XR.WSA;
-
+using UnityEngine.XR.ARFoundation;
 #endif
 
 [RequireComponent(typeof(ObjectManipulator))]
@@ -54,7 +53,7 @@ public class RemoteBoundsViewControllerHelper : ViewControllerHelper<BaseRemoteB
         objectManipulator.ManipulationType = manipulationFlags;
 
 #if UNITY_WSA
-        Destroy(gameObject.GetComponent<WorldAnchor>());
+        Destroy(gameObject.GetComponent<ARAnchor>());
 #endif
     }
 
@@ -67,7 +66,7 @@ public class RemoteBoundsViewControllerHelper : ViewControllerHelper<BaseRemoteB
         objectManipulator.ManipulationType = 0;
 
 #if UNITY_WSA
-        gameObject.EnsureComponent<WorldAnchor>();
+        gameObject.EnsureComponent<ARAnchor>();
 #endif
     }
 

@@ -1022,7 +1022,11 @@ namespace {
 
             if (m_needsCoordinateSystemUpdate && m_appSpace.Get() && m_graphicsBinding) {
                 // Set the coordinate system once. This must be called again whenever the coordinate system changes.
-                m_graphicsBinding->UpdateAppSpace(reinterpret_cast<uint64_t>(m_appSpace.Get()));
+                #ifdef _M_ARM64
+                    m_graphicsBinding->UpdateAppSpace(reinterpret_cast<uint64_t>(m_appSpace.Get()));
+                #else
+                    m_graphicsBinding->UpdateAppSpace(m_appSpace.Get());
+                #endif
                 m_needsCoordinateSystemUpdate = false;
             }
 

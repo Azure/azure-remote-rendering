@@ -600,6 +600,6 @@ void StatusDisplay::UpdateConstantBuffer(
     // Determine velocity.
     // Even though the motion is spherical, the velocity is still linear
     // for image stabilization.
-    auto& deltaX = position - lastPosition;   // meters
+    auto deltaX = position - lastPosition;    // meters
     m_velocity = deltaX / deltaTimeInSeconds; // meters per second
 }

@@ -3,7 +3,7 @@
 public class PositionSetter : MonoBehaviour
 {
     public float xOffset = -0.15f;
-    public float zOffset = 0.3f;
+    public float zOffset = 0.45f;
     public void SetPositionInFrontOfCamera()
     {
         this.transform.position = Camera.main.transform.position + (Camera.main.transform.forward * zOffset) + (Camera.main.transform.right * xOffset);

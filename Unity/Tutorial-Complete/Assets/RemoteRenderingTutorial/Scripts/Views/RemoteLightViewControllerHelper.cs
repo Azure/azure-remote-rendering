@@ -6,7 +6,9 @@ using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Experimental.UI;
 using Microsoft.MixedReality.Toolkit.UI;
 using UnityEngine;
-using UnityEngine.XR.WSA;
+#if UNITY_WSA
+using UnityEngine.XR.ARFoundation;
+#endif
 
 [RequireComponent(typeof(ObjectManipulator))]
 public class RemoteLightViewControllerHelper : ViewControllerHelper<BaseRemoteLight>
@@ -28,14 +30,14 @@ public class RemoteLightViewControllerHelper : ViewControllerHelper<BaseRemoteLi
     private void OnEnable()
     {
 #if UNITY_WSA
-        gameObject.EnsureComponent<WorldAnchor>(); 
+        gameObject.EnsureComponent<ARAnchor>(); 
 #endif
     }
 
     private void OnDisable()
     {
 #if UNITY_WSA
-        Destroy(gameObject.GetComponent<WorldAnchor>());
+        Destroy(gameObject.GetComponent<ARAnchor>());
 #endif
     }
 }

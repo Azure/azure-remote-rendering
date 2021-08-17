@@ -52,7 +52,7 @@
     },
     {
       "name": "com.microsoft.azure.remote-rendering",
-      "version": "1.0.20",
+      "version": "1.0.21",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     }
   ]

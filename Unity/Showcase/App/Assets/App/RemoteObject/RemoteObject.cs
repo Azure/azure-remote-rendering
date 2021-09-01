@@ -652,10 +652,6 @@ public class RemoteObject : MonoBehaviour
             foreach (var e in entities)
             {
                 var current = e as Entity;
-                if (current.Static)
-                {
-                    continue;
-                }
                 var currentParent = entityToEntitySnapshot[current.Parent] as EntitySnapshot;
                 var entitySnapshot = new EntitySnapshot(current, currentParent);
                 entityToEntitySnapshot[current] = entitySnapshot;

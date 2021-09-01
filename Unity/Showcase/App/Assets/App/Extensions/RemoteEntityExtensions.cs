@@ -202,7 +202,7 @@ public static class RemoteEntityExtensions
     /// </summary>
     private static void CreateSnapshotImpl(this Entity entity, EntitySnapshot root, List<EntitySnapshot> results)
     {
-        if (entity == null || !entity.Valid || entity.Static)
+        if (entity == null || !entity.Valid)
         {
             return;
         }

@@ -184,28 +184,55 @@ public class RemoteRendering : MonoBehaviour
 
     private async Task LoadModel()
     {
-        // create a root object to parent a loaded model to
+        // Create a root object to parent a loaded model to.
         Entity modelEntity = arrService.CurrentActiveSession.Connection.CreateEntity();
 
-        // get the game object representation of this entity
+        // Get the game object representation of this entity.
         modelEntityGO = modelEntity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
 
-        // ensure the entity will sync translations with the server
+        // Ensure the entity will sync translations with the server.
         var sync = modelEntityGO.GetComponent<RemoteEntitySyncObject>();
         sync.SyncEveryFrame = true;
 
-        // set position to an arbitrary distance from the parent
+        // Hide the scene tree until the model is loaded and we had time to get the AABB and recenter the model.
+        var stateOverride = modelEntityGO.CreateArrComponent<ARRHierarchicalStateOverrideComponent>(arrService.CurrentActiveSession);
+        stateOverride.RemoteComponent.HiddenState = HierarchicalEnableState.ForceOn;
+
+        // Set position to an arbitrary distance from the parent.
         PlaceModel();
         modelEntityGO.transform.localScale = Vector3.one;
 
-        // load a model that will be parented to the entity
+        // Load a model that will be parented to the entity.
         var loadModelParams = new LoadModelFromSasOptions(ModelName, modelEntity);
-        var async = arrService.CurrentActiveSession.Connection.LoadModelFromSasAsync(loadModelParams, (float progress) =>
+        var loadModelResult = await arrService.CurrentActiveSession.Connection.LoadModelFromSasAsync(loadModelParams, (float progress) =>
         {
             LogMessage($"Loading Model: {progress.ToString("P2", CultureInfo.InvariantCulture)}");
         });
 
-        await async;
+        // Recenter / scale model.
+        var rootGO = loadModelResult.Root.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
+        rootGO.GetComponent<RemoteEntitySyncObject>().SyncEveryFrame = true;
+
+        var aabb = (await loadModelResult.Root.QueryLocalBoundsAsync()).toUnity();
+        bool tooBig = aabb.extents.magnitude > Camera.main.farClipPlane;
+        bool tooFar = aabb.center.magnitude > Camera.main.farClipPlane;
+        float scaleFactor = 1.0f;
+        String modelMessage = "Model loaded";
+        if (tooBig)
+        {
+            scaleFactor = (2.0f / aabb.extents.magnitude);
+            rootGO.transform.localScale = (rootGO.transform.localScale * scaleFactor);
+            modelMessage += $", too big (scaled to {(scaleFactor).ToString("P2", CultureInfo.InvariantCulture)})";
+        }
+        rootGO.transform.localPosition = (rootGO.transform.localPosition - aabb.center * scaleFactor);
+        if (tooFar)
+        {
+            modelMessage += $", center too far (moved by {-aabb.center})";
+        }
+        LogMessage(modelMessage);
+
+        // Model is loaded and recentered. We can show the model now.
+        stateOverride.RemoteComponent.HiddenState = HierarchicalEnableState.InheritFromParent;
     }
 
     private void PlaceModel()
@@ -222,7 +249,6 @@ public class RemoteRendering : MonoBehaviour
         if (modelEntityGO != null)
         {
             modelEntityGO.transform.position = Camera.main.transform.position + Camera.main.transform.forward * 2;
-            modelEntityGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
 #if UNITY_WSA
             // anchor the model in the world
             modelArAnchor = modelEntityGO.AddComponent<ARAnchor>();
@@ -330,16 +356,19 @@ public class RemoteRendering : MonoBehaviour
             }
 
             ConnectionStatus res = await arrService.CurrentActiveSession.ConnectAsync(new RendererInitOptions());
-
-            if (arrService.CurrentActiveSession.IsConnected)
-            {
-                // We load the model in a fire and forget manner,
-                // so we ignore the returned task object.
-                _ = LoadModel();
-            }
-            else
+            if (!arrService.CurrentActiveSession.IsConnected)
             {
                 LogMessage($"Failed to connect to runtime: {res}.", true);
+                return;
+            }
+
+            try
+            {
+                await LoadModel();
+            }
+            catch (RRException generalException)
+            {
+                LogMessage($"Failed to load model: {generalException.ErrorCode}", true);
             }
         }
         catch (RRSessionException sessionException)

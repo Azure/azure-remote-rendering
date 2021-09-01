@@ -11,6 +11,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using App.Authentication;
 using UnityEngine;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage;
+using System.IO;
 
 #if !UNITY_EDITOR && WINDOWS_UWP
 using Windows.System;
@@ -1011,28 +1015,43 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 string nextMarker = null;
 
                 // load all model blobs in the container
+                string authData = await storageAccountData.GetAuthData();
+                CloudBlobContainer cloudBlobContainer = null;
+                SharedAccessBlobPolicy oneDayReadOnlyPolicy = null;
                 do
                 {
                     EnumerationResults enumerationResults = null;
-                    string authData = await storageAccountData.GetAuthData();
                     try
                     {
-                        if(storageAccountData.AuthType == AuthenticationType.AccessToken)
+                        StorageCredentials storageCredentials;
+                        if (storageAccountData.AuthType == AuthenticationType.AccessToken)
                         {
                             string modelFolder = null;
                             if(storageAccountData.ModelPathByUsername) modelFolder = AADAuth.SelectedAccount.Username;
                             enumerationResults = await ContainerHelper.QueryWithAccessToken(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
+                            storageCredentials = new StorageCredentials(new TokenCredential(authData));
                         }
                         else
                         {
                             string modelFolder = null;
                             if(storageAccountData.ModelPathByUsername) modelFolder = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
                             enumerationResults = await ContainerHelper.QueryWithAccountKey(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
+                            storageCredentials = new StorageCredentials(storageAccountData.StorageAccountName, authData);
                         }
+
+                        var storageAccount = new CloudStorageAccount(storageCredentials, storageAccountData.StorageAccountName, null, true);
+                        var blobClient = storageAccount.CreateCloudBlobClient();
+                        cloudBlobContainer = blobClient.GetContainerReference(storageAccountData.DefaultContainer);
+
+                        oneDayReadOnlyPolicy = new SharedAccessBlobPolicy()
+                        {
+                            SharedAccessExpiryTime = DateTime.UtcNow.AddHours(24),
+                            Permissions = SharedAccessBlobPermissions.Read
+                        };
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Failed to load container data. Reason: {ex.Message}");
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load container data. Reason: {ex.Message}");
                     }
 
                     if (enumerationResults != null && enumerationResults.Blobs != null && enumerationResults.Blobs.Length > 0)
@@ -1042,6 +1061,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                             RemoteContainer modelContainer = ToModelContainer(enumerationResults.Container, blob);
                             if (modelContainer != null)
                             {
+                                // containers created by ToModelContainer have only one item that has the blob's name
+                                var textureBlobName = Path.ChangeExtension(blob.Name, ".png");
+                                CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlobName);
+                                if (await blockBlob.ExistsAsync())
+                                {
+                                    string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
+                                    modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
+                                }
+
                                 remoteModelContainers.Add(modelContainer);
                             }
 

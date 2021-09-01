@@ -115,7 +115,7 @@ public class RemoteObjectExplode : MonoBehaviour
     private IList<ExplodeData> CreateAnimationData()
     {
         RemoteEntitySyncObject root = CaptureSyncObject();
-        if (root == null || !root.IsEntityValid || root.Entity.Static)
+        if (root == null || !root.IsEntityValid)
         {
             return null;
         }

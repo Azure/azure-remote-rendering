@@ -136,7 +136,7 @@ public class ConvertModelService : MonoBehaviour
             // Default model folder name
             string folderName = string.Empty;
 
-            // AAR Profile
+            // ARR Profile
             var loadedProfile = AppServices.RemoteRendering.LoadedProfile;
 
             // Initialize storage

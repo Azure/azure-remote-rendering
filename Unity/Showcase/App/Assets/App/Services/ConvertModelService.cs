@@ -200,7 +200,7 @@ public class ConvertModelService : MonoBehaviour
 
             var inputParams = new AssetConversionInputOptions(inputUri, null, folderName, modelFile);
             var outputParams = new AssetConversionOutputOptions(outputUri, null, folderName, outputFile);
-            var options = new AssetConversionOptions(null, inputParams, outputParams);
+            var options = AssetConversionOptions.CreateForBlobStorage(null, inputParams, outputParams);
 
             // Azure authentication
             var client = await loadedProfile.GetClient(loadedProfile.PreferredDomain);

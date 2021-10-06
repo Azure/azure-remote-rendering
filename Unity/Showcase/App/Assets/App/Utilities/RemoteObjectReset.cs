@@ -103,7 +103,10 @@ public class RemoteObjectReset : MonoBehaviour
                     entity.ReplaceMaterials(null);
                 }
 
-                entity.Parent = state.Parent?.Entity;
+                if (entity.Parent != state.Parent?.Entity) // this also filters out static entities that do not support reparenting
+                {
+                    entity.Parent = state.Parent?.Entity;
+                }
                 entity.Position = state.LocalPosition.toRemotePos();
                 entity.Rotation = state.LocalRotation.toRemote();
                 entity.Scale = state.LocalScale.toRemote();

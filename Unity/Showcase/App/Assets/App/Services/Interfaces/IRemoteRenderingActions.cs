@@ -56,15 +56,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         Task<RayCastQueryResult> RayCastQueryAsync(RayCast cast);
 
         /// <summary>
-        /// Retrieves the remote focus point that will be used to present the current frame if FocusPointReprojectionMode is set to FocusPointMode.UseRemoteFocusPoint.
-        /// </summary>
-        /// <param name="position">Position in world space of the remote focus point. Only valid if return value != FocusPointResult.Invalid.</param>
-        /// <param name="normal">Normal in world space of the remote focus point. Only valid if return value != FocusPointResult.Invalid.</param>
-        /// <param name="velocity">Velocity in world space of the remote focus point. Only valid if return value != FocusPointResult.Invalid.</param>
-        /// <returns>How to interpret the point data. If FocusPointResult.Invalid is returned, the data should not be used.</returns>
-        FocusPointResult GetRemoteFocusPoint(System.IntPtr coordinateSystem, out Float3 position, out Float3 normal, out Float3 velocity);
-
-        /// <summary>
         ///  Create a new entity on the server. The new entity can be inserted into the scenegraph and have components added to it.
         /// </summary>
         /// <returns>Newly created entity.</returns>

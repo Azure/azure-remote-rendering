@@ -188,6 +188,7 @@ namespace HolographicApp
         bool m_needsStatusUpdate = true;
         bool m_needsCoordinateSystemUpdate = true;
         double m_timeAtLastRESTCall = 0;
+        double m_delayBetweenRESTCalls = 10.0;
 
         // Status text:
         double m_lastTime = -1;

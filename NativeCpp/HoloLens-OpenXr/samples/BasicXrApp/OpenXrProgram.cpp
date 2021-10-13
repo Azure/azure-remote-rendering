@@ -968,14 +968,14 @@ namespace {
 
                 if (!m_sessionStarted) {
                     // Important: To avoid server-side throttling of the requests, we should call GetPropertiesAsync very infrequently:
-                    const double delayBetweenRESTCalls = 10.0;
 
                     // query session status periodically until we reach 'session started'
-                    if (!m_sessionPropertiesQueryInProgress && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > delayBetweenRESTCalls) {
+                    if (!m_sessionPropertiesQueryInProgress && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > m_delayBetweenRESTCalls) {
                         m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
                         m_sessionPropertiesQueryInProgress = true;
                         m_renderingSession->GetPropertiesAsync(
-                            [this](RR::Status status, RR::ApiHandle<RR::RenderingSessionPropertiesResult> propertiesResult) {
+                            [this](RR::Status status,
+                                                           RR::ApiHandle<RR::RenderingSessionPropertiesResult> propertiesResult) {
                                 if (status == RR::Status::OK) {
                                     auto ctx = propertiesResult->GetContext();
                                     if (ctx.Result == RR::Result::Success) {
@@ -1007,6 +1007,7 @@ namespace {
                                 } else {
                                     SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
                                 }
+                                m_delayBetweenRESTCalls = propertiesResult->GetMinimumRetryDelay();
                                 m_sessionPropertiesQueryInProgress = false; // next try
                             });
                     }
@@ -1230,6 +1231,7 @@ namespace {
         bool m_modelLoadFinished = false;
         bool m_needsCoordinateSystemUpdate = true;
         double m_timeAtLastRESTCall = 0;
+        double m_delayBetweenRESTCalls = 10.0;
 
         // Status text:
         double m_lastTime = -1;

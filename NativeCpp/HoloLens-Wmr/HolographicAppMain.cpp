@@ -281,12 +281,11 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
         if (!m_sessionStarted)
         {
             // Important: To avoid server-side throttling of the requests, we should call GetPropertiesAsync very infrequently:
-            const double delayBetweenRESTCalls = 10.0;
 
             m_needsStatusUpdate = true; // Info text should update more frequently
 
             // query session status periodically until we reach 'session started'
-            if (!m_sessionPropertiesQueryInProgress && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > delayBetweenRESTCalls)
+            if (!m_sessionPropertiesQueryInProgress && m_timer.GetTotalSeconds() - m_timeAtLastRESTCall > m_delayBetweenRESTCalls)
             {
                 m_timeAtLastRESTCall = m_timer.GetTotalSeconds();
                 m_sessionPropertiesQueryInProgress = true;
@@ -331,6 +330,7 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
                         {
                             SetNewState(AppConnectionStatus::ConnectionFailed, "Failed to retrieve session status");
                         }
+                        m_delayBetweenRESTCalls = propertiesResult->GetMinimumRetryDelay();
                         m_sessionPropertiesQueryInProgress = false; // next try
                     });
             }
@@ -492,8 +492,8 @@ HolographicFrame HolographicAppMain::Update(HolographicFrame const& previousFram
             try
             {
                 renderingParameters.SetFocusPoint(
-                  m_stationaryReferenceFrame.CoordinateSystem(),
-                  m_spinningCubeRenderer->GetPosition()
+                    m_stationaryReferenceFrame.CoordinateSystem(),
+                    m_spinningCubeRenderer->GetPosition()
                 );
             }
             catch (...)

@@ -1347,9 +1347,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     LastUpdated = DateTime.UtcNow;
                     var result = await _arrSession.GetPropertiesAsync();
                     Value = result.SessionProperties;
+
+                    _updateDelay = TimeSpan.FromSeconds(result.MinimumRetryDelay);
                 }
                 catch (Exception ex)
                 {
+                    _updateDelay = TimeSpan.FromSeconds(15);
                     Debug.LogFormat(LogType.Warning, LogOption.None, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}");
                 }
 

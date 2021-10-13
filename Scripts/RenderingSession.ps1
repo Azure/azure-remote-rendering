@@ -81,15 +81,14 @@ function CreateRenderingSession($authenticationEndpoint, $serviceEndpoint, $acco
             # defaults to 4 Hours
             maxLeaseTimeMinutes = $maxLeaseTimeInMinutes;
             # defaults to "standard"
-            size         = $vmSize;
+            size                = $vmSize;
         }
 
         if ($additionalParameters) {
             $additionalParameters.Keys | % { $body += @{ $_ = $additionalParameters.Item($_) } }
         }
 
-        if ([string]::IsNullOrEmpty($sessionId))
-        {
+        if ([string]::IsNullOrEmpty($sessionId)) {
             $sessionId = "Sample-Session-$(New-Guid)"
         }
 
@@ -138,8 +137,7 @@ function GetSessionProperties($authenticationEndpoint, $serviceEndpoint, $accoun
     }
 }
 
-function WriteSessionProperties($session)
-{
+function WriteSessionProperties($session) {
     WriteInformation("    sessionId:                  $($session.id)")
     WriteInformation("    elapsedTimeMinutes:         $($session.elapsedTimeMinutes)")
     if ([bool]($session | get-member -name "hostname")) {
@@ -240,16 +238,42 @@ function StopSession($authenticationEndpoint, $serviceEndpoint, $accountId, $acc
     }
 }
 
+function FormatMilliseconds($millisec) {
+    
+    $secs = [int]($millisec / 1000)
+
+    if ($secs -ge 60) {
+        $mins = [Math]::Floor($secs / 60.0)
+        $secs = $secs - ($mins * 60)
+
+        if ($mins -eq 1) {
+            return "$mins minute $secs seconds"
+        }
+
+        return "$mins minutes $secs seconds"
+    }
+
+    return "$secs seconds"
+}
+
 # retrieves GetSessionProperties until error or ready status of rendering session are achieved
 function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId) {
     $sessionStatus = "Starting"
-    $sessionProgress = 0
-    $startTime = $(Get-Date)
 
     WriteInformation("Provisioning a VM for rendering session '$sessionId' ...")
 
+    $pollIntervalSec = 10
+
+    if ($VmSize -eq "standard") {
+        $pollIntervalSec = 2
+    }
+
+    $stopwatch = [system.diagnostics.stopwatch]::StartNew()
+
     while ($true) {
-        WriteProgress -Activity "Preparing VM for rendering session '$sessionId' ..." -Status: "Preparing for $($sessionProgress * 10) Seconds"
+        $duration = FormatMilliseconds $stopwatch.ElapsedMilliseconds
+
+        WriteProgress -Activity "Preparing VM for rendering session '$sessionId' ..." -Status: "Preparing for $duration"
 
         $response = GetSessionProperties $authenticationEndpoint $serviceEndpoint $accountId $accountKey $sessionId
         $responseContent = $response.Content | ConvertFrom-Json
@@ -258,14 +282,15 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
         if ($sessionStatus -iin "ready", "error") {
             break
         }
-        Start-Sleep -Seconds 10
-        $sessionProgress++
+        Start-Sleep -Seconds $pollIntervalSec
     }
 
-    $totalTimeElapsed = $(New-TimeSpan $startTime $(get-date)).TotalSeconds
+    $duration = FormatMilliseconds $stopwatch.ElapsedMilliseconds
+
     if ("ready" -ieq $sessionStatus) {
         WriteInformation ("")
         Write-Host -ForegroundColor Green "Session is ready.";
+        WriteInformation ("Time elapsed: $duration")
         WriteInformation ("")
         WriteSessionProperties($responseContent)
         WriteInformation ("")
@@ -276,7 +301,7 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
     if ("error" -ieq $sessionStatus) {
         WriteInformation ("The attempt to create a new session resulted in an error.")
         WriteInformation ("SessionId: $sessionId")
-        WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
+        WriteInformation ("Time elapsed: $duration")
         WriteInformation($response)
         exit 1
     }
@@ -284,7 +309,7 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
     if ("expired" -ieq $sessionStatus) {
         WriteInformation ("The attempt to create a new session expired before it became ready. Check the settings in your configuration (arrconfig.json).")
         WriteInformation ("SessionId: $sessionId")
-        WriteInformation ("Time elapsed: $totalTimeElapsed (sec)")
+        WriteInformation ("Time elapsed: $duration")
         WriteInformation($response)
         exit 1
     }
@@ -388,10 +413,10 @@ if ($CreateSession -and ($false -eq $Poll)) {
 PollSessionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
 
 # SIG # Begin signature block
-# MIInPQYJKoZIhvcNAQcCoIInLjCCJyoCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIInQAYJKoZIhvcNAQcCoIInMTCCJy0CAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAJcJm2OSpYhKTa
-# 7Z+7tpMlG1ii1/4Rxjwa2dNx6rDsVqCCEXkwggiJMIIHcaADAgECAhM2AAABfv9v
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBfHxnPOtkGfhtl
+# NXe7tOBvBo5OB1EHgAXTfD+j1hqSH6CCEXkwggiJMIIHcaADAgECAhM2AAABfv9v
 # /QSkJVgSAAIAAAF+MA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMTA5MDkwMTI2MjZaFw0yMjA5MDkwMTI2MjZaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -484,54 +509,54 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # 4Nb3EfXSCtpnNKY+OKXOlF9F27bT/1RCYLt5U9niPVY1rWio8d/MRPcKEjMnpD0b
 # c08IH7srBfQ5CYrK/sgOKaPxT8aWwcPXP4QX99gx/xhcbXktqZo4CiGzD/LA7pJh
 # Kt5Vb7ljSbMm62cEL0Kb2jOPX7/iSqSyuWFmBH8JLGEUfcFPB4fyA/YUQhJG1KEN
-# lu5jKbKdjW6f5HJ+Ir36JVMt0PWH9LHLEOlky2KZvgKAlCUxghUaMIIVFgIBATBY
+# lu5jKbKdjW6f5HJ+Ir36JVMt0PWH9LHLEOlky2KZvgKAlCUxghUdMIIVGQIBATBY
 # MEExEzARBgoJkiaJk/IsZAEZFgNHQkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTAT
 # BgNVBAMTDEFNRSBDUyBDQSAwMQITNgAAAX7/b/0EpCVYEgACAAABfjANBglghkgB
 # ZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3
-# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgjUf21P9FKH56P/J2
-# gzpuW+m/QIAYIlZuAu3qR2WXMGIwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
+# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQg1Zt1uNr8IS7cep8s
+# Tt2Fqj4iX5F765K7CWWjwBV5a28wQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
 # AHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTANBgkqhkiG
-# 9w0BAQEFAASCAQAY9XjBcN8j1/M+PuehRWykzyAk1mZT2qC+oKMqgeJu4NWTpWgg
-# OQBRuCXqppRkVIGPNjJxVjhr9GcuP9Jc4QoCKf0DaBNiAOUx0+BIXMUQvqyexJPp
-# 9gkd92ME2Na5cwIJ2a2iOROJsbzwBm5JI/xG8PCh3AFFD3Sbsypo4DM3GGRiORmx
-# nXlU/1YEEIjg7A4EYf1k4KRpOUqy72MhiYUGSgDjGrBqayoVDIqw7kO1Sj1Z6tx7
-# jyduqyGbs2Q4jQauYqqEHx3K5kVvBt1bd5dEGQ0aGPMpusBUoHIvtmfOIfT4cyXT
-# XCVa+mTl+TkqaWlAAoOil9ov2n+FwOC5UDuhoYIS4jCCEt4GCisGAQQBgjcDAwEx
-# ghLOMIISygYJKoZIhvcNAQcCoIISuzCCErcCAQMxDzANBglghkgBZQMEAgEFADCC
+# 9w0BAQEFAASCAQBl55hkyDwBUAQCxtp8F8bdWAWAUy88YPPcqmH7bYtllUZEeLKQ
+# W3EzXQqNMX8fgF0ifms66+RkfRLUT0uggIixbDiMVzyGsYYc1ENt10FFNPPqygKd
+# in45Zrqy4PnJ3/CjWIdAokahvcIbLUaYR3fO05DmgR9Yl3Uf2dt2xJ6UeWp9879R
+# ESnrB2MFKV3U422OTVTkhKyV0tg8NDgC7ph2qHAuj/yFd3cP+87nlf0Ds9E3qgUg
+# qanoJoeJNXmy+3Oudrfjb9JLw0HuJxtajyEBxayUIWlTurqTtLV+CUh4EGg++HZ7
+# Kr/+mkCG8dS484OdDvyput2OeZ9yzRQ3mfu8oYIS5TCCEuEGCisGAQQBgjcDAwEx
+# ghLRMIISzQYJKoZIhvcNAQcCoIISvjCCEroCAQMxDzANBglghkgBZQMEAgEFADCC
 # AVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMBMDEwDQYJ
-# YIZIAWUDBAIBBQAEIGF0Z2K4gz0ovcKmwoUUaTUpx21hobIBZ+uLcEGKL6uCAgZh
-# Q6myX8QYEzIwMjExMDA2MTkwNDAyLjE2MlowBIACAfSggdCkgc0wgcoxCzAJBgNV
+# YIZIAWUDBAIBBQAEILSrXGAO5tp5r54AHIz5vB85PES6h3+eUYpYUDduu2tlAgZh
+# Q5x91G8YEzIwMjExMDEzMTcxNDA5LjE0M1owBIACAfSggdCkgc0wgcoxCzAJBgNV
 # BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
 # HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29m
-# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOkQ2
-# QkQtRTNFNy0xNjg1MSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
-# aWNloIIOOTCCBPEwggPZoAMCAQICEzMAAAFQWKLUp5sLMOsAAAAAAVAwDQYJKoZI
+# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjIy
+# NjQtRTMzRS03ODBDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
+# aWNloIIOPDCCBPEwggPZoAMCAQICEzMAAAFKpPcxxP8iokkAAAAAAUowDQYJKoZI
 # hvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAO
 # BgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEm
 # MCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcNMjAxMTEy
-# MTgyNjAzWhcNMjIwMjExMTgyNjAzWjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+# MTgyNTU4WhcNMjIwMjExMTgyNTU4WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
 # Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
 # dCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0
-# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046RDZCRC1FM0U3LTE2ODUxJTAj
+# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046MjI2NC1FMzNFLTc4MEMxJTAj
 # BgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggEiMA0GCSqGSIb3
-# DQEBAQUAA4IBDwAwggEKAoIBAQDnen+UeypZwycbVpoN8zNSAqnZl40+RjRTx17g
-# sPvVYNxvPe6PzruS/J5X2mON6BRt+XaJATJJvkCgHvViJqrU7Q39T0qTf02fOTTz
-# kBR1zhB2ihL3XSaEpRE/L2wSa7vgL8jhPFi0dZ8nnqcj96bVLaRvPs7ANXeDF3xp
-# ZNgUSKL2EegBcmRUse+92uWk/NYsj8Y3ECv2qPnSCNESqdQ97JS4K3R5PzHSCG2x
-# YvRRLp+b90FVI2JCQr1IAj92UNke2wKHbQs5VdyJE+/vgg6tyZdaxW7AVojIq5Kc
-# fM3+QahNKpsdOHm37IwYmD1LfTsb0tVhXLjbh7o4T6cCKiWbAgMBAAGjggEbMIIB
-# FzAdBgNVHQ4EFgQUglUZHxlF261kL0PBAEM7t+ufRX4wHwYDVR0jBBgwFoAU1WM6
+# DQEBAQUAA4IBDwAwggEKAoIBAQDeyihmZKJYLL1RGjSjE1WWYBJfKIbC4B0eIFBV
+# i2b1sy23oA6ESLaXxXfvZmltoTxZYE/sL+5cX+jgeBxWGYB3yKXGYRlOv3m7Mpl2
+# AJgCsyqYe9acSVORdtvGE0ky3KEgCFDQWVXUxCGSCxD0+YCO+2LLu2CjLn0pomT8
+# 6mJZBF9v3R4TnKKPdM4CCUUxtbtpBe8Omuw+dMhyhOOnhhMKsIxMREQgjbRQQ0K0
+# 32CA/yHI9MyopGI4iUWmjzY57wWkSf3hZBs/IA9l8mF45bDYwxj2hj0E7f0Zt568
+# XMlxsgiCIVnQTFzEy5ewTAyiniwUNHeqRX0tS0SaPqWiigYlAgMBAAGjggEbMIIB
+# FzAdBgNVHQ4EFgQUcYxhGDH6wIY1ipP/fX64JiqpP+EwHwYDVR0jBBgwFoAU1WM6
 # XIoxkPNDe3xGG8UzaFqFbVUwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5t
 # aWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljVGltU3RhUENBXzIwMTAt
 # MDctMDEuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3
 # dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNUaW1TdGFQQ0FfMjAxMC0wNy0w
 # MS5jcnQwDAYDVR0TAQH/BAIwADATBgNVHSUEDDAKBggrBgEFBQcDCDANBgkqhkiG
-# 9w0BAQsFAAOCAQEAUT9odHKO/uPj08AeL5P2HixMOqHK3oPk9JAdmlgf2Xt8xF7Y
-# 9BHiFQNWYMKd/HI2ryYOu3SAAs3txZaRpalvY0R16WWIQzC9G9oqSD7QNN0RMxsi
-# iCMM65/nq9xSPIrmYh6aTXFgIMuh4GLNk7gMQFybUbg2ZlLZsn9r5RzxX/x8aK17
-# ggEWKmiij1lgb/6AE+bAPUuEyy50ua6U9Zs0+bi8/HvnZs6PiMwGhtXz/sRrZaAY
-# jbLvaCXOk+DbRvHBoYHQQm35QrPUIfiNcw30giIMRy7xYHjiml/IxakMFUJ56mLE
-# 3SvnbSGxaKwppPlkIsw5HhemdSGHs5SlrQTbXjCCBnEwggRZoAMCAQICCmEJgSoA
+# 9w0BAQsFAAOCAQEAUQuu3UY4BRUvZL+9lX3vIEPh4NxaV9k2MjquJ67T6vQ9+lHc
+# na9om2cuZ+y6YV71ttGw07oFB4sLsn1p5snNqBHr6PkqzQs8V3I+fVr/ZUKQYLS+
+# jjOesfr9c2zc6f5qDMJN1L8rBOWn+a5LXxbT8emqanI1NSA7dPYV/NGQM6j35Tz8
+# guQo9yfA0IpUM9v080mb3G4AjPb7sC7vafW2YSXpjT/vty6x5HcnHx2X947+0AQI
+# oBL8lW9pq55aJhSCgsiVtXDqwYyKsp7ULeTyvMysV/8mZcokW6/HNA0MPLWKV3sq
+# K4KFXrfbABfrd4P3GM1aIFuKsIbsmZhJk5U0ijCCBnEwggRZoAMCAQICCmEJgSoA
 # AAAAAAIwDQYJKoZIhvcNAQELBQAwgYgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpX
 # YXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQg
 # Q29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jvc29mdCBSb290IENlcnRpZmljYXRl
@@ -566,36 +591,36 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # ObJb2sgNVZl6h3M7COaYLeqN4DMuEin1wC9UJyH3yKxO2ii4sanblrKnQqLJzxlB
 # TeCG+SqaoxFmMNO7dDJL32N79ZmKLxvHIa9Zta7cRDyXUHHXodLFVeNp3lfB0d4w
 # wP3M5k37Db9dT+mdHhk4L7zPWAUu7w2gUDXa7wknHNWzfjUeCLraNtvTX4/edIhJ
-# EqGCAsswggI0AgEBMIH4oYHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
+# EqGCAs4wggI3AgEBMIH4oYHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
 # V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
 # IENvcnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRp
-# b25zMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjpENkJELUUzRTctMTY4NTElMCMG
+# b25zMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjoyMjY0LUUzM0UtNzgwQzElMCMG
 # A1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIa
-# AxUAIw17n3LxNWtGEZtallmkMZYeoBKggYMwgYCkfjB8MQswCQYDVQQGEwJVUzET
+# AxUAvATuhoUgysEzdykE1bRB4oh6a5iggYMwgYCkfjB8MQswCQYDVQQGEwJVUzET
 # MBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMV
 # TWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1T
-# dGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIFAOUH3KowIhgPMjAyMTEwMDYx
-# NjI4MjZaGA8yMDIxMTAwNzE2MjgyNlowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA
-# 5QfcqgIBADAHAgEAAgIF7zAHAgEAAgIRSjAKAgUA5QkuKgIBADA2BgorBgEEAYRZ
-# CgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0G
-# CSqGSIb3DQEBBQUAA4GBACf6RFsYmEOE7MK3QKLH4KXMDEyT+Fxj+ZvtbvzA0IIg
-# lxluiwMbE/T9jVoj+6aa3Db4EVZTNzbSIdhxWatC876I0mLFMLlaIP5FLIJDVADX
-# wzqO/JZDCIWvo/9JaJwpQEyemO7TcXQ9KEcH3swT/H8xZ4sm7DGUzHHY1VJwPgnK
-# MYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0
-# b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3Jh
-# dGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMA
-# AAFQWKLUp5sLMOsAAAAAAVAwDQYJYIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJ
-# AzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQxIgQgs7Mqcz8veemE5Oj/xOuj
-# /Qt1HZUCfAXIpmj365C6ZcEwgfoGCyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCBs
-# 9D6fL5rCThgXJmGIhdXS6IY1Zg6op47dkKJ8L/Kj9jCBmDCBgKR+MHwxCzAJBgNV
-# BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
-# HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29m
-# dCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUFii1KebCzDrAAAAAAFQMCIEIItE
-# ZcGB2I5cy1c5JHXKeFVEM+6deLP1iSa9e1gzD6ZqMA0GCSqGSIb3DQEBCwUABIIB
-# AIzFweW3z9hmK8QfuM0NEkPev0qsNZrj1flYoxpgEVAizMbkdPrB4x9KGRn3zK6M
-# J7K+75ylZgNXSBygqalAAsR3UPqT57GTYWBG2Ae6LRzJjAYR4WTWfc5c1vkvfxoa
-# 4KcaIiZE2pJpb6bZ4x65xwd5+GSUXsc5RSRKJCB4LgOLTQ1vS75bHiClr18NWiPi
-# dW1SF+eo9xtiQGGbUgIB6L9OZBUF/5++ovTY0TDroaLHsT4gNyN+MNiEd5fmAYMe
-# Gl/E4myZP3v028W/BqzAoeoQA14317ALJjHx8yD/2JTpYGpMuPQGIXz4X3/hdg1B
-# ip76N3f9uhhzUoALYossC6s=
+# dGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIFAOURCcswIhgPMjAyMTEwMTMx
+# NTMxMjNaGA8yMDIxMTAxNDE1MzEyM1owdzA9BgorBgEEAYRZCgQBMS8wLTAKAgUA
+# 5REJywIBADAKAgEAAgIDHwIB/zAHAgEAAgIRPjAKAgUA5RJbSwIBADA2BgorBgEE
+# AYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAIDB6EgoQowCAIBAAIDAYag
+# MA0GCSqGSIb3DQEBBQUAA4GBALi+DiUTvHujCXjC1ldvXXIizF1UaWYZY41eS+/l
+# unzfZJHGL+TjsJ0Nt17IXz9zkg9jxMAaouCSdNwsdMr63aWyejwO6ZTmXshd6ERX
+# 8u8+3hWiTwfSRQDyJZiEVN8reKyMEpBoktxYM6Wfvz7+CK1b3VVGP8TneC7OfrCF
+# eNzPMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hp
+# bmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jw
+# b3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAC
+# EzMAAAFKpPcxxP8iokkAAAAAAUowDQYJYIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3
+# DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQxIgQgmUNnqbyyv9kNqx76
+# R7uy0MvwWsG8v5UpgFRAXJDii4owgfoGCyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9
+# BCBsHZLXrbnbV/5J+2KvwFWIgVmQavp+BBVUPM1A9yJRAzCBmDCBgKR+MHwxCzAJ
+# BgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25k
+# MR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jv
+# c29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABSqT3McT/IqJJAAAAAAFKMCIE
+# IIP55N3UbvgRV7SzJVNR6+vTlHDmiUcmlgHJhOUEcxa4MA0GCSqGSIb3DQEBCwUA
+# BIIBAIDBlcrXv4nbiHoBLEvJyyQJsIoW+avEKtcVzxe6ONHNxzMK5PLG+nTAhQxg
+# mK6lCko+yNmOhX90OfzAs1J73jHs91NzLt7vVYT0C9GL8xFFjGODleN3FQsqP2+t
+# wdbxBb9wey6DBlFC4qGc8z/c44R9aZYBkrekdXJ8kLGuw7rOC1CSuhhoPpLsmDWT
+# cglrfy4BOGEZh1EKVCYVR3ioxptCHVXTgbzQvMnBafkUV5WIUOR8Kw2Fw5wuhugW
+# gqhjG78x2nys/gans4DMnxM9qwIQCD6jTASfAKxhWmxGklUoEkrL5UTv93pkQCOt
+# tjX4dRcSDO88TSBNMgrx1d+oziI=
 # SIG # End signature block

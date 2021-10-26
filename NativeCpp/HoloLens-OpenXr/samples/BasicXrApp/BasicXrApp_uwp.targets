@@ -1,9 +1,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- Redirect to the nuget .targets and .props file -->
-  <Import Project="$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.28\build\microsoft.azure.remoterendering.Cpp.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.28\build\microsoft.azure.remoterendering.Cpp.props')" />
+  <Import Project="$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.29\build\microsoft.azure.remoterendering.Cpp.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.29\build\microsoft.azure.remoterendering.Cpp.props')" />
   
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.28\build\microsoft.azure.remoterendering.Cpp.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.28\build\microsoft.azure.remoterendering.Cpp.targets')" />
+    <Import Project="$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.29\build\microsoft.azure.remoterendering.Cpp.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.Azure.RemoteRendering.Cpp.1.0.29\build\microsoft.azure.remoterendering.Cpp.targets')" />
   </ImportGroup>
 
 </Project>

@@ -14,6 +14,7 @@
     <EventProvider Id="Microsoft.Streaming.Nano.Network.urcp" Name="E027BCEC-71F3-4B85-AE28-90FF7446B675" />
     <EventProvider Id="Microsoft.Holographic.AppRemoting" Name="3313B099-E54E-4601-941A-FBB0B20478B7" />
     <EventProvider Id="Microsoft.Holographic.AppRemoting.HttpHandshake" Name="775f448D-79F9-4564-AC5F-9F43FF58FDCF" />
+    <EventProvider Id="Microsoft.Holographic.AppRemoting.NanoTransport" Name="9F96C461-6DE0-4E67-B45F-2E6095AF69C1" />
     <EventProvider Id="Microsoft.Azure.RemoteRendering.API" Name="9388A5E0-0649-4B2A-A147-D92BFB243EB1" />
     <EventProvider Id="Microsoft-Windows-TCPIP" Name="2F07E2EE-15DB-40F1-90EF-9D7BA282188A" Level="5" NonPagedMemory="true">
       <Keywords>
@@ -38,6 +39,7 @@
             <EventProviderId Value="Microsoft.Streaming.Nano.Network.urcp" />
             <EventProviderId Value="Microsoft.Holographic.AppRemoting" />
             <EventProviderId Value="Microsoft.Holographic.AppRemoting.HttpHandshake" />
+            <EventProviderId Value="Microsoft.Holographic.AppRemoting.NanoTransport" />
             <EventProviderId Value="Microsoft-Windows-TCPIP" />
             <EventProviderId Value="Microsoft.Azure.RemoteRendering.API" />
             <EventProviderId Value="Microsoft-Windows-Winsock-AFD" />

@@ -362,6 +362,14 @@ public class RemoteRendering : MonoBehaviour
                 return;
             }
 
+            // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+            // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+            var graphics = arrService.CurrentActiveSession.GraphicsBinding;
+            if (graphics.Api != GraphicsApiType.SimD3D11)
+            {
+                graphics.SetPoseMode(PoseMode.Local);
+            }
+
             try
             {
                 await LoadModel();

@@ -1104,6 +1104,10 @@ namespace {
             m_api = m_renderingSession->Connection();
             m_graphicsBinding = m_renderingSession->GetGraphicsBinding().as<RR::GraphicsBindingOpenXrD3d11>();
             m_renderingSession->ConnectionStatusChanged([this](auto status, auto error) { OnConnectionStatusChanged(status, error); });
+
+            // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+            // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+            m_graphicsBinding->SetPoseMode(RR::PoseMode::Local);
         }
 
         void StartModelLoading() {

@@ -654,6 +654,9 @@ void HolographicAppMain::SetNewSession(RR::ApiHandle<RR::RenderingSession> newSe
             OnConnectionStatusChanged(status, error);
         });
 
+	// In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+	// This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+    m_graphicsBinding->SetPoseMode(RR::PoseMode::Local);
 };
 
 #endif

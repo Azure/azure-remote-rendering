@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../MRPackages/com.microsoft.azure.remote-rendering-1.0.31.tgz",
+    "com.microsoft.azure.remote-rendering": "file:../../MRPackages/com.microsoft.azure.remote-rendering-1.0.32.tgz",
     "com.microsoft.mixedreality.openxr": "file:../../MRPackages/com.microsoft.mixedreality.openxr-1.0.0.tgz",
     "com.microsoft.mixedreality.toolkit.foundation": "file:../../MRPackages/com.microsoft.mixedreality.toolkit.foundation-2.7.2.tgz",
     "com.microsoft.mixedreality.toolkit.standardassets": "file:../../MRPackages/com.microsoft.mixedreality.toolkit.standardassets-2.7.2.tgz",

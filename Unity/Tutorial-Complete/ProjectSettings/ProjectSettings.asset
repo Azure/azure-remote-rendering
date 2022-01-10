@@ -130,9 +130,9 @@ PlayerSettings:
   bundleVersion: 1.0
   preloadedAssets:
   - {fileID: 0}
+  - {fileID: 0}
   - {fileID: -2030329009181380538, guid: fc60daf33035c8946aa8a1fdc962fd38, type: 2}
   - {fileID: -3580459487360643901, guid: 6d7607f18c7e76c44a714a54bf0536ea, type: 2}
-  - {fileID: 0}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -616,7 +616,7 @@ PlayerSettings:
   metroCertificatePassword: 
   metroCertificateSubject: Microsoft
   metroCertificateIssuer: Microsoft
-  metroCertificateNotAfter: 80fe07c27391d801
+  metroCertificateNotAfter: 002877ea68f1d801
   metroApplicationDescription: Azure Remote Rendering Tutorial
   wsaImages: {}
   metroTileShortName: ARR Tutorial
@@ -634,7 +634,6 @@ PlayerSettings:
   metroSplashScreenUseBackgroundColor: 0
   platformCapabilities:
     WindowsStoreApps:
-      CodeGeneration: False
       OfflineMapsManagement: False
       HumanInterfaceDevice: False
       Location: False
@@ -646,6 +645,7 @@ PlayerSettings:
       PrivateNetworkClientServer: True
       InternetClientServer: True
       VideosLibrary: False
+      BackgroundMediaPlayback: False
       Objects3D: False
       RemoteSystem: False
       BlockedChatMessages: False
@@ -668,9 +668,9 @@ PlayerSettings:
       PointOfService: False
       RecordedCallsFolder: False
       Contacts: False
-      Proximity: False
       InternetClient: True
-      BackgroundMediaPlayback: False
+      Proximity: False
+      CodeGeneration: False
       EnterpriseAuthentication: False
   metroTargetDeviceFamilies:
     Desktop: True

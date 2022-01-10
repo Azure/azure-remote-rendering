@@ -66,6 +66,11 @@ public class RemoteSky : BaseRemoteSky
         ApplyStateToView(RemoteRenderingCoordinator.instance.CurrentCoordinatorState);
     }
 
+    private void OnDestroy()
+    {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= ApplyStateToView;
+    }
+
     private void ApplyStateToView(RemoteRenderingCoordinator.RemoteRenderingState state)
     {
         switch (state)

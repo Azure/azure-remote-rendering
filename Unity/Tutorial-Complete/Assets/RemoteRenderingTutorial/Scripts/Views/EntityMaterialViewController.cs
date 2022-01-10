@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.MixedReality.Toolkit.UI;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
@@ -41,8 +42,17 @@ public class EntityMaterialViewController : BaseViewController<BaseEntityMateria
         }
 
         // Register model events
-        var targetModel = baseObject.GetComponent<BaseRemoteRenderedModel>();
+        targetModel = baseObject.GetComponent<BaseRemoteRenderedModel>();
         targetModel.ModelStateChange += OnModelStateChange;
+    }
+
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+        if (targetModel != null)
+        {
+            targetModel.ModelStateChange -= OnModelStateChange;
+        }
     }
 
     private void OnModelStateChange(ModelState state)
@@ -80,6 +90,11 @@ public class EntityMaterialViewController : BaseViewController<BaseEntityMateria
 
     private void UpdateButtonStates()
     {
+        // If any of the MRTK Interactables is not set or already destroyed on shutdown skip update
+        if (tintButton == null || roughnessButton == null || clearButton == null || roughnessSlider == null || colorButtons.Any((Interactable b) => b == null))
+        {
+            return;
+        }
         if (selectedEntity == null)
         {
             // Disable buttons

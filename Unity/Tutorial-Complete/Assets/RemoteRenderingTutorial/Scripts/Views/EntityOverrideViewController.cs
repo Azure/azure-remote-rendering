@@ -19,14 +19,25 @@ public class EntityOverrideViewController : BaseViewController<BaseRemoteEntityH
     private BaseRemoteRayCastPointerHandler raycastPointerHandler;
     private Entity selectedEntity;
 
+    private BaseRemoteRenderedModel targetModel;
+
     protected override void Configure()
     {
         if (baseObject == null)
             return; //No base object found, unable to configure
 
         // Register model events
-        var targetModel = baseObject.GetComponent<BaseRemoteRenderedModel>();
+        targetModel = baseObject.GetComponent<BaseRemoteRenderedModel>();
         targetModel.ModelStateChange += OnModelStateChange;
+    }
+
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+        if (targetModel != null)
+        {
+            targetModel.ModelStateChange -= OnModelStateChange;
+        }
     }
 
     private void OnModelStateChange(ModelState state)

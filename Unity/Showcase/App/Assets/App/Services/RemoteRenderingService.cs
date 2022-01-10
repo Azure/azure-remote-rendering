@@ -1061,13 +1061,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                             RemoteContainer modelContainer = ToModelContainer(enumerationResults.Container, blob);
                             if (modelContainer != null)
                             {
-                                // containers created by ToModelContainer have only one item that has the blob's name
-                                var textureBlobName = Path.ChangeExtension(blob.Name, ".png");
-                                CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlobName);
-                                if (await blockBlob.ExistsAsync())
+                                // containers created by ToModelContainer have only one item that has the blob's name so we can
+                                // safely operate on blob.Name to derive texture names.
+                                if (!String.Equals(Path.GetExtension(blob.Name), ".png", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
-                                    modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
+                                    var textureBlobName = Path.ChangeExtension(blob.Name, ".png");
+                                    if (Array.Exists(enumerationResults.Blobs, b => String.Equals(b.Name, textureBlobName, StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlobName);
+                                        string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
+                                        modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
+                                    }
                                 }
 
                                 remoteModelContainers.Add(modelContainer);

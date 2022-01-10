@@ -23,6 +23,11 @@ public abstract class BaseViewController<T> : MonoBehaviour where T : Object
         OnCoordinatorStateChange(RemoteRenderingCoordinator.instance.CurrentCoordinatorState);
     }
 
+    protected virtual void OnDestroy()
+    {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= OnCoordinatorStateChange;
+    }
+
     protected virtual void Configure()
     {
         // Nothing to configure by default

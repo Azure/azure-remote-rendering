@@ -100,6 +100,7 @@ public class RemoteRenderedModel : BaseRemoteRenderedModel
 
     private void OnDestroy()
     {
+        ModelStateChange -= HandleUnityStateEvents;
         RemoteRenderingCoordinator.CoordinatorStateChange -= Instance_CoordinatorStateChange;
         UnloadModel();
     }
@@ -118,9 +119,13 @@ public class RemoteRenderedModel : BaseRemoteRenderedModel
         ModelEntity = await RemoteRenderingCoordinator.instance?.LoadModel(ModelPath, this.transform, SetLoadingProgress);
 
         if (ModelEntity != null)
+        {
             CurrentModelState = ModelState.Loaded;
+        }
         else
+        {
             CurrentModelState = ModelState.Error;
+        }
     }
 
     /// <summary>
@@ -135,7 +140,9 @@ public class RemoteRenderedModel : BaseRemoteRenderedModel
         {
             var modelGameObject = ModelEntity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);
             Destroy(modelGameObject);
-            ModelEntity.Destroy();
+            if (RemoteRenderingCoordinator.instance.CurrentCoordinatorState == RemoteRenderingCoordinator.RemoteRenderingState.RuntimeConnected) {
+                ModelEntity.Destroy();
+            }
             ModelEntity = null;
         }
 

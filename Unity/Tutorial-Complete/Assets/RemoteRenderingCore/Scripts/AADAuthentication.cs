@@ -79,6 +79,7 @@ public class AADAuthentication : BaseARRAuthentication
         else
         {
             Debug.LogError("Error logging in");
+            NotificationBar.Message("AAD authentication failed.");
         }
         return default;
     }

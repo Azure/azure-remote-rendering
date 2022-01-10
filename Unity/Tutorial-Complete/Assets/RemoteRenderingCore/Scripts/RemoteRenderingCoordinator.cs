@@ -127,6 +127,10 @@ public class RemoteRenderingCoordinator : MonoBehaviour
             {
                 currentCoordinatorState = value;
                 Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", $"State changed to: {currentCoordinatorState}");
+                if (currentCoordinatorState == RemoteRenderingState.RuntimeConnected)
+                {
+                    NotificationBar.Message("Connected to remote rendering session.");
+                }
                 CoordinatorStateChange?.Invoke(currentCoordinatorState);
             }
         }
@@ -192,6 +196,13 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         CoordinatorStateChange += AutomaticMode;
 
         CurrentCoordinatorState = RemoteRenderingState.NotInitialized;
+    }
+
+    private void OnDestroy()
+    {
+        ARRSessionService.OnSessionStatusChanged -= OnRemoteSessionStatusChanged;
+        AuthorizedChanged -= RemoteRenderingCoordinator_AuthorizedChanged;
+        CoordinatorStateChange -= AutomaticMode;
     }
 
     private void RemoteRenderingCoordinator_AuthorizedChanged()
@@ -386,7 +397,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
 
     /// <summary>
     /// The session must have its runtime pump updated.
-    /// The Actions.Update() will push messages to the server, receive messages, and update the frame-buffer with the remotely rendered content.
+    /// The Connection.Update() will push messages to the server, receive messages, and update the frame-buffer with the remotely rendered content.
     /// </summary>
     private void LateUpdate()
     {
@@ -396,7 +407,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
     /// <summary>
     /// Loads a model into the remote session for rendering
     /// </summary>
-    /// <param name="modelName">The model's path</param>
+    /// <param name="modelPath">The model's path</param>
     /// <param name="parent">The parent Transform for this remote entity</param>
     /// <param name="progress">A call back method that accepts a float progress value [0->1]</param>
     /// <returns>An awaitable Remote Rendering Entity</returns>
@@ -422,7 +433,20 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         //Load a model that will be parented to the entity
         var loadModelParams = new LoadModelFromSasOptions(modelPath, modelEntity);
         var loadModelAsync = ARRSessionService.CurrentActiveSession.Connection.LoadModelFromSasAsync(loadModelParams, progress);
-        var result = await loadModelAsync;
+
+        NotificationBar.Message($"Loading model.", float.MaxValue);
+
+        try
+        {
+            var result = await loadModelAsync;
+        }
+        catch (RRException ex)
+        {
+            NotificationBar.Message($"Failed loading model: {ex.Message}");
+            return null;
+        }
+
+        NotificationBar.Message($"Finished loading model.");
         return modelEntity;
     }
 
@@ -457,7 +481,21 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         //Load a model that will be parented to the entity
         var loadModelParams = LoadModelOptions.CreateForBlobStorage($"{storageAccountName}.blob.core.windows.net", blobName, modelPath, modelEntity);
         var loadModelAsync = ARRSessionService.CurrentActiveSession.Connection.LoadModelAsync(loadModelParams, progress);
-        var result = await loadModelAsync;
+
+        NotificationBar.Message($"Loading model.", float.MaxValue);
+
+        try
+        {
+            var result = await loadModelAsync;
+        }
+        catch (RRException ex)
+        {
+            NotificationBar.Message($"Failed loading model: {ex.Message}");
+            return null;
+        }
+
+        NotificationBar.Message($"Finished loading model.");
+
         return modelEntity;
     }
 
@@ -562,6 +600,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
                 CurrentCoordinatorState = RemoteRenderingState.ConnectingToRuntime;
                 break;
             case ConnectionStatus.Disconnected:
+                NotificationBar.Message($"Failed to connect to session: {error}", float.MaxValue);
                 CurrentCoordinatorState = RemoteRenderingState.RemoteSessionReady;
                 break;
         }

@@ -37,6 +37,14 @@ public class RemoteBounds : BaseRemoteBounds
         TargetModel_OnModelStateChange(targetModel.CurrentModelState);
     }
 
+    private void OnDestroy()
+    {
+        if (targetModel != null)
+        {
+            targetModel.ModelStateChange -= TargetModel_OnModelStateChange;
+        }
+    }
+
     private void TargetModel_OnModelStateChange(ModelState state)
     {
         switch (state)
@@ -51,7 +59,7 @@ public class RemoteBounds : BaseRemoteBounds
         }
     }
 
-    // Create a query using the model entity
+    // Create an async query using the model entity
     private async void QueryBounds()
     {
         var remoteBounds = targetModel.ModelEntity.QueryLocalBoundsAsync();

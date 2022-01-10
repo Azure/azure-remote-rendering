@@ -40,6 +40,11 @@ public class RemoteCutPlane : BaseRemoteCutPlane
         RemoteRenderingCoordinator_CoordinatorStateChange(RemoteRenderingCoordinator.instance.CurrentCoordinatorState);
     }
 
+    private void OnDestroy()
+    {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= RemoteRenderingCoordinator_CoordinatorStateChange;
+    }
+
     private void RemoteRenderingCoordinator_CoordinatorStateChange(RemoteRenderingCoordinator.RemoteRenderingState state)
     {
         switch (state)
@@ -84,7 +89,10 @@ public class RemoteCutPlane : BaseRemoteCutPlane
         if (remoteCutPlaneComponent == null)
             return; //Nothing to do!
 
-        remoteCutPlaneComponent.Owner.Destroy();
+        if (RemoteRenderingCoordinator.instance.CurrentCoordinatorState == RemoteRenderingCoordinator.RemoteRenderingState.RuntimeConnected)
+        {
+            remoteCutPlaneComponent.Owner.Destroy();
+        }
         remoteCutPlaneComponent = null;
         CutPlaneReady = false;
     }

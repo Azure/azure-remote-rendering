@@ -6,16 +6,30 @@ public class AuthorizationViewController : MonoBehaviour
     public GameObject buttonApprove;
     public GameObject authInstructions;
     private bool usesAuthConnection = false;
+    BaseARRAuthentication authScript;
+    private TextMeshPro textMeshPro;
 
     private void Start()
     {
         RemoteRenderingCoordinator.CoordinatorStateChange += OnCoordinatorStateChange;
         OnCoordinatorStateChange(RemoteRenderingCoordinator.instance.CurrentCoordinatorState);
 
-
-        var authScript = RemoteRenderingCoordinator.instance.gameObject.GetComponent<BaseARRAuthentication>();
+        authScript = RemoteRenderingCoordinator.instance.gameObject.GetComponent<BaseARRAuthentication>();
         if (authScript != null)
+        {
             authScript.AuthenticationInstructions += AuthScript_AuthenticationInstructions;
+        }
+
+        textMeshPro = authInstructions.GetComponentInChildren<TextMeshPro>(true);
+    }
+
+    private void OnDestroy()
+    {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= OnCoordinatorStateChange;
+        if (authScript != null)
+        {
+            authScript.AuthenticationInstructions -= AuthScript_AuthenticationInstructions;
+        }
     }
 
     public void ConnectPressed()
@@ -25,6 +39,11 @@ public class AuthorizationViewController : MonoBehaviour
     
     private void OnCoordinatorStateChange(RemoteRenderingCoordinator.RemoteRenderingState state)
     {
+        // If any of the game objects is not set or already destroyed on shutdown skip update
+        if (gameObject == null || buttonApprove == null || authInstructions == null)
+        {
+            return;
+        }
         switch (state)
         {
             case RemoteRenderingCoordinator.RemoteRenderingState.NotSet:
@@ -54,6 +73,6 @@ public class AuthorizationViewController : MonoBehaviour
         gameObject.SetActive(true);
         buttonApprove.SetActive(false);
         authInstructions.SetActive(true);
-        authInstructions.GetComponentInChildren<TextMeshPro>().text = instructions;
+        textMeshPro.text = instructions;
     }
 }

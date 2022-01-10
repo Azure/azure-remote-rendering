@@ -907,7 +907,7 @@ namespace {
                 RR::RemoteRenderingInitialization clientInit;
                 clientInit.ConnectionType = RR::ConnectionType::General;
                 clientInit.GraphicsApi = RR::GraphicsApiType::OpenXrD3D11;
-                clientInit.ToolId = "<sample name goes here>"; // <put your sample name here>
+                clientInit.ToolId = "Native OpenXr HL2 sample"; // <put your sample name here (optional)>
                 clientInit.UnitsPerMeter = 1.0f;
                 clientInit.Forward = RR::Axis::NegativeZ;
                 clientInit.Right = RR::Axis::X;

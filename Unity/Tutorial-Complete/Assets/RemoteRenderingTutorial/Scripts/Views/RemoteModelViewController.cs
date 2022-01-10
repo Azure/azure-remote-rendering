@@ -43,6 +43,11 @@ public class RemoteModelViewController : BaseViewController<BaseRemoteRenderedMo
 
     private void OnModelStateChange(ModelState state)
     {
+        // If any of the UI elements is not set or already destroyed on shutdown skip update
+        if (loadingProgressBar == null || toggleLoadButton == null)
+        {
+            return;
+        }
         loadingProgressBar.Hide();
         
         switch (state)

@@ -66,6 +66,7 @@ public class RemoteLight : BaseRemoteLight
 
     public void OnDestroy()
     {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= RemoteRenderingCoordinator_CoordinatorStateChange;
         lightEntity?.Destroy();
     }
 
@@ -142,7 +143,12 @@ public class RemoteLight : BaseRemoteLight
         if (remoteLightComponent == null)
             return; //Nothing to do!
 
-        remoteLightComponent.Destroy();
+        if (RemoteRenderingCoordinator.instance.CurrentCoordinatorState == RemoteRenderingCoordinator.RemoteRenderingState.RuntimeConnected)
+        {
+            remoteLightComponent.Destroy();
+            lightEntity.Destroy();
+        }
+        lightEntity = null;
         remoteLightComponent = null;
         LightReady = false;
     }

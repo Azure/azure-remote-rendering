@@ -47,6 +47,11 @@ public class RemoteRenderingViewController : MonoBehaviour
         DeviceCodeInstructions.gameObject.SetActive(false);
     }
 
+    private void OnDestroy()
+    {
+        RemoteRenderingCoordinator.CoordinatorStateChange -= ApplyStateToView;
+    }
+
     /// <summary>
     /// Configure the view to match the supplied state
     /// </summary>

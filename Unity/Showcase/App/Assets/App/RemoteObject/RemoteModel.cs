@@ -99,8 +99,6 @@ public abstract class RemoteItemBase
 [Serializable]
 public class RemoteContainer : RemoteItemBase
 {
-    private string _imageUrl = null;
-
     /// <summary>
     /// The models and lights contained in the container.
     /// </summary>
@@ -115,24 +113,7 @@ public class RemoteContainer : RemoteItemBase
     /// <summary>
     /// The preview thumbnail image url.
     /// </summary>
-    public string ImageUrl
-    {
-        get
-        {
-            // If not set, use the first model as the preview
-            if (_imageUrl == null && Items != null)
-            {
-                int count = Items.Length;
-                for (int i = 0; i < count && _imageUrl == null; i++)
-                {
-                    _imageUrl = CreaetImageUrlFromModelUrl((Items[i] as RemoteModel)?.Url);
-                }
-            }
-            return _imageUrl;
-        }
-
-        set => _imageUrl = value;
-    }
+    public string ImageUrl;
 
     public bool ShouldSerializeItems()
     {
@@ -142,20 +123,6 @@ public class RemoteContainer : RemoteItemBase
     public bool ShouldSerializeImageUrl()
     {
         return !string.IsNullOrEmpty(ImageUrl);
-    }
-
-    private string CreaetImageUrlFromModelUrl(string modelUrl)
-    {
-        string result = null;
-        if (!string.IsNullOrEmpty(modelUrl))
-        {
-            int extensionStart = modelUrl.LastIndexOf('.');
-            if (extensionStart > 0 && extensionStart < modelUrl.Length)
-            {
-                result = $"{modelUrl.Substring(0, extensionStart)}.png";
-            }
-        }
-        return result;
     }
 }
 

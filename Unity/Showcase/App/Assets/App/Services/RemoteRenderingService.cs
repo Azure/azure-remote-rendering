@@ -1056,22 +1056,29 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     if (enumerationResults != null && enumerationResults.Blobs != null && enumerationResults.Blobs.Length > 0)
                     {
+                        Dictionary<string, int> assetNameToImageBlobIndex = new Dictionary<string, int>();
+                        for (var blobIndex = 0; blobIndex < enumerationResults.Blobs.Length; blobIndex++)
+                        {
+                            var blob = enumerationResults.Blobs[blobIndex];
+                            if (String.Equals(Path.GetExtension(blob.Name), ".png", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // The Azure Blob Storage file system uses case sensitive names, so using the raw blob name is fine.
+                                assetNameToImageBlobIndex.Add(Path.ChangeExtension(blob.Name, ""), blobIndex);
+                            }
+                        }
+
                         foreach (Blob blob in enumerationResults.Blobs)
                         {
                             RemoteContainer modelContainer = ToModelContainer(enumerationResults.Container, blob);
                             if (modelContainer != null)
                             {
-                                // containers created by ToModelContainer have only one item that has the blob's name so we can
-                                // safely operate on blob.Name to derive texture names.
-                                if (!String.Equals(Path.GetExtension(blob.Name), ".png", StringComparison.OrdinalIgnoreCase))
+                                int textureBlobIndex;
+                                if (assetNameToImageBlobIndex.TryGetValue(Path.ChangeExtension(blob.Name, ""), out textureBlobIndex))
                                 {
-                                    var textureBlobName = Path.ChangeExtension(blob.Name, ".png");
-                                    if (Array.Exists(enumerationResults.Blobs, b => String.Equals(b.Name, textureBlobName, StringComparison.OrdinalIgnoreCase)))
-                                    {
-                                        CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlobName);
-                                        string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
-                                        modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
-                                    }
+                                    var textureBlob = enumerationResults.Blobs[textureBlobIndex];
+                                    CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlob.Name);
+                                    string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
+                                    modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
                                 }
 
                                 remoteModelContainers.Add(modelContainer);
@@ -1992,7 +1999,18 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     try
                     {
-                        await _arrSession.ConnectAsync(new RendererInitOptions());
+                        ConnectionStatus res = await _arrSession.ConnectAsync(new RendererInitOptions());
+                        // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+                        // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+                        var graphics = _arrSession.GraphicsBinding;
+                        if (res == ConnectionStatus.Connected && graphics.Api != GraphicsApiType.SimD3D11)
+                        {
+                            Result setPoseModeRes = graphics.SetPoseMode(PoseMode.Local);
+                            if (setPoseModeRes != Result.Success)
+                            {
+                                Debug.LogError($"Failed to call GraphicsBinding.SetPoseMode: {setPoseModeRes}.");
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {

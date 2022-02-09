@@ -41,7 +41,14 @@ namespace {
 #ifdef USE_REMOTE_RENDERING
             InitARR();
 #endif
+
+            // OpenXR instance creation when using Azure Remote Rendering has to happen after RR::StartupRemoteRendering and before a session is created or opened.
             CreateInstance();
+
+#ifdef USE_REMOTE_RENDERING
+            CreateOrOpenRenderingSession();
+#endif
+
             CreateActions();
 
             bool requestRestart = false;
@@ -930,7 +937,11 @@ namespace {
                 m_sessionOverride = ""; // If there is a valid session ID to re-use, put it here. Otherwise a new one is created
                 m_client = RR::ApiHandle(RR::RemoteRenderingClient(init));
             }
+			
+			// Step 3. in CreateOrOpenRenderingSession
+        }
 
+        void CreateOrOpenRenderingSession() {
             // 3. Open/create rendering session
             {
                 auto SessionHandler = [&](RR::Status status, RR::ApiHandle<RR::CreateRenderingSessionResult> result) {
@@ -942,21 +953,21 @@ namespace {
                             SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
                         }
                     } else {
-                        SetNewState(AppConnectionStatus::ConnectionFailed, "failed");
+                        SetNewState(AppConnectionStatus::ConnectionFailed, (status == RR::Status::GraphicsBindingIncomplete) ? "graphics binding incomplete" : "failed");
                     }
                 };
+
+                SetNewState(AppConnectionStatus::CreatingSession, nullptr);
 
                 // If we had an old (valid) session that we can recycle, we call async function m_client->OpenRenderingSessionAsync
                 if (!m_sessionOverride.empty()) {
                     m_client->OpenRenderingSessionAsync(m_sessionOverride, SessionHandler);
-                    SetNewState(AppConnectionStatus::CreatingSession, nullptr);
                 } else {
                     // create a new session
                     RR::RenderingSessionCreationOptions init;
                     init.MaxLeaseInMinutes = 10; // session is leased for 10 minutes
                     init.Size = RR::RenderingSessionVmSize::Standard;
                     m_client->CreateNewRenderingSessionAsync(init, SessionHandler);
-                    SetNewState(AppConnectionStatus::CreatingSession, nullptr);
                 }
             }
         }

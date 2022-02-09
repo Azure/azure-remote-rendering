@@ -62,44 +62,7 @@ HolographicAppMain::HolographicAppMain(std::shared_ptr<DX::DeviceResources> cons
         m_client = RR::ApiHandle(RR::RemoteRenderingClient(init));
     }
 
-    // 3. Open/create rendering session
-    {
-        auto SessionHandler = [&](RR::Status status, RR::ApiHandle<RR::CreateRenderingSessionResult> result)
-        {
-            if (status == RR::Status::OK)
-            {
-                auto ctx = result->GetContext();
-                if (ctx.Result == RR::Result::Success)
-                {
-                    SetNewSession(result->GetSession());
-                }
-                else
-                {
-                    SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
-                }
-            }
-            else
-            {
-                SetNewState(AppConnectionStatus::ConnectionFailed, "failed");
-            }
-        };
-
-        // If we had an old (valid) session that we can recycle, we call async function m_client->OpenRenderingSessionAsync
-        if (!m_sessionOverride.empty())
-        {
-            m_client->OpenRenderingSessionAsync(m_sessionOverride, SessionHandler);
-            SetNewState(AppConnectionStatus::CreatingSession, nullptr);
-        }
-        else
-        {
-            // create a new session
-            RR::RenderingSessionCreationOptions init;
-            init.MaxLeaseInMinutes = 10; // session is leased for 10 minutes
-            init.Size = RR::RenderingSessionVmSize::Standard;
-            m_client->CreateNewRenderingSessionAsync(init, SessionHandler);
-            SetNewState(AppConnectionStatus::CreatingSession, nullptr);
-        }
-    }
+    // Step 3. in SetHolographicSpace
 
 #endif
 
@@ -187,6 +150,45 @@ void HolographicAppMain::SetHolographicSpace(HolographicSpace const& holographic
     //
 
 #ifdef USE_REMOTE_RENDERING
+    // 3. Open/create rendering session
+    {
+        auto SessionHandler = [&](RR::Status status, RR::ApiHandle<RR::CreateRenderingSessionResult> result)
+        {
+            if (status == RR::Status::OK)
+            {
+                auto ctx = result->GetContext();
+                if (ctx.Result == RR::Result::Success)
+                {
+                    SetNewSession(result->GetSession());
+                }
+                else
+                {
+                    SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
+                }
+            }
+            else
+            {
+                SetNewState(AppConnectionStatus::ConnectionFailed, (status == RR::Status::GraphicsBindingIncomplete) ? "graphics binding incomplete" : "failed");
+            }
+        };
+
+        SetNewState(AppConnectionStatus::CreatingSession, nullptr);
+
+        // If we had an old (valid) session that we can recycle, we call async function m_client->OpenRenderingSessionAsync
+        if (!m_sessionOverride.empty())
+        {
+            m_client->OpenRenderingSessionAsync(m_sessionOverride, SessionHandler);
+        }
+        else
+        {
+            // create a new session
+            RR::RenderingSessionCreationOptions init;
+            init.MaxLeaseInMinutes = 10; // session is leased for 10 minutes
+            init.Size = RR::RenderingSessionVmSize::Standard;
+            m_client->CreateNewRenderingSessionAsync(init, SessionHandler);
+        }
+    }
+
     // Initialize the status display.
     m_statusDisplay = std::make_unique<StatusDisplay>(m_deviceResources);
 #endif

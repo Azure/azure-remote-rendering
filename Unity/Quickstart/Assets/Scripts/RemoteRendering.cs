@@ -76,7 +76,9 @@ public class RemoteRendering : MonoBehaviour
     {
         // initialize Azure Remote Rendering for use in Unity:
         // it needs to know which camera is used for rendering the scene
-        RemoteUnityClientInit clientInit = new RemoteUnityClientInit(Camera.main);
+        // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+        // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+        RemoteUnityClientInit clientInit = new RemoteUnityClientInit(Camera.main, PoseMode.Local);
         RemoteManagerUnity.InitializeManager(clientInit);
 
         // lookup the ARRServiceUnity component and subscribe to session events
@@ -360,18 +362,6 @@ public class RemoteRendering : MonoBehaviour
             {
                 LogMessage($"Failed to connect to runtime: {res}.", true);
                 return;
-            }
-
-            // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
-            // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
-            var graphics = arrService.CurrentActiveSession.GraphicsBinding;
-            if (res == ConnectionStatus.Connected)
-            {
-				Result setPoseModeRes = graphics.SetPoseMode(PoseMode.Local);
-				if (setPoseModeRes != Result.Success)
-				{
-					Debug.LogError($"Failed to call GraphicsBinding.SetPoseMode: {setPoseModeRes}.");
-				}
             }
 
             try

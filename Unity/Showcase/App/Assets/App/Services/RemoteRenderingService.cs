@@ -677,7 +677,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (Application.isPlaying)
             {
-                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main));
+                // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+                // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main, PoseMode.Local));
             }
             else
             {
@@ -2000,17 +2002,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     try
                     {
                         ConnectionStatus res = await _arrSession.ConnectAsync(new RendererInitOptions());
-                        // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
-                        // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
-                        var graphics = _arrSession.GraphicsBinding;
-                        if (res == ConnectionStatus.Connected)
-                        {
-                            Result setPoseModeRes = graphics.SetPoseMode(PoseMode.Local);
-                            if (setPoseModeRes != Result.Success)
-                            {
-                                Debug.LogError($"Failed to call GraphicsBinding.SetPoseMode: {setPoseModeRes}.");
-                            }
-                        }
                     }
                     catch (Exception ex)
                     {

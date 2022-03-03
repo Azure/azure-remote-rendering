@@ -592,8 +592,13 @@ public class HandMenuHooks : MonoBehaviour
                 notificationBar.SetScrollableNotification(3f, "Session disconnected.");
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnectionError:
+                var connectError = _remoteRenderingService?.PrimaryMachine?.Session?.Connection?.ConnectionError;
+                if (!connectError.HasValue)
+                {
+                    connectError = Microsoft.Azure.RemoteRendering.Result.Fail;
+                }
                 sessionStatusText.text = "Disconnected";
-                notificationBar.SetNotification(-1f, 0.3f, new string[]{"Connection failed. Retrying to connect.", "Connection failed. Retrying to connect..", "Connection failed. Retrying to connect..."});
+                notificationBar.SetNotification(-1f, 0.3f, new string[]{$"Connect error: {connectError}. Retrying.", $"Connect error: {connectError}. Retrying..", $"Connect error: {connectError}. Retrying..." }, AppNotificationType.Error);
                 break;
             case RemoteRenderingServiceStatus.SessionReadyAndConnected:
                 sessionStatusText.text = "Connected";

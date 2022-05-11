@@ -76,9 +76,7 @@ public class RemoteRendering : MonoBehaviour
     {
         // initialize Azure Remote Rendering for use in Unity:
         // it needs to know which camera is used for rendering the scene
-        // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
-        // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
-        RemoteUnityClientInit clientInit = new RemoteUnityClientInit(Camera.main, PoseMode.Local);
+        RemoteUnityClientInit clientInit = new RemoteUnityClientInit(Camera.main);
         RemoteManagerUnity.InitializeManager(clientInit);
 
         // lookup the ARRServiceUnity component and subscribe to session events

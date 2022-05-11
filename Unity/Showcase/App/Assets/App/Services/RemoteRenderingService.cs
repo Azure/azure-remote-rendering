@@ -677,9 +677,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (Application.isPlaying)
             {
-                // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
-                // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
-                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main, PoseMode.Local));
+                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main));
             }
             else
             {

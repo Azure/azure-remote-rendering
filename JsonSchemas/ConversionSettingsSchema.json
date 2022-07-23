@@ -16,7 +16,7 @@
     "vector_attribute": {
       "type": "string",
       "description": "Destination format of the normals, tangents and binormals attributes",
-      "enum": [ "NONE", "8_8_8_8_SIGNED_NORMALIZED", "16_16_16_16_FLOAT" ]
+      "enum": [ "AUTO", "NONE", "8_8_8_8_SIGNED_NORMALIZED", "16_16_16_16_FLOAT" ]
     },
     "texcoord_attribute": {
       "type": "string",

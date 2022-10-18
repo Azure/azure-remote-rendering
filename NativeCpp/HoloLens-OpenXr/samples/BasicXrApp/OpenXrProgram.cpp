@@ -1051,7 +1051,7 @@ namespace {
                 // set on the HolographicCamera.
                 auto settings = m_api->GetCameraSettings();
                 float localNear = std::min(m_nearFar.Near, m_nearFar.Far);
-                float localFar = std::max(m_nearFar.Far, m_nearFar.Far);
+                float localFar = std::max(m_nearFar.Near, m_nearFar.Far);
                 settings->SetNearAndFarPlane(localNear, localFar);
                 settings->SetInverseDepth(m_nearFar.Near > m_nearFar.Far);
                 settings->SetEnableDepth(true);

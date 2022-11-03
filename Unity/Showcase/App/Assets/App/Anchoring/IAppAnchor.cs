@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.XR.ARFoundation;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -11,6 +13,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     /// </summary>
     public interface IAppAnchor : IDisposable
     {
+        /// <summary>
+        /// The debug name.
+        /// </summary>
+        string Name { get; }
+
         /// <summary>
         /// Get the anchor id.
         /// </summary>
@@ -22,10 +29,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         Transform Transform { get; }
 
         /// <summary>
-        /// Did this anchor start from a native anchor. If true, the anchor was initialized from a native anchor.
-        /// If false, the anchor was initialized from a cloud anchor id. 
+        /// Get the position of the anchor
         /// </summary>
-        bool FromNative { get; }
+        Vector3 Position { get; }
+
+        /// <summary>
+        /// Get the rotation of the anchor.
+        /// </summary>
+        Quaternion Rotation { get; }
 
         /// <summary>
         /// Did this anchor start from a cloud anchor. If true, the anchor was initialized from a cloud anchor id.
@@ -39,9 +50,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         bool IsLocated { get; }
 
         /// <summary>
-        /// Event raised when the cloud anchor has been located.
+        /// Get the ARAnchor if it exists
         /// </summary>
-        event Action<IAppAnchor> Located;
+        public ARAnchor ArAnchor { get; }
 
         /// <summary>
         /// Event raise when the cloud anchor has changed.
@@ -51,7 +62,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Try to move the anchor to this new position.
         /// </summary>
-        void Move(Transform transform);
+        Task Move(Transform transform);
+
+        /// <summary>
+        /// Start moving the cloud and/or native anchor to a new position, and complete a task once finished.
+        /// </summary>
+        Task Move(Pose pose);
 
         /// <summary>
         /// Delete the native and cloud anchors.

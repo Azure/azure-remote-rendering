@@ -12,6 +12,10 @@ PrefabInstance:
       value: AppPokePointer
       objectReference: {fileID: 0}
     - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -24,6 +28,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
@@ -33,14 +41,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
-      propertyPath: m_RootOrder
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4338333115073164, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}
@@ -61,5 +61,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1987334426071670161, guid: 3c9d8ac2ee1f68e4691512291b0250fa,
         type: 3}
+    - target: {fileID: 114559408797139306, guid: 38b548c6a2c270545a383296ad2bc4d5,
+        type: 3}
+      propertyPath: ignoreCollidersNotInFOV
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}

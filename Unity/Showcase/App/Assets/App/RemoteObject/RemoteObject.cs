@@ -6,11 +6,11 @@ using Microsoft.Azure.RemoteRendering.Unity;
 using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
+using Microsoft.MixedReality.Toolkit.Physics;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
@@ -47,7 +47,7 @@ public class RemoteObject : MonoBehaviour
 
                 if (_started)
                 {
-                    dataChanged?.Invoke(data);
+                    dataChanged?.Invoke(new RemoteObjectDataChangedEventData(this, data));
                 }
             }
         }
@@ -90,6 +90,20 @@ public class RemoteObject : MonoBehaviour
     {
         get => placeholder;
         set => placeholder = value;
+    }
+
+    [SerializeField]
+    [PhysicsLayer]
+    [Tooltip("The layer to apply to the loaded objects that are interactable.")]
+    private int interactionLayer = -1;
+
+    /// <summary>
+    /// The layer to apply to the loaded objects that are interactable.
+    /// </summary>
+    public int InteractionLayer
+    {
+        get => interactionLayer;
+        set => interactionLayer = value;
     }
 
     [Header("Events")]
@@ -223,16 +237,6 @@ public class RemoteObject : MonoBehaviour
     private Transform MainContainer { get; set; }
     #endregion Private Properties
 
-    #region Public Methods
-    /// <summary>
-    /// Destroy this game object
-    /// </summary>
-    public void Destroy()
-    {
-        StartCoroutine(DestroyWorker());
-    }
-    #endregion Public Methods
-
     #region MonoBehavior Methods
     private void Start()
     {
@@ -252,7 +256,7 @@ public class RemoteObject : MonoBehaviour
 
         if (data != null)
         {
-            dataChanged?.Invoke(data);
+            dataChanged?.Invoke(new RemoteObjectDataChangedEventData(this, data));
         }
     }
 
@@ -289,18 +293,6 @@ public class RemoteObject : MonoBehaviour
         else if (status.OldStatus == RemoteRenderingServiceStatus.SessionReadyAndConnected)
         {
             Unload();
-        }
-    }
-
-    /// <summary>
-    /// Delay destroy to allow other things to finish first (like confirmation sounds)
-    /// </summary>
-    private IEnumerator DestroyWorker()
-    {
-        yield return new WaitForSeconds(0.5f);
-        if (!_destroyed && gameObject != null)
-        {
-            GameObject.Destroy(gameObject);
         }
     }
 
@@ -418,7 +410,11 @@ public class RemoteObject : MonoBehaviour
         UpdateContainerVisibility(item, MainContainer);
 
         // Load remote model children
-        await LoadRemoteModels(machine, item, remoteContainer?.Entity);
+        IList<LoadModelResult> loadedRemoteModels = null;
+        if (remoteContainer != null)
+        {
+            loadedRemoteModels = await LoadRemoteModels(machine, item, remoteContainer.Entity);
+        }
 
         // If not loading anymore, destroy remote container and exit early
         if (loadingTask.IsCompleted)
@@ -445,6 +441,14 @@ public class RemoteObject : MonoBehaviour
             MoveContainerToGround(remoteContainer, containerBounds);
         }
 
+        // Sync now and save initiali positions of the remote models
+        if (loadedRemoteModels != null && remoteContainer != null)
+        {
+            remoteContainer.SyncToRemote();
+
+            await LoadRemoteSnapshot(loadedRemoteModels, remoteContainer.Entity);
+        }
+
         // If not loading exit
         if (loadingTask.IsCompleted)
         {
@@ -453,19 +457,16 @@ public class RemoteObject : MonoBehaviour
         }
 
         // Load lights children
-        await LoadRemoteLights(machine, item, remoteContainer?.Entity);
+        if (remoteContainer != null)
+        {
+            await LoadRemoteLights(machine, item, remoteContainer.Entity);
+        }
 
         // If not loading exit
         if (loadingTask.IsCompleted)
         {
             DestroyRemoteContainer(remoteContainer);
             return;
-        }
-
-        // Sync now
-        if (remoteContainer != null)
-        {
-            remoteContainer.SyncToRemote();
         }
 
         // Commit the containers if done loading
@@ -577,17 +578,18 @@ public class RemoteObject : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             GameObject meshObject = meshes[i].gameObject;
+            ApplyInteractionLayer(meshObject.gameObject);
             meshObject.EnsureComponent<BoxCollider>();
             meshObject.EnsureComponent<NearInteractionGrabbable>();
         }
     }
 
-    private async Task LoadRemoteModels(IRemoteRenderingMachine machine, RemoteItemBase model, Entity remoteParent)
+    private async Task<IList<LoadModelResult>> LoadRemoteModels(IRemoteRenderingMachine machine, RemoteItemBase model, Entity remoteParent)
     {
         RemoteContainer modelWithChildren = model as RemoteContainer;
         if (modelWithChildren == null || remoteParent == null)
         {
-            return;
+            return new List<LoadModelResult>();
         }
 
         // Load children
@@ -602,37 +604,51 @@ public class RemoteObject : MonoBehaviour
                 }
             }
         }
-
         // Wait for the items to finish loading
         if (loadingItems.Count > 0)
         {
-            var results = await Task.WhenAll(loadingItems);
-
-            _transformSnapshot = null;
-            var remoteParentSnapshot = new EntitySnapshot(remoteParent, null);
-            List<Task<List<EntitySnapshot>>> snapshotItems = new List<Task<List<EntitySnapshot>>>();
-            foreach (LoadModelResult result in results)
-            {
-                if (result != null)
-                {
-                    snapshotItems.Add(CreateTransformSnapshot(result, remoteParentSnapshot));
-                }
-            }
-
-            var snapshots = await Task.WhenAll(snapshotItems);
-            // one slot for root snapshot
-            var capacity = 1;
-            foreach (List<EntitySnapshot> snapshotList in snapshots)
-            {
-                capacity += snapshotList.Count;
-            }
-            var transformSnapshot = new List<EntitySnapshot>(capacity);
-            foreach (List<EntitySnapshot> snapshotList in snapshots)
-            {
-                transformSnapshot.AddRange(snapshotList);
-            }
-            _transformSnapshot = transformSnapshot;
+            return await Task.WhenAll(loadingItems);
         }
+        else
+        {
+            return new List<LoadModelResult>();
+        }
+    }
+
+    /// <summary>
+    /// Save the initial transforms of the remote entity.  
+    /// </summary>
+    private async Task LoadRemoteSnapshot(IList<LoadModelResult> loadedRemoteModels, Entity remoteParent)
+    {
+        _transformSnapshot = null;
+        if (loadedRemoteModels == null || remoteParent == null)
+        {
+            return;
+        }
+
+        var remoteParentSnapshot = remoteParent.CreateSnapshot();
+        List<Task<List<EntitySnapshot>>> snapshotItems = new List<Task<List<EntitySnapshot>>>();
+        foreach (LoadModelResult result in loadedRemoteModels)
+        {
+            if (result != null)
+            {
+                snapshotItems.Add(CreateTransformSnapshot(result, remoteParentSnapshot));
+            }
+        }
+
+        var snapshots = await Task.WhenAll(snapshotItems);
+        // one slot for root snapshot
+        var capacity = 1;
+        foreach (List<EntitySnapshot> snapshotList in snapshots)
+        {
+            capacity += snapshotList.Count;
+        }
+        var transformSnapshot = new List<EntitySnapshot>(capacity);
+        foreach (List<EntitySnapshot> snapshotList in snapshots)
+        {
+            transformSnapshot.AddRange(snapshotList);
+        }
+        _transformSnapshot = transformSnapshot;
     }
 
     private Task<List<EntitySnapshot>> CreateTransformSnapshot(LoadModelResult result, EntitySnapshot parent)
@@ -643,7 +659,7 @@ public class RemoteObject : MonoBehaviour
             var entities = result.GetLoadedObjectsOfType(ObjectType.Entity);
             var entityCount = entities.Count;
             var snapshotList = new List<EntitySnapshot>(entityCount);
-            var entityToEntitySnapshot = new Hashtable(parent != null ? entityCount + 1 : entityCount);
+            var entityToEntitySnapshot = new Dictionary<Entity, EntitySnapshot>(parent != null ? entityCount + 1 : entityCount);
             if (parent != null)
             {
                 entityToEntitySnapshot[parent.Entity] = parent;
@@ -652,7 +668,7 @@ public class RemoteObject : MonoBehaviour
             foreach (var e in entities)
             {
                 var current = e as Entity;
-                var currentParent = entityToEntitySnapshot[current.Parent] as EntitySnapshot;
+                var currentParent = entityToEntitySnapshot[current.Parent];
                 var entitySnapshot = new EntitySnapshot(current, currentParent);
                 entityToEntitySnapshot[current] = entitySnapshot;
                 snapshotList.Add(entitySnapshot);
@@ -948,7 +964,12 @@ public class RemoteObject : MonoBehaviour
     private static bool ModelNeedsBounds(RemoteItemBase item)
     {
         return
-            (item != null && (item.Transform.Center || item.Transform.MinSize != Vector3.zero || item.Transform.MaxSize != Vector3.zero || !item.HasColliders));
+            (item != null && (item.Transform.Center || item.Transform.MinSize != Vector3.zero || item.Transform.MaxSize != Vector3.zero || !HasRemoteColliders(item)));
+    }
+
+    private static bool HasRemoteColliders(RemoteItemBase item)
+    {
+        return item is RemoteContainer && ((RemoteContainer)item).HasColliders;
     }
 
     private void SetColliderBounds(Component container, UnityEngine.Bounds localBounds)
@@ -996,8 +1017,20 @@ public class RemoteObject : MonoBehaviour
         }
 
         BoxCollider collider = container.EnsureComponent<BoxCollider>();
+        ApplyInteractionLayer(container.gameObject);
         container.EnsureComponent<NearInteractionGrabbable>();
         collider.enabled = false;
+    }
+
+    /// <summary>
+    /// Apply the specified object layer to the container.
+    /// </summary>
+    private void ApplyInteractionLayer(GameObject container)
+    {
+        if (container != null && interactionLayer > 0)
+        {
+            container.layer = interactionLayer;
+        }
     }
 
     private void ApplyTransform(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
@@ -1030,6 +1063,8 @@ public class RemoteObject : MonoBehaviour
 
     /// <summary>
     /// Ensure the bounds of the object falls within the min and max settings.
+    /// Min and max settings are in the model coordinate system. Outside 
+    /// scales are ignored.
     /// </summary>
     private void ApplyMinMaxSize(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
     {
@@ -1050,10 +1085,17 @@ public class RemoteObject : MonoBehaviour
         }
 
         //
+        // Get max and min size and adjust by parent transform
+        //
+
+        var max = item.Transform.MaxSize;
+        var min = item.Transform.MinSize;
+
+        //
         // Get the global size, but along the local coordinate system.
         //
 
-        var currentSize = Vector3.Scale(container.transform.localScale, bounds.size);
+        var currentSize = Vector3.Scale(item.Transform.Scale, bounds.size);
 
         //
         // Apply Min Size
@@ -1061,58 +1103,58 @@ public class RemoteObject : MonoBehaviour
 
         float scale = 1.0f;
 
-        if (item.Transform.MinSize.x > 0 &&
+        if (min.x > 0 &&
             currentSize.x > 0 &&
-            currentSize.x < item.Transform.MinSize.x)
+            currentSize.x < min.x)
         {
-            scale = Mathf.Max(scale, item.Transform.MinSize.x / currentSize.x);
+            scale = Mathf.Max(scale, min.x / currentSize.x);
         }
 
-        if (item.Transform.MinSize.y > 0 &&
+        if (min.y > 0 &&
             currentSize.y > 0 &&
-            currentSize.y < item.Transform.MinSize.y)
+            currentSize.y < min.y)
         {
-            scale = Mathf.Max(scale, item.Transform.MinSize.y / currentSize.y);
+            scale = Mathf.Max(scale, min.y / currentSize.y);
         }
 
-        if (item.Transform.MinSize.z > 0 &&
+        if (min.z > 0 &&
             currentSize.z > 0 &&
-            currentSize.z < item.Transform.MinSize.z)
+            currentSize.z < min.z)
         {
-            scale = Mathf.Max(scale, item.Transform.MinSize.z / currentSize.z);
+            scale = Mathf.Max(scale, min.z / currentSize.z);
         }
 
         currentSize = currentSize * scale;
-        container.transform.localScale = container.transform.localScale * scale;
+        container.transform.localScale = item.Transform.Scale * scale;
 
         //
-        // Apply Max Size
+        // Apply Max Size 
         //
 
         scale = 1.0f;
 
-        if (item.Transform.MaxSize.x > 0 &&
+        if (max.x > 0 &&
             currentSize.x > 0 &&
-            currentSize.x > item.Transform.MaxSize.x)
+            currentSize.x > max.x)
         {
-            scale = Mathf.Min(scale, item.Transform.MaxSize.x / currentSize.x);
+            scale = Mathf.Min(scale, max.x / currentSize.x);
         }
 
-        if (item.Transform.MaxSize.y > 0 &&
+        if (max.y > 0 &&
            currentSize.y > 0 &&
-           currentSize.y > item.Transform.MaxSize.y)
+           currentSize.y > max.y)
         {
-            scale = Mathf.Min(scale, item.Transform.MaxSize.y / currentSize.y);
+            scale = Mathf.Min(scale, max.y / currentSize.y);
         }
 
-        if (item.Transform.MaxSize.z > 0 &&
+        if (max.z > 0 &&
             currentSize.z > 0 &&
-            currentSize.z > item.Transform.MaxSize.z)
+            currentSize.z > max.z)
         {
-            scale = Mathf.Min(scale, item.Transform.MaxSize.z / currentSize.z);
+            scale = Mathf.Min(scale, max.z / currentSize.z);
         }
 
-        container.transform.localScale = container.transform.localScale * scale;
+        container.transform.localScale = item.Transform.Scale * scale;
     }
 
     private void MoveToCenter(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
@@ -1142,7 +1184,6 @@ public class RemoteObject : MonoBehaviour
 
         container.transform.localPosition = offset;
     }
-
 
     private void MoveContainerToGround(Component container, UnityEngine.Bounds bounds)
     {
@@ -1230,7 +1271,7 @@ public class RemoteObject : MonoBehaviour
         var collider = syncObject.GetComponent<Collider>();
         if (collider != null)
         {
-            collider.enabled = visible && (item != null && !item.HasColliders);
+            collider.enabled = visible && (item != null && !HasRemoteColliders(item));
         }
     }
     #endregion Private functions

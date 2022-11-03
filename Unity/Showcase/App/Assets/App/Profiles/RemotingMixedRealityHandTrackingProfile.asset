@@ -13,13 +13,17 @@ MonoBehaviour:
   m_Name: RemotingMixedRealityHandTrackingProfile
   m_EditorClassIdentifier: 
   isCustomProfile: 1
-  jointPrefab: {fileID: 1370450866519632, guid: 3e8988bbb870e1a4a81fd2c177b29865,
+  jointPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
     type: 3}
-  palmPrefab: {fileID: 6797406804172968804, guid: 750bdc3344567a447960aae3eda2b462,
+  palmPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
     type: 3}
-  fingertipPrefab: {fileID: 7094064642998883381, guid: b37dde41a983d664c8a09a91313733e7,
+  fingertipPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
     type: 3}
-  handMeshPrefab: {fileID: 1887883006053652, guid: a86f479797fea8f4189f924b3b6ad979,
+  systemHandMeshMaterial: {fileID: 2100000, guid: 45082b98567b3d44ca3bdbe39f46041a,
+    type: 2}
+  riggedHandMeshMaterial: {fileID: 2100000, guid: 46180a965b426614f97a7239d1248a1a,
+    type: 2}
+  handMeshPrefab: {fileID: 1887883006053652, guid: 360a7f427800f5a4896a7f661627e9c3,
     type: 3}
   handMeshVisualizationModes: 0
   handJointVisualizationModes: 1

@@ -11,7 +11,7 @@ public abstract class ClickableButton : MonoBehaviour
     private string _label = string.Empty;
     private bool _selected = false;
 
-    #region Serilaized Fields
+    #region Serialized Fields
     [Header("Clickable Button Settings")]
 
     [SerializeField]

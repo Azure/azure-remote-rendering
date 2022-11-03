@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
@@ -11,34 +12,52 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     /// </summary>
     public static class RemoteObjectHelper
     {
-        public static RemoteObject Load(
-            RemoteItemBase remoteData, 
-            GameObject containerPrefab, 
-            Transform parent = null, 
-            Action<RemoteObject> initailizeAction = null)
+        public static async Task<RemoteObject> Spawn(RemoteItemBase remoteData)
         {
-            GameObject newObject;
-            if (containerPrefab == null)
+            var stage = await AppServices.RemoteObjectStageService.GetRemoteStage();
+            return await Spawn(remoteData, new RemoteObjectSpawnData()
             {
-                newObject = new GameObject();
-                // avoid scripts from running when adding to object
-                newObject.SetActive(false);
-            }
-            else
+                Staged = stage.IsStageVisible
+            });
+        }
+
+        public static async Task<RemoteObject> Spawn(RemoteItemBase remoteData, RemoteObjectSpawnData spawnData)
+        {
+            var original = Resources.Load<GameObject>("RemoteObject");
+
+            GameObject sharedObject = null;
+            if (original != null)
             {
-                // avoid scripts from running right when initantiated and adding to object
-                containerPrefab.SetActive(false);
-                newObject = GameObject.Instantiate(containerPrefab);
+                sharedObject = await AppServices.SharingService.SpawnTarget(original, data: new object[] { spawnData });
             }
-            newObject.transform.SetParent(parent, true);
 
-            var remoteObject = newObject.EnsureComponent<RemoteObject>();
-            remoteObject.Data = remoteData;
+            RemoteObject result = null;
+            RemoteObjectReparent mover = null;
+            if (sharedObject != null)
+            {
+                result = sharedObject.GetComponent<RemoteObject>();
+                mover = sharedObject.GetComponent<RemoteObjectReparent>();
+            }
 
-            initailizeAction?.Invoke(remoteObject);
-            newObject.SetActive(true);
+            if (result != null)
+            {
+                result.Data = remoteData;
+            }
 
-            return remoteObject;
+            if (mover != null )
+            {
+                mover.Reparent(reposition: true, spawnData.Staged ? 
+                    RemoteObjectReparent.OperationType.Staged : RemoteObjectReparent.OperationType.Unstaged);
+            }
+
+            return result;
         }
     }
+
+    [Serializable]
+    public struct RemoteObjectSpawnData
+    {
+        public bool Staged { get; set; }
+    }
+
 }

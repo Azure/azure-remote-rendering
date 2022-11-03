@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System.Collections;
 using System.Collections.Generic;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using UnityEngine;
@@ -11,20 +12,21 @@ using UnityEngine;
 public class ListItemRepeater : MonoBehaviour
 {
     private List<ListItem> _listItems;
+    private bool _listItemsInvalid;
     private bool _started;
-    private bool _appQuitting; 
+    private bool _appQuitting;
 
     #region Serialize Fields
     [Header("List Data")]
 
     [SerializeField]
     [Tooltip("A list of data to render within the list container.")]
-    private List<System.Object> dataSource = new List<System.Object>();
+    private IList<object> dataSource = null;
 
     /// <summary>
     /// A list of data to render within the list container.
     /// </summary>
-    public List<System.Object> DataSource 
+    public IList<object> DataSource 
     {
         get => dataSource;
 
@@ -34,6 +36,7 @@ public class ListItemRepeater : MonoBehaviour
             {
                 dataSource = value;
                 CreateItems();
+                dataSourceChanged?.Invoke(new ListEventData(gameObject, listItem: null, listItemIndex: -1));
             }
         }
     }
@@ -177,6 +180,24 @@ public class ListItemRepeater : MonoBehaviour
     [Header("List Event")]
 
     [SerializeField]
+    [Tooltip("Event raised when a list data source changes.")]
+    private ListEvent dataSourceChanged = new ListEvent();
+
+    /// <summary>
+    /// Event raised when a list data source changes.
+    /// </summary>
+    public ListEvent DataSourceChanged => dataSourceChanged;
+
+    [SerializeField]
+    [Tooltip("Event raised when a list item object is being created.")]
+    private ListEvent listItemCreating = new ListEvent();
+
+    /// <summary>
+    /// Event raised when a list item object is being created.
+    /// </summary>
+    public ListEvent ListItemCreating => listItemCreating;
+
+    [SerializeField]
     [Tooltip("Event raised when a list item object was created.")]
     private ListEvent listItemCreated = new ListEvent();
 
@@ -209,6 +230,12 @@ public class ListItemRepeater : MonoBehaviour
     /// Get the selected item
     /// </summary>
     public ListItem Selected { get; private set; }
+    
+
+    /// <summary>
+    /// Get the size of the data source
+    /// </summary>
+    public int Count => dataSource == null ? 0 : dataSource.Count;
     #endregion Public Properties
 
     #region MonoBehavior Functions
@@ -244,7 +271,7 @@ public class ListItemRepeater : MonoBehaviour
             listDragInput = GetComponent<DragValue>();
         }
 
-        CreateItems();
+        InvalidateItems();
     }
 
     /// <summary>
@@ -300,6 +327,27 @@ public class ListItemRepeater : MonoBehaviour
 
     #region Private Functions
     /// <summary>
+    /// Invalid items and delay update.
+    /// </summary>
+    private void InvalidateItems()
+    {
+        _listItemsInvalid = true;
+        StartCoroutine(DelayCreateItemsIfInvalid());
+    }
+
+    /// <summary>
+    /// Create items if the item set is still invalid.
+    /// </summary>
+    private IEnumerator DelayCreateItemsIfInvalid()
+    {
+         yield return 0;
+        if (_listItemsInvalid)
+        {
+            CreateItems();
+        }
+    }
+
+    /// <summary>
     /// Create new list items, and attach to the container object.
     /// </summary>
     private void CreateItems()
@@ -312,7 +360,8 @@ public class ListItemRepeater : MonoBehaviour
         listContainer?.StartUpdate();
         DestroyItems();
         _listItems = new List<ListItem>();
-        
+        _listItemsInvalid = false;
+
         if (listContainer != null)
         {
             int index = 0;
@@ -320,20 +369,26 @@ public class ListItemRepeater : MonoBehaviour
 
             if (dataSource != null && listItemPrefab != null)
             {
-                foreach (var data in dataSource)
+                int count = dataSource.Count;
+                for (int i = 0; i < count; i++)
                 {
+                    var data = dataSource[i];
                     var listItemGameObject = GameObject.Instantiate(listItemPrefab);
                     listContainer.Insert(listItemGameObject.transform, false);
 
                     var listItem = listItemGameObject.GetComponent<ListItem>();
-                    listItem?.SetParent(this);
-                    listItem?.SetDataSource(data);
-                    listItem?.SetIndex(index++);
-                    listItem?.SelectionChanged.AddListener(ListItemSelectionChanged);
-                    _listItems.Add(listItem);
+                    if (listItem != null)
+                    {
+                        listItemCreating?.Invoke(new ListEventData(gameObject, listItem, listItemIndex: i));
+                        listItem.SetParent(this);
+                        listItem.SetDataSource(data);
+                        listItem.SetIndex(index++);
+                        listItem.SelectionChanged.AddListener(ListItemSelectionChanged);
+                        _listItems.Add(listItem);
 
-                    // capture the item size
-                    itemSize = listItem.TotalItemSize;
+                        // capture the item size
+                        itemSize = listItem.TotalItemSize;
+                    }
                 }
             }
 
@@ -362,8 +417,14 @@ public class ListItemRepeater : MonoBehaviour
                 totalListSize.x, totalListSize.y, this.listBackground.transform.localScale.z);
         }
 
-        // Update the scrollable region size.
-        listScroller?.SetScrollSize(this.listSize);
+        if (listScroller != null)
+        {
+            // Update the scrollable region size.
+            listScroller.SetScrollSize(this.listSize);
+
+            // Reset scroller position
+            listScroller.SnapTo(0.0f);
+        }
 
         // Turn on clipping after children have been added.
         clippingUtility?.UpdateClippedChildren();
@@ -372,9 +433,19 @@ public class ListItemRepeater : MonoBehaviour
             clippingPrimitive.enabled = true;
         }
 
-        foreach (var listItem in _listItems)
+        CreatedItems();
+    }
+
+    /// <summary>
+    /// Called once new items have been created
+    /// </summary>
+    private void CreatedItems()
+    {
+        int count = _listItems.Count;
+        for (int i = 0; i < count; i++)
         {
-            listItemCreated?.Invoke(new ListEventData(gameObject, listItem));
+            var listItem = _listItems[i];
+            listItemCreated?.Invoke(new ListEventData(gameObject, listItem, listItemIndex: i));
         }
     }
 
@@ -392,10 +463,12 @@ public class ListItemRepeater : MonoBehaviour
 
         if (_listItems != null)
         {
-            foreach (var listItem in _listItems)
+            int count = _listItems.Count;
+            for (int i = 0; i < count; i++)
             {
+                var listItem = _listItems[i];
                 listItem?.SelectionChanged.RemoveListener(ListItemSelectionChanged);
-                listItemDestroyed?.Invoke(new ListEventData(gameObject, listItem));
+                listItemDestroyed?.Invoke(new ListEventData(gameObject, listItem, listItemIndex: i));
             }
             _listItems = null;
         }
@@ -415,15 +488,16 @@ public class ListItemRepeater : MonoBehaviour
         if (selected && Selected != listItem)
         {
             Selected?.SetSelection(false);
-            Selected = _listItems.Contains(listItem) ? listItem : null;
+            int selectedIndex = _listItems.IndexOf(listItem);
+            Selected = selectedIndex >= 0 && selectedIndex < _listItems.Count ? _listItems[selectedIndex] : null;
             Selected?.SetSelection(true);
-            SelectionChanged?.Invoke(new ListEventData(gameObject, Selected));
+            SelectionChanged?.Invoke(new ListEventData(gameObject, Selected, listItemIndex: selectedIndex));
         }
         else if (!selected && Selected == listItem)
         {
             Selected?.SetSelection(false);
             Selected = null;
-            SelectionChanged?.Invoke(new ListEventData(gameObject, Selected));
+            SelectionChanged?.Invoke(new ListEventData(gameObject, Selected, listItemIndex: - 1));
         }
     }
     #endregion Private Functions

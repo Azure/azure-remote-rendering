@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
 	[MixedRealityServiceProfile(typeof(IPointerStateService))]
-	[CreateAssetMenu(fileName = "PointerStateServiceProfile", menuName = "MixedRealityToolkit/PointerStateService Configuration Profile")]
+	[CreateAssetMenu(fileName = "PointerStateServiceProfile", menuName = "ARR Showcase/Configuration Profile/Pointer State Service")]
 	public class PointerStateServiceProfile : BaseMixedRealityProfile
 	{
 		// Store config data in serialized fields

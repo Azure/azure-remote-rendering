@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <!-- Start Document -->
+  <xs:element name="Configuration">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="Account" type="RemoteRenderingServiceAccountData" minOccurs="0" maxOccurs="1" />
+        <xs:element name="Storage" type="RemoteRenderingServiceStorageAccountData" minOccurs="0" maxOccurs="1" />
+        <xs:element name="Session" type="RemoteRenderingServiceSessionData" minOccurs="0" maxOccurs="1" />
+        <xs:element name="Sharing" type="SharingAccountData" minOccurs="0" maxOccurs="1" />
+        <xs:element name="Anchor" type="AzureSptatialAnchorAccountData" minOccurs="0" maxOccurs="1" />
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- End Document -->
+
+  <!-- Start Type Defines -->
+  <xs:simpleType name="SessionSize">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="Standard"/>
+      <xs:enumeration value="Premium"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RemoteRenderingDomainValue">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="westus2"/>
+      <xs:enumeration value="eastus"/>
+      <xs:enumeration value="westeurope"/>
+      <xs:enumeration value="southeastasia"/>
+      <xs:enumeration value="australiaeast"/>
+      <xs:enumeration value="eastus2"/>
+      <xs:enumeration value="japaneast"/>
+      <xs:enumeration value="northeurope"/>
+      <xs:enumeration value="southcentralus"/>
+      <xs:enumeration value="uksouth"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AadAuthorityAudienceValule">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="AzureAdMyOrg"/>
+      <xs:enumeration value="AzureAdAndPersonalMicrosoftAccount"/>
+      <xs:enumeration value="AzureAdMultipleOrgs"/>
+      <xs:enumeration value="PersonalMicrosoftAccount"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="GUID">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|(\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\})"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="ShareRoomName">
+    <xs:restriction base="xs:string">
+      <xs:pattern value=".*\{0\}.*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="RemoteRenderingServiceAccountData">
+    <xs:all>
+      <xs:element name="RemoteRenderingDomains" type="RemoteRenderingServiceAccountDataRemoteRenderingDomains" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="AccountId" type="GUID" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="AccountDomain" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="AccountKey" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="AppId" type="GUID" minOccurs="0" maxOccurs="1" />
+      <xs:element name="Authority" type="AadAuthorityAudienceValule" minOccurs="0" maxOccurs="1" />
+      <xs:element name="TenantId" type="GUID" minOccurs="0" maxOccurs="1" />
+      <xs:element name="ReplyUri" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="RemoteRenderingServiceAccountDataRemoteRenderingDomains">
+    <xs:sequence>
+      <xs:element  name="RemoteRenderingDomain" type="RemoteRenderingDomain" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="RemoteRenderingDomain">
+    <xs:all>
+      <xs:element name="Label" type="xs:string" minOccurs="1" maxOccurs="1"  />
+      <xs:element name="Value" type="RemoteRenderingDomainValue" minOccurs="1" maxOccurs="1"  />
+      <xs:element name="Domain" type="xs:string" minOccurs="1" maxOccurs="1"  />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="RemoteRenderingServiceStorageAccountData">
+    <xs:all>
+      <xs:element name="StorageAccountName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="StorageAccountKey" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="StorageModelContainer" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="RemoteRenderingServiceSessionData">
+    <xs:all>
+      <xs:element name="Size" type="SessionSize" minOccurs="0" maxOccurs="1" />
+      <xs:element name="SessionOverride" type="xs:string" minOccurs="0" maxOccurs="1" />
+      <xs:element name="UnsafeSizeOverride" type="xs:string" minOccurs="0" maxOccurs="1" />
+      <xs:element name="MaxLeaseTime" type="xs:float" minOccurs="0" maxOccurs="1" />
+      <xs:element name="AutoRenewLease" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+      <xs:element name="AutoReconnect" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+      <xs:element name="AutoReconnectRate" type="xs:float" minOccurs="0" maxOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="SharingAccountData">
+    <xs:all>
+      <xs:element name="Provider" minOccurs="0" maxOccurs="1">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="Photon"/>
+            <xs:enumeration value="Offline"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="RoomNameFormat" type="ShareRoomName" minOccurs="0" maxOccurs="1" />
+      <xs:element name="PrivateRoomNameFormat" type="ShareRoomName" minOccurs="0" maxOccurs="1" />
+      <xs:element name="VerboseLogging" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+      <xs:element name="PhotonRealtimeId" type="GUID" minOccurs="0" maxOccurs="1" />
+      <xs:element name="PhotonVoiceId" type="GUID" minOccurs="0" maxOccurs="1" />
+      <xs:element name="PhotonAvatarPrefabName" minOccurs="0" maxOccurs="1">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="Default"/>
+            <xs:enumeration value="PhotonGenericAvatar"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="AzureSptatialAnchorAccountData">
+    <xs:all>
+      <xs:element name="AnchorAccountId" type="GUID" minOccurs="0" maxOccurs="1" />
+      <xs:element name="AnchorAccountKey" type="xs:string"  minOccurs="0" maxOccurs="1" />
+      <xs:element name="AnchorAccountDomain" type="xs:string" minOccurs="0" maxOccurs="1"/>
+    </xs:all>
+  </xs:complexType>
+  <!-- End Type Defines -->
+</xs:schema>

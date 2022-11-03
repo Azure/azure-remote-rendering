@@ -54,4 +54,11 @@ public class CoreServiceActions : MonoBehaviour
         }
     }
     #endregion Public Properties
+
+    #region Public Methods
+    public void ToggleProfiler()
+    {
+        IsLocalProfilerVisible = !IsLocalProfilerVisible;
+    }
+    #endregion Public Methods
 }

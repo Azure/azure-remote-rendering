@@ -13,18 +13,7 @@ MonoBehaviour:
   m_Name: DefaultAppNotificationServiceProfile
   m_EditorClassIdentifier: 
   isCustomProfile: 1
-  OnNotification:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 8300000, guid: 82bb32b8900f55c488f190d835ffcd99, type: 3}
-        m_MethodName: 
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+  NotificationClip: {fileID: 8300000, guid: 82bb32b8900f55c488f190d835ffcd99, type: 3}
   MinNotificationLevel: 0
+  DialogPrefab: {fileID: 8763119407713475931, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
+    type: 3}

@@ -4,6 +4,8 @@
 using Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
@@ -14,9 +16,34 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     public interface ISharingService : IMixedRealityExtensionService
     {
         /// <summary>
+        /// True if service is ready for use.
+        /// </summary>
+        bool IsReady { get; }
+
+        /// <summary>
         /// True if connected to a session and able to communicate with other clients
         /// </summary>
         bool IsConnected { get; }
+
+        /// <summary>
+        /// Get if the service is connecting
+        /// </summary>
+        bool IsConnecting { get; }
+
+        /// <summary>
+        /// True if connected to sharing service and logged in. But not necessarily in a session
+        /// </summary>
+        bool IsLoggedIn { get; }
+
+        /// <summary>
+        /// Get the service's status message
+        /// </summary>
+        string StatusMessage { get; }
+
+        /// <summary>
+        /// Get all known sharing targets.
+        /// </summary>
+        IReadOnlyCollection<ISharingServiceObject> Targets { get; }
 
         /// <summary>
         /// The list of current rooms.
@@ -34,19 +61,70 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         ISharingServicePlayer LocalPlayer { get; }
 
         /// <summary>
+        /// Get the invalid player id
+        /// </summary>
+        string InvalidPlayerId { get; }
+
+        /// <summary>
         /// Get the current room.
         /// </summary>
         ISharingServiceRoom CurrentRoom { get; }
 
         /// <summary>
-        /// Event fired when the service is connected
+        /// Get if the sharing service's configuration supports private sharing session/rooms.
+        /// </summary>
+        bool HasPrivateRooms { get; }
+
+        /// <summary>
+        /// The user's current location id.
+        /// </summary>
+        SharingServiceAddress PrimaryAddress { get; }
+
+        /// <summary>
+        /// Get the known addresses in the user's local space.
+        /// </summary>
+        IReadOnlyList<SharingServiceAddress> LocalAddresses { get; }
+
+        /// <summary>
+        /// Get the container for all sharing related game objects, such as new avatars. Avatar positioning will be relative to this container.
+        /// This must be setting before joining a sharing room. If not set, avatars will not appear.
+        /// </summary>
+        GameObject Root { get; }
+
+        /// <summary>
+        /// Get or set the sharing service's audio settings.
+        /// </summary>
+        SharingServiceAudioSettings AudioSettings { get; set; }
+
+        /// <summary>
+        /// Get the sharing service's audio capabilities.
+        /// </summary>
+        SharingServiceAudioCapabilities AudioCapabilities { get; }
+
+        /// <summary>
+        /// Get or set the sharing service's avatar settings
+        /// </summary>
+        SharingServiceAvatarSettings AvatarSettings { get; set; }
+
+        /// <summary>
+        /// Event fired when the service is connected to a session.
         /// </summary>
         event Action<ISharingService> Connected;
 
         /// <summary>
-        /// Event fired when the service disconnects
+        /// Event fired when the service is connecting
+        /// </summary>
+        event Action<ISharingService> Connecting;
+
+        /// <summary>
+        /// Event fired when the service disconnects from a session
         /// </summary>
         event Action<ISharingService> Disconnected;
+
+        /// <summary>
+        /// Event fired when the service's status message has changed
+        /// </summary>
+        event Action<ISharingService, string> StatusMessageChanged;
 
         /// <summary>
         /// Event fired when the current room has changed.
@@ -64,14 +142,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         event Action<ISharingService, ISharingServiceMessage> MessageReceived;
 
         /// <summary>
-        /// A specialized message optimized for sending an array of floats to a target.
+        /// Event fired when an invitation is received.
         /// </summary>
-        event Action<ISharingProvider, ISharingServiceTarget, float[]> NumericMessageReceived;
+        event Action<ISharingService, ISharingServiceRoom> RoomInviteReceived;
 
         /// <summary>
-        /// Event fired when a new sharing target has been added
+        /// Event fired when a new sharing object has been added
         /// </summary>
-        event Action<ISharingService, ISharingServiceTarget> TargetAdded;
+        event Action<ISharingService, ISharingServiceObject> ObjectAdded;
 
         /// <summary>
         /// Event fired when the local player object has changed
@@ -94,14 +172,54 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         event Action<ISharingServicePlayer, string, object> PlayerPropertyChanged;
 
         /// <summary>
-        /// Connects to the session
+        /// Event fired when a player display name has changed
         /// </summary>
-        void Connect();
+        event Action<ISharingServicePlayer, string> PlayerDisplayNameChanged;
+
+        /// <summary>
+        /// Event fired when a user's address has changed.
+        /// </summary>
+        event Action<ISharingService, SharingServiceAddress> AddressChanged;
+
+        /// <summary>
+        /// Event fired when the users at the user's address have changed.
+        /// </summary>
+        event Action<ISharingService> AddressUsersChanged;
+
+        /// <summary>
+        /// Event fired when a user's local addresses have changed.
+        /// </summary>
+        event Action<ISharingService, IReadOnlyList<SharingServiceAddress>> LocalAddressesChanged;
+
+        /// <summary>
+        /// Event fired when a ping response has been received
+        /// </summary>
+        event Action<ISharingService, string, TimeSpan> PingReturned;
+
+        /// <summary>
+        /// Event fired when audio settings changed.
+        /// </summary>
+        event Action<ISharingService, SharingServiceAudioSettings> AudioSettingsChanged;
+
+        /// <summary>
+        /// Event fired when avatar settings changed.
+        /// </summary>
+        event Action<ISharingService, SharingServiceAvatarSettings> AvatarSettingsChanged;
+
+        /// <summary>
+        /// Connects to the sharing service
+        /// </summary>
+        void Login();
 
         /// <summary>
         /// Create and join a new sharing room.
         /// </summary>
-        void CreateAndJoinRoom();
+        Task CreateAndJoinRoom();
+
+        /// <summary>
+        /// Create and join a new private sharing room. Only the given list of players can join the room.
+        /// </summary>
+        Task CreateAndJoinRoom(IEnumerable<SharingServicePlayerData> inviteList);
 
         /// <summary>
         /// Join the given room.
@@ -109,9 +227,24 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         void JoinRoom(ISharingServiceRoom room);
 
         /// <summary>
+        /// Join the given room by room id
+        /// </summary>
+        void JoinRoom(string roomId);
+
+        /// <summary>
+        /// Decline a room/session invitation.
+        /// </summary>
+        void DeclineRoom(ISharingServiceRoom room);
+
+        /// <summary>
+        /// If the current user is part of a private room, invite the given player to this room.
+        /// </summary>
+        Task<bool> InviteToRoom(SharingServicePlayerData player);
+
+        /// <summary>
         /// Leave the currently joined sharing room, and join the default lobby.
         /// </summary>
-        void LeaveRoom();
+        Task LeaveRoom();
 
         /// <summary>
         /// Send a specialized message that contains only a transform. 
@@ -153,37 +286,88 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Try to set a player's property value.
         /// </summary>
-        void SetPlayerProperty(int playerId, string key, object value);
+        void SetPlayerProperty(string playerId, string key, object value);
 
         /// <summary>
         /// Try to get a player's property value.
         /// </summary>
         /// <returns>True if a non-null property value was found.</returns>
-        bool TryGetPlayerProperty(int playerId, string key, out object value);
+        bool TryGetPlayerProperty(string playerId, string key, out object value);
 
         // <summary>
         /// Does this provider have the current property for the player.
         /// </summary>
-        bool HasPlayerProperty(int playerId, string property);
+        bool HasPlayerProperty(string playerId, string property);
 
         /// <summary>
-        /// Send the local player's position and rotation
+        /// Updates the list of rooms
         /// </summary>
-        void SendLocalPlayerPose(Pose pose);
+        Task<IReadOnlyCollection<ISharingServiceRoom>> UpdateRooms();
+
+        /// <summary>
+        /// Send a ping
+        /// if player is not null, will send it to that person only
+        /// </summary>
+        void SendPing(string targetRecipientId = null);
 
         /// <summary>
         /// Create a unique target object that will be synced across clients.
         /// </summary>
-        ISharingServiceTarget CreateTarget(SharingServiceTargetType type);
+        ISharingServiceObject CreateTarget(SharingServiceObjectType type);
 
         /// <summary>
         /// Create a target object, with a given label, that will be synced across clients.
         /// </summary>
-        ISharingServiceTarget CreateTarget(SharingServiceTargetType type, string label);
+        ISharingServiceObject CreateTarget(SharingServiceObjectType type, string label);
+
+        /// <summary>
+        /// Spawn a network object that is shared across all clients
+        /// </summary>
+        Task<GameObject> SpawnTarget(GameObject original, object[] data = null);
+
+        /// <summary>
+        /// Despawn a network object that is shared across all clients
+        /// </summary>
+        Task DespawnTarget(GameObject gameObject);
 
         /// <summary>
         /// Create a target object, from a sharing id.
         /// </summary>
-        ISharingServiceTarget CreateTargetFromSharingId(string sharingId);
+        ISharingServiceObject CreateTargetFromSharingId(string sharingId);
+
+        /// <summary>
+        /// Start finding the near addresses. If no primary address, default to the first found address.
+        /// </summary>
+        void FindAddresses();
+
+        /// <summary>
+        /// Start updating the address, using the current position of the sharing root.
+        /// </summary>
+        void CreateAddress();
+
+        /// <summary>
+        /// Set the user's primary address
+        /// </summary>
+        void SetAddress(SharingServiceAddress address);
+
+        /// <summary>
+        /// Get if the user is colocated
+        /// </summary>
+        bool Colocated(string participantId);
+
+        /// <summary>
+        /// Find sharing service players by a name. These player might not be in the current session.
+        /// </summary>
+        Task<IList<SharingServicePlayerData>> FindPlayers(string prefix, CancellationToken ct = default(CancellationToken));
+
+        /// <summary>
+        /// Initialize a network object with sharing components needed for the selected provider
+        /// </summary>
+        void EnsureNetworkObjectComponents(GameObject gameObject);
+
+        /// <summary>
+        /// Calibrate the sharing service's microphone so to better detect voices, and eliminate background noise.
+        /// </summary>
+        Task<bool> CalibrateVoiceDetection();
     }
 }

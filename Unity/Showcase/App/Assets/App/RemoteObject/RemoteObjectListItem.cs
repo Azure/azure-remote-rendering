@@ -1,4 +1,8 @@
-﻿using Microsoft.MixedReality.Toolkit;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using Microsoft.MixedReality.Toolkit;
+using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Rendering;
 using System.Collections;
 using TMPro;
@@ -11,9 +15,10 @@ public class RemoteObjectListItem : ListItemEventHandler
     private ListItem listItem = null;
     private RemoteObjectStage stage = null;
     private Texture2D loadedTexture = null;
+    private string loadingTextureUrl = null;
     private string loadedTextureUrl = null;
-    private MaterialInstance imageMaterial = null;
-    private bool logVerboseMessages = false;
+    private UnityWebRequest loadingTextureRequest = null;
+    private Material imageMaterial = null;
 
     #region Serialized Fields
     [SerializeField]
@@ -78,13 +83,28 @@ public class RemoteObjectListItem : ListItemEventHandler
     {
         if (imageRenderer != null)
         {
-            imageMaterial = imageRenderer.EnsureComponent<MaterialInstance>();
+            var materialInstance = imageRenderer.EnsureComponent<MaterialInstance>();
+
+            // Get material so to set image later. 
+            imageMaterial = materialInstance.AcquireExistingMaterial();
         }
     }
 
     private void OnEnable()
     {
-        UpdateInfo(objectData);
+        StartLoadingTexture();
+    }
+
+    private void OnDisable()
+    {
+        loadingTextureUrl = null;
+        DestoryRequest(loadingTextureRequest);
+    }
+
+    private void OnDestroy()
+    {
+        // Manually destroy previous web texture to prevent memory leak
+        DestroyTexture(loadedTexture);
     }
     #endregion MonoBehavior Methods
 
@@ -101,13 +121,10 @@ public class RemoteObjectListItem : ListItemEventHandler
         index = newValue;
     }
 
-    public void LoadModel()
+    public async void LoadModel()
     {
         listItem?.SetSelection(true);
-        if (objectData != null && stage != null)
-        {
-            stage.Load(objectData);
-        }
+        await RemoteObjectHelper.Spawn(objectData);
     }
     #endregion Public Methods
 
@@ -120,14 +137,31 @@ public class RemoteObjectListItem : ListItemEventHandler
         }
 
         objectData = data;
-        if (assetName != null)
-        {
-            assetName.text = objectData.Name ?? "Unknown";
-        }
+        UpdateText();
+        StartLoadingTexture();
+    }
 
+    /// <summary>
+    /// Update text is text render is displaying something different
+    /// </summary>
+    private void UpdateText()
+    {
+        string assetNameString = objectData?.Name ?? "Unknown";
+        if (assetName != null &&
+            assetName.text != assetNameString)
+        {
+            assetName.text = assetNameString;
+        }
+    }
+
+    /// <summary>
+    /// Start loading text if component is enabled.
+    /// </summary>
+    private void StartLoadingTexture()
+    {
         if (isActiveAndEnabled)
         {
-            StartCoroutine(LoadTexture(objectData.ImageUrl));
+            StartCoroutine(LoadTexture(objectData?.ImageUrl));
         }
     }
 
@@ -136,43 +170,117 @@ public class RemoteObjectListItem : ListItemEventHandler
     /// </summary>
     private IEnumerator LoadTexture(string imageUrl)
     {
-        // if there is no renderer defined, exit early
-        if (imageMaterial == null || !isActiveAndEnabled)
+        // Use empty string if null
+        if (imageUrl == null)
+        {
+            imageUrl = string.Empty;
+        }
+
+        // If no change exit early
+        if (imageUrl == loadingTextureUrl || imageUrl == loadedTextureUrl)
         {
             yield break;
         }
 
-        // load remote image, if not loaded yet
-        if (string.IsNullOrEmpty(imageUrl))
+        // If there is no renderer defined, exit early
+        if (imageMaterial == null)
         {
-            loadedTexture = imageFallback;
-            loadedTextureUrl = null;
+            yield break;
         }
-        else if (loadedTextureUrl != imageUrl || loadedTexture == null)
+
+        // Capture a material to change
+        Material destinationMaterial = imageMaterial; 
+        if (destinationMaterial == null)
         {
-            // set fallback while waiting for things to load
-            imageMaterial.Material.SetTexture(imageTextureName, imageFallback);
-            loadedTextureUrl = null;
-            UnityWebRequest www = UnityWebRequestTexture.GetTexture(imageUrl);
+            yield break;
+        }
+
+        // Save old texture to destroy later if needed
+        Texture2D oldLoadedTexture = loadedTexture;
+        Texture2D newLoadedTexture = null;
+
+        // Set fallback while waiting for things to load
+        destinationMaterial.SetTexture(imageTextureName, imageFallback);
+        loadedTexture = imageFallback;
+
+        // And set loaded url to avoid double loads
+        loadingTextureUrl = imageUrl;
+
+        DestoryRequest(loadingTextureRequest);
+        if (!string.IsNullOrEmpty(loadingTextureUrl))
+        {
+            var www = loadingTextureRequest = UnityWebRequestTexture.GetTexture(loadingTextureUrl);
             yield return www.SendWebRequest();
 
             DownloadHandlerTexture downloadedTexture = null;
-            if (www.isNetworkError || www.isHttpError)
+            if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load image '{imageUrl}' ({www.error})");
+                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Failed to load image '{imageUrl}' ({www.error}) ({www.result})");
             }
             else
             {
                 downloadedTexture = www.downloadHandler as DownloadHandlerTexture;
             }
-            loadedTexture = downloadedTexture?.texture ?? imageFallback;
-            loadedTextureUrl = loadedTexture == null ? null : imageUrl;
+
+            if (downloadedTexture != null && downloadedTexture.texture != null)
+            {
+                newLoadedTexture = downloadedTexture.texture;
+            }
+
+            DestoryRequest(www);
         }
 
-        // verify there is still a renderer to use
-        if (imageMaterial != null && isActiveAndEnabled)
+        // Verify things are still active, and texture is still being loaded
+        if (isActiveAndEnabled && newLoadedTexture != null && destinationMaterial != null && loadingTextureUrl == imageUrl)
         {
-            imageMaterial.Material.SetTexture(imageTextureName, loadedTexture);
+            destinationMaterial.SetTexture(imageTextureName, newLoadedTexture);
+            loadedTexture = newLoadedTexture;
+            loadedTextureUrl = loadingTextureUrl;
+        }
+        else
+        {
+            DestroyTexture(newLoadedTexture);
+        }
+
+        // Clear loading url as needed
+        if (loadingTextureUrl == imageUrl)
+        {
+            loadingTextureUrl = null;
+        }
+
+        // Manually destroy previous web texture to prevent memory leak
+        DestroyTexture(oldLoadedTexture);
+    }
+
+    private void DestroyTexture(Texture2D texture)
+    {
+        if (texture != null && texture != imageFallback)
+        {
+            Destroy(texture);
+
+            if (loadedTexture == texture)
+            {
+                loadedTexture = null;
+            }
+        }
+    }
+
+    private void DestoryRequest(UnityWebRequest request)
+    {
+        if (request != null)
+        {
+            if (!request.isDone)
+            {
+                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", $"Aborting image load. url: {request.url}");
+                request.Abort();
+            }
+
+            request.Dispose();
+
+            if (request == loadingTextureRequest)
+            {
+                loadingTextureRequest = null;
+            }
         }
     }
     #endregion Private Methods

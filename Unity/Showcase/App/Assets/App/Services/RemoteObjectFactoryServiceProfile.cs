@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
 	[MixedRealityServiceProfile(typeof(IRemoteObjectFactoryService))]
-	[CreateAssetMenu(fileName = "RemoteObjectFactoryServiceProfile", menuName = "MixedRealityToolkit/RemoteObjectFactoryService Configuration Profile")]
+	[CreateAssetMenu(fileName = "RemoteObjectFactoryServiceProfile", menuName = "ARR Showcase/Configuration Profile/Remote Object Factory Service")]
 	public class RemoteObjectFactoryServiceProfile : BaseMixedRealityProfile
 	{
         [Tooltip("The max number of models to load at a time")]

@@ -299,11 +299,11 @@ public class ListScrollerTranslate : ListScrollerBase
     /// <summary>
     /// Get the visible range based on the current scroll position.
     /// </summary>
-    private (int StartIndex, int Count) GetVisibleRange(Vector3 scrollPosition)
+    private ListScrollerRange GetVisibleRange(Vector3 scrollPosition)
     {
-        (int startIndex, int count) result = (-1, 0);
+        ListScrollerRange result = ListScrollerRange.Empty;
         result.startIndex = Mathf.RoundToInt(NodesPerScrollUnit * Vector3.Dot(GetMovementAxis(), scrollPosition - _initialPosition)) * this.NodesInNonMovableDirection;
-        result.count = Mathf.CeilToInt(result.startIndex + this.NodesPerPage);
+        result.endIndex = Mathf.CeilToInt(result.startIndex + this.NodesPerPage);
         return result;
 
     }

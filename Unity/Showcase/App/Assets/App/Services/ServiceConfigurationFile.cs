@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
-using Microsoft.MixedReality.Toolkit.UI;
+using Microsoft.Identity.Client;
+using Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication;
 using System;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using UnityEngine;
+
+using static Microsoft.MixedReality.Toolkit.Extensions.SharingServiceProfile;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -196,8 +199,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         [XmlRoot(ElementName = "Configuration")]
         public class FileData
         {
-            public bool IsDevelopmentProfileData = true;
-
             public RemoteRenderingAccount Account;
             public StorageAccount Storage;
             public RemoteRenderingSession Session;
@@ -208,7 +209,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return Account != null  &&
                     (Account.ShouldSerializeRemoteRenderingDomains() ||
-                     Account.ShouldSerializeRemoteRenderingDomainLabels() ||
                      Account.ShouldSerializeAccountId() ||
                      Account.ShouldSerializeAccountDomain() ||
                      Account.ShouldSerializeAccountKey());
@@ -230,7 +230,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public bool ShouldSerializeSharing()
             {
                 return Sharing != null &&
-                    (Sharing.ShouldSerializePhotonRealtimeId());
+                    (Sharing.ShouldSerializeProvider() ||
+                     Sharing.ShouldSerializeRoomNameFormat() ||
+                     Sharing.ShouldSerializePrivateRoomNameFormat() ||
+                     Sharing.ShouldSerializeVerboseLogging() ||
+                     Sharing.ShouldSerializePhotonRealtimeId() ||
+                     Sharing.ShouldSerializePhotonVoiceId() ||
+                     Sharing.ShouldSerializePhotonAvatarPrefabName());
             }
 
             public bool ShouldSerializeAnchor()
@@ -300,23 +306,28 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             public RemoteRenderingAccount Copy()
             {
+                RemoteRenderingServiceRegion[] regions = null;
+                if (RemoteRenderingDomains != null)
+                {
+                    regions = new RemoteRenderingServiceRegion[RemoteRenderingDomains.Length];
+                    Array.Copy(RemoteRenderingDomains, regions, regions.Length);
+                }
+
                 return new RemoteRenderingAccount()
                 {
-                    RemoteRenderingDomains = RemoteRenderingDomains,
-                    RemoteRenderingDomainLabels = RemoteRenderingDomainLabels,
+                    RemoteRenderingDomains = regions,
                     AccountId = AccountId,
                     AccountDomain = AccountDomain,
-                    AccountKey = AccountKey
+                    AccountKey = AccountKey,
+                    AppId = AppId,
+                    Authority = Authority,
+                    TenantId = TenantId
                 };
             }
 
-            [Tooltip("The list of Azure remote rendering domains supported by this account. The first entry is the preferred one.")]
+            [Tooltip("The list Azure remote rendering account regions supported by this account. The first entry is the preferred one.")]
             [XmlArrayItem("RemoteRenderingDomain")]
-            public string[] RemoteRenderingDomains;
-
-            [Tooltip("The labels used to refer to the respective domains in the UI.")]
-            [XmlArrayItem("RemoteRenderingDomainLabel")]
-            public string[] RemoteRenderingDomainLabels;
+            public RemoteRenderingServiceRegion[] RemoteRenderingDomains;
 
             [Tooltip("The default Azure remote rendering account id to use.")]
             public string AccountId;
@@ -324,17 +335,27 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             [Tooltip("The domain of the Azure remote rendering account.")]
             public string AccountDomain;
 
-            //Used in development
+            // Used in development
             [Tooltip("The default Azure remote rendering account key to use.")]
             public string AccountKey;
 
-            //Used in production
+            // Used in production
             [Tooltip("The Azure Active Directory Application ID to use.")]
             public string AppId;
 
-            public bool ShouldSerializeRemoteRenderingDomains() { return RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0; }
+            // Used in production
+            [Tooltip("The Authentication Authority to use, if empty 'AzureAdAndPersonalMicrosoftAccount' will be used.")]
+            public string Authority;
 
-            public bool ShouldSerializeRemoteRenderingDomainLabels() { return RemoteRenderingDomainLabels != null && RemoteRenderingDomainLabels.Length > 0; }
+            // Used in production
+            [Tooltip("The Azure Active Directory Tenant ID to use.")]
+            public string TenantId;
+
+            // Used in production
+            [Tooltip("The reply uri used when performing MSAL auth.")]
+            public string ReplyUri;
+
+            public bool ShouldSerializeRemoteRenderingDomains() { return RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0; }
 
             public bool ShouldSerializeAccountId()
             {
@@ -351,6 +372,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 Guid id = Guid.Empty;
                 return Guid.TryParse(AppId, out id) && id != Guid.Empty;
             }
+
+            public bool ShouldSerializeAuthority() { return !string.IsNullOrEmpty(Authority); }
+
+            public bool ShouldSerializeTenantId() { return !string.IsNullOrEmpty(TenantId); }
+
+            public bool ShouldSerializeReplyUri() { return !string.IsNullOrEmpty(ReplyUri); }
         }
 
         [Serializable]
@@ -389,14 +416,56 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return new SharingAccount()
                 {
-                    PhotonRealtimeId = PhotonRealtimeId
+                    Provider = Provider,
+                    RoomNameFormat = RoomNameFormat,
+                    PrivateRoomNameFormat = PrivateRoomNameFormat,
+                    VerboseLogging = VerboseLogging,
+                    PhotonRealtimeId = PhotonRealtimeId,
+                    PhotonVoiceId = PhotonVoiceId,
+                    PhotonAvatarPrefabName = PhotonAvatarPrefabName,
                 };
             }
 
-            [Tooltip("The app id to use to initialize Photon's realtime service.")]
-            public string PhotonRealtimeId;
+            [Tooltip("The sharing provider to use to share session state.")]
+            public ProviderService Provider = ProviderService.None;
+
+            [Tooltip("The format of the new room names. The {0} field will be filled with an integer.")]
+            public string RoomNameFormat = null;
+
+            [Tooltip("The format of the new private room names. The {0} field will be filled with an integer.")]
+            public string PrivateRoomNameFormat = null;
+
+            [Tooltip("Include verbose logging for diagnostics")]
+            public bool? VerboseLogging = null;
+
+            [Header("Photon Settings")]
+
+            [Tooltip("The Photon service's PUN app id.")]
+            public string PhotonRealtimeId = null;
+
+            [Tooltip("The Photon service's voice app id.")]
+            public string PhotonVoiceId = null;
+
+            [Tooltip("The Photon service avatar prefab name. This prefab must be in the app's Unity Resources.")]
+            public string PhotonAvatarPrefabName = null;
+
+            public bool ShouldSerializeProvider() { return Provider != ProviderService.None; }
+
+            public bool ShouldSerializeRoomNameFormat() { return !string.IsNullOrEmpty(RoomNameFormat); }
+
+            public bool ShouldSerializePrivateRoomNameFormat() { return !string.IsNullOrEmpty(PrivateRoomNameFormat); }
+
+            public bool ShouldSerializeVerboseLogging() { return VerboseLogging.HasValue; }
 
             public bool ShouldSerializePhotonRealtimeId() { return !string.IsNullOrEmpty(PhotonRealtimeId); }
+
+            public bool ShouldSerializePhotonVoiceId() { return !string.IsNullOrEmpty(PhotonVoiceId); }
+
+            public bool ShouldSerializePhotonAvatarPrefabName()
+            {
+                return !string.IsNullOrEmpty(PhotonAvatarPrefabName) && 
+                    !PhotonAvatarPrefabName.Equals("Default", StringComparison.InvariantCultureIgnoreCase);
+            }
         }
 
         [Serializable]

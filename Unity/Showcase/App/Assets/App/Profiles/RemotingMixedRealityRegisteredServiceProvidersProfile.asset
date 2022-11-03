@@ -42,7 +42,8 @@ MonoBehaviour:
     componentName: AppSettingsService
     priority: 10
     runtimePlatform: 2047
-    configurationProfile: {fileID: 0}
+    configurationProfile: {fileID: 11400000, guid: 0082fbf65712a684195b925dc4cf31f1,
+      type: 2}
   - componentType:
       reference: Microsoft.MixedReality.Toolkit.Extensions.AppNotificationService,
         Assembly-CSharp
@@ -64,4 +65,12 @@ MonoBehaviour:
     priority: 11
     runtimePlatform: 25
     configurationProfile: {fileID: 11400000, guid: aa4fd0bf413fea24bb88f20ba593c279,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Extensions.RemoteObjectStageService,
+        Assembly-CSharp
+    componentName: RemoteObjectStageService
+    priority: 10
+    runtimePlatform: -1
+    configurationProfile: {fileID: 11400000, guid: 2bb019c9c5c39384b911cb6c5bd27b49,
       type: 2}

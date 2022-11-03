@@ -7,6 +7,7 @@ using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Physics;
+using Microsoft.MixedReality.Toolkit.Utilities;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -50,12 +51,17 @@ using UnityEngine.EventSystems;
 /// Note, the "Expanded Prefab" allows for easy declartion of custom MonoBehavior components, such as a MRTK 
 /// manipulation component, on child components without having create game objects for all ARR entities.
 /// </summary>
-public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedRealityPointerHandler, IMixedRealitySourceStateHandler
+public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedRealityPointerHandler, IMixedRealitySourceStateHandler, IMixedRealitySourcePoseHandler
 {
     /// <summary>
     /// The set of entity game objects that were created outside of this class.
     /// </summary>
     private HashSet<Entity> _initialEntitiesWithGameObjects = new HashSet<Entity>();
+
+    /// <summary>
+    /// This pose change will be forwarded to the expanded object piece, so to ensure that the `ObjectManipulator` functions correctly.
+    /// </summary>
+    private SourcePoseEventData<MixedRealityPose> _lastPoseChangeEventData;
 
     /// <summary>
     /// A cache of the pointers' expanded objects.
@@ -174,7 +180,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             focusDetails.Object.transform != null &&
             focusDetails.Object.transform.IsChildOf(transform)) 
         {
-            GetOrCreateExpander(eventData.Pointer).OnPointerDown(eventData);
+            GetOrCreateExpander(eventData.Pointer).Initialize(_lastPoseChangeEventData, eventData);
         }
     }
 
@@ -186,6 +192,36 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     {
     }
     #endregion IMixedRealityPointerHandler
+
+    #region IMixedRealitySourcePoseHandler
+    /// <summary>
+    /// Raised when the source pose tracking state is changed.
+    /// </summary>
+    public void OnSourcePoseChanged(SourcePoseEventData<TrackingState> eventData) { }
+
+    /// <summary>
+    /// Raised when the source position is changed.
+    /// </summary>
+    public void OnSourcePoseChanged(SourcePoseEventData<Vector2> eventData) { }
+
+    /// <summary>
+    /// Raised when the source position is changed.
+    /// </summary>
+    public void OnSourcePoseChanged(SourcePoseEventData<Vector3> eventData) { }
+
+    /// <summary>
+    /// Raised when the source rotation is changed.
+    /// </summary>
+    public void OnSourcePoseChanged(SourcePoseEventData<UnityEngine.Quaternion> eventData) { }
+
+    /// <summary>
+    /// Raised when the source pose is changed.
+    /// </summary>
+    public void OnSourcePoseChanged(SourcePoseEventData<MixedRealityPose> eventData)
+    {
+        _lastPoseChangeEventData = eventData;
+    }
+    #endregion IMixedRealitySourcePoseHandler
 
     #region IMixedRealitySourceStateHandler
     public void OnSourceDetected(SourceStateEventData eventData)
@@ -337,42 +373,21 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             }
         }
 
-        #region IMixedRealityPointerHandler
         /// <summary>
-        /// Handle pointer down events, and expand the pointer remote target to a game object.
+        /// Initialize, expand the pointer remote target to a game object. Then forward the given events to the new object.
         /// </summary>
-        /// <param name="eventData"></param>
-        public void OnPointerDown(MixedRealityPointerEventData eventData)
+        public void Initialize(SourcePoseEventData<MixedRealityPose> poseEventData, MixedRealityPointerEventData pointerEventData)
         {
-            UpdateProxyObject(eventData.Pointer);
-            // Forwarding the event is done later in the frame by DelayPointerDown component on the proxy object
-            _proxyObject?.EnsureComponent<DelayPointerDown>().Fire(eventData);
-        }
+            UpdateProxyObject(pointerEventData.Pointer);
 
-        private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
-        {
+            // Forwarding the event is done later in the frame by DelayPointerDown component on the proxy object
             if (_proxyObject != null)
             {
-                ExecuteEvents.Execute(_proxyObject.gameObject, eventData, eventFunction);
+                var eventProxy = _proxyObject.EnsureComponent<DelayedEventProxy>();
+                eventProxy.Fire(poseEventData);
+                eventProxy.Fire(pointerEventData);
             }
         }
-        #endregion IMixedRealityPointerHandler
-
-        #region IMixedRealityPointerHandler
-        /// <summary>
-        /// When focus is entered, update this pointer's current pointer object, only if a proxy object already exists.
-        /// If a proxy object doesn't exist yet, one will be create on a pointer down event.
-        /// </summary>
-        /// <param name="eventData"></param>
-        public void OnFocusEnter(FocusEventData eventData)
-        {
-            UpdateProxyObject(eventData.Pointer, allowCreate: false);
-        }
-
-        public void OnFocusExit(FocusEventData eventData)
-        {
-        }
-        #endregion
 
         /// <summary>
         /// Get or create a proxy object for the given Remote Entity.
@@ -623,8 +638,8 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
                 RemoteSyncObject = null;
             }
 
-            // Fix-up childern's parent to point to a new "default" game object, since we're destroying 
-            // this game object. Note, the childern's old parent (this game object) is being destroyed
+            // Fix-up children's parent to point to a new "default" game object, since we're destroying 
+            // this game object. Note, the children's old parent (this game object) is being destroyed
             // because this game object can have numerous other components we no longer need or want.
             // For example, the ProxyObject's game object could also have a ManipulationHandler
             // attached.
@@ -693,6 +708,83 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         {
             var proxyObject = entityGameObject?.GetComponent<ProxyObject>();
             return (proxyObject != null) ? proxyObject.RefCount : 0;
+        }
+    }
+
+    /// <summary>
+    /// Handle forwarding events to proxy object late in the frame. This is done because during `OnPointerDown` and 
+    /// `OnSourcePoseChanged` the proxy object's `ObjectManipular::Start()` hasn't been called in all cases.
+    /// So we wait to forward events to prevent jumpy behavior of the moved pieces, and to ensure rotation works.
+    /// </summary>
+    private class DelayedEventProxy : MonoBehaviour
+    {
+        private MixedRealityPointerEventData _pendingPointerDown = null;
+        private SourcePoseEventData<MixedRealityPose> _pendingSourcePoseChanged = null;
+        private bool _started = false;
+
+        public void Start()
+        {
+            _started = true;
+
+            if (_pendingSourcePoseChanged != null)
+            {
+                Fire(_pendingSourcePoseChanged);
+                _pendingSourcePoseChanged = null;
+            }
+
+            if (_pendingPointerDown != null)
+            {
+                Fire(_pendingPointerDown);
+                _pendingPointerDown = null;
+            }
+        }
+
+        public void Fire(SourcePoseEventData<MixedRealityPose> sourcePoseChangedEventData)
+        {
+            if (_started && sourcePoseChangedEventData != null)
+            {
+                RouteEventToCurrentObject(sourcePoseChangedEventData, OnSourcePoseChangedEventHandler);
+                _pendingSourcePoseChanged = null;
+            }
+            else
+            {
+                _pendingSourcePoseChanged = sourcePoseChangedEventData;
+            }
+        }
+
+        public void Fire(MixedRealityPointerEventData pointerDownEventData)
+        {
+            if (_started && pointerDownEventData != null)
+            {
+                RouteEventToCurrentObject(pointerDownEventData, OnPointerDownEventHandler);
+                _pendingPointerDown = null;
+            }
+            else
+            {
+                _pendingPointerDown = pointerDownEventData;
+            }
+        }
+
+        private static readonly ExecuteEvents.EventFunction<IMixedRealitySourcePoseHandler> OnSourcePoseChangedEventHandler =
+            delegate (IMixedRealitySourcePoseHandler handler, BaseEventData eventData)
+            {
+                var casted = ExecuteEvents.ValidateEventData<SourcePoseEventData<MixedRealityPose>>(eventData);
+                handler.OnSourcePoseChanged(casted);
+            };
+
+        private static readonly ExecuteEvents.EventFunction<IMixedRealityPointerHandler> OnPointerDownEventHandler =
+            delegate (IMixedRealityPointerHandler handler, BaseEventData eventData)
+            {
+                if (eventData != null)
+                {
+                    var casted = ExecuteEvents.ValidateEventData<MixedRealityPointerEventData>(eventData);
+                    handler.OnPointerDown(casted);
+                }
+            };
+
+        private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
+        {
+            ExecuteEvents.Execute(gameObject, eventData, eventFunction);
         }
     }
     #endregion Private Classes

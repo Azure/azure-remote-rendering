@@ -67,7 +67,7 @@ public struct RemoteFocusHighlightSettings
     public struct Settings
     {
         /// <summary>
-        /// The dafault settings for selecting a whole model.
+        /// The default settings for selecting a whole model.
         /// </summary>
         /// <remarks>
         /// Until the performance of whole object "hierarchical state overrides" is improved, the default is disable 

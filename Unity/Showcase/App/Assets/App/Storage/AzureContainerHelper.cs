@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Microsoft.Azure.Storage
 {

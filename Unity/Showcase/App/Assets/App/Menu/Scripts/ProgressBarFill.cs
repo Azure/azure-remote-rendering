@@ -46,7 +46,7 @@ public class ProgressBarFill : MonoBehaviour
     private Image progressBarImage = null;
 
     /// <summary>
-    /// Thhe progress bar image to fill.
+    /// The progress bar image to fill.
     /// </summary>
     public Image ProgressBarImage
     {
@@ -80,7 +80,15 @@ public class ProgressBarFill : MonoBehaviour
             StopCoroutine(_fillRoutine);
             _fillRoutine = null;
         }
-        _fillRoutine = StartCoroutine(FillRoutine(goalFill));
+
+        if (isActiveAndEnabled)
+        {
+            _fillRoutine = StartCoroutine(FillRoutine(goalFill));
+        }
+        else
+        {
+            SetFillNow(goalFill);
+        }
     }
     #endregion Public Functions
 

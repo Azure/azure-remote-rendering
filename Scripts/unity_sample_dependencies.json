@@ -2,22 +2,22 @@
   "packages": [
     {
       "name": "com.microsoft.mixedreality.toolkit.foundation",
-      "version": "2.5.1",
+      "version": "2.8.2",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
       "name": "com.microsoft.mixedreality.toolkit.standardassets",
-      "version": "2.5.1",
+      "version": "2.8.2",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
       "name": "com.microsoft.mixedreality.toolkit.tools",
-      "version": "2.5.1",
+      "version": "2.8.2",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
       "name": "com.microsoft.mixedreality.toolkit.extensions",
-      "version": "2.5.1",
+      "version": "2.8.2",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "name": "com.microsoft.azure.spatial-anchors-sdk.core",
-      "version": "2.7.1",
+      "version": "2.12.0",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
       "name": "com.microsoft.azure.spatial-anchors-sdk.windows",
-      "version": "2.7.1",
+      "version": "2.12.0",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
@@ -51,8 +51,18 @@
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     },
     {
+      "name": "com.microsoft.mixedreality.openxr",
+      "version": "1.5.1",
+      "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
+    },
+    {
+      "name": "com.microsoft.spatialaudio.spatializer.unity",
+      "version": "2.0.37",
+      "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
+    },
+    {
       "name": "com.microsoft.azure.remote-rendering",
-      "version": "1.1.24",
+      "version": "1.1.26",
       "registry": "https://pkgs.dev.azure.com/aipmr/MixedReality-Unity-Packages/_packaging/Unity-packages/npm/registry"
     }
   ]

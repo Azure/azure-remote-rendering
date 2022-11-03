@@ -1,35 +1,50 @@
 <?xml version="1.0"?>
-<Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Configuration
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="../.schemas/arr.account.overrides.schema.xsd">
+  <!-- Azure Remote Rendering account details -->
+  <Account>
+    <RemoteRenderingDomains>
+      <RemoteRenderingDomain>
+        <Label>My Remote Rendering Region</Label>
+        <Value>westus2</Value>
+        <Domain>my-remote-rendering-region.mixedreality.azure.com</Domain>
+      </RemoteRenderingDomain>
+    </RemoteRenderingDomains>
+    <AccountDomain>my-account-region.mixedreality.azure.com</AccountDomain>
+    <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
+    <AccountKey>MyArrAccountKey=</AccountKey>
+  </Account>
+
+  <!-- Azure Remote Rendering session details -->
   <Session>
-      <SessionOverride></SessionOverride>
-      <Size>Premium</Size>
+      <SessionOverride>MyArrSessionId</SessionOverride>
+      <Size>Standard</Size>
+      <!-- <Size>Premium</Size> -->
       <MaxLeaseTime>600</MaxLeaseTime>
       <AutoRenewLease>true</AutoRenewLease>
       <AutoReconnect>true</AutoReconnect>
       <AutoReconnectRate>10</AutoReconnectRate>
   </Session>
-  <Account>
-    <RemoteRenderingDomains>
-      <RemoteRenderingDomain>eastus.mixedreality.azure.com</RemoteRenderingDomain>
-      <RemoteRenderingDomain>southeastasia.mixedreality.azure.com</RemoteRenderingDomain>
-      <RemoteRenderingDomain>westeurope.mixedreality.azure.com</RemoteRenderingDomain>
-      <RemoteRenderingDomain>westus2.mixedreality.azure.com</RemoteRenderingDomain>
-    </RemoteRenderingDomains>
-    <AccountId>00000000-0000-0000-0000-000000000000</AccountId>
-    <AccountDomain>mixedreality.azure.com</AccountDomain>
-    <AccountKey>=</AccountKey>
-  </Account>
+
+  <!-- Azure storage details. -->
   <Storage>
-    <StorageAccountName>teststorage</StorageAccountName>
-    <StorageAccountKey>=</StorageAccountKey>
-    <StorageModelContainer>test-storage-container</StorageModelContainer>
+    <StorageAccountName>MyStorageAccountName</StorageAccountName>
+    <StorageAccountKey>MyStorageAccountKey==</StorageAccountKey>
+    <StorageModelContainer>my-blob-container-with-arr-assets</StorageModelContainer>
   </Storage>
+
+  <!--  Sharing or collaboration service details -->
   <Sharing>
+    <Provider>Photon</Provider>
     <PhotonRealtimeId>00000000-0000-0000-0000-000000000000</PhotonRealtimeId>
+    <PhotonVoiceId>00000000-0000-0000-0000-000000000000</PhotonVoiceId>
   </Sharing>
+
+  <!-- Azure Spatial Anchor account details. Only needed for collaborating with other HoloLens devices. -->
   <Anchor>
     <AnchorAccountId>00000000-0000-0000-0000-000000000000</AnchorAccountId>
-    <AnchorAccountKey>=</AnchorAccountKey>
-    <AnchorAccountDomain>mixedreality.azure.com</AnchorAccountDomain>
+    <AnchorAccountKey>MyAsaAccountKey=</AnchorAccountKey>
   </Anchor>
 </Configuration>

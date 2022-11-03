@@ -40,10 +40,14 @@ public class CameraControl : MonoBehaviour
     #region MonoBehavior Functions
     private void Awake()
     {
-        // Destroy if editor, MRTK's input siumulation will be used
+        // Destroy if editor, MRTK's input simulation will be used
         // Destroy if using an XR device, camera moves with head.
-        bool isXrDevice = !string.IsNullOrEmpty(XRSettings.loadedDeviceName) && XRSettings.loadedDeviceName != "None";
-        if (Application.isEditor || isXrDevice)
+        bool isXrDevice = XRSettings.enabled &&
+            XRSettings.isDeviceActive &&
+            !string.IsNullOrEmpty(XRSettings.loadedDeviceName) &&
+            XRSettings.loadedDeviceName != "None";
+
+        if (Application.isEditor && !isXrDevice)
         {
             Component.DestroyImmediate(this);
         }

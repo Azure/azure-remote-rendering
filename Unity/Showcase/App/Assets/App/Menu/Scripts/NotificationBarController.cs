@@ -133,7 +133,10 @@ public class NotificationBarController : MonoBehaviour
                     _textAnimation.TextDataToAnimate = new AnimateText.TextData[] { new AnimateText.TextData(progressString, AppNotificationType.Info) };
                 }
 
-                progressBar?.AnimateFill(progress);
+                if (progressBar != null)
+                {
+                    progressBar.AnimateFill(progress);
+                }
             }
             else if (_isLoadingModel)
             {

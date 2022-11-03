@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.UI;
 using UnityEngine;
 
@@ -40,8 +41,8 @@ public class CloseModelsMenuOnClick : MonoBehaviour
             // close menu
             handMenuHooks.ClearMenu();
 
-            // set current mode to "move" so you don't accidentally delete the model
-            handMenuHooks.SetPointerMode(PointerMode.Manipulate);
+            // set current mode to "none" so you don't accidentally delete or move the model
+            AppServices.PointerStateService.Mode = PointerMode.None;
         }
     }
     #endregion Private Functions

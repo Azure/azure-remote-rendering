@@ -87,7 +87,7 @@ public class MaterialButton : ClickableButton
 
         if (previewMaterial != null && remoteMaterial.Data != null)
         {
-            previewMaterial.Material.color = remoteMaterial.Data.AlbedoColor;
+            previewMaterial.AcquireExistingMaterial().color = remoteMaterial.Data.AlbedoColor;
         }
 
         UpdateLabelText();

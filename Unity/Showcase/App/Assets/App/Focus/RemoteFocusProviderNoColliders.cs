@@ -509,13 +509,21 @@ namespace Microsoft.MixedReality.Toolkit.Input
             {
                 return;
             }
-            _lastRemoteRayCast = currentTime;
 
             // Execute a remote ray-cast for all pointers.
             _remoteRayCasts.Clear();
             foreach (var remotePointerData in _remotePointerData)
             {
-                _remoteRayCasts.Add(DoRemoteCast(remotePointerData.Value));
+                // If remote pointer was already updated this frame avoid another update immediately.
+                if (!remotePointerData.Value.Staged)
+                {
+                    _remoteRayCasts.Add(DoRemoteCast(remotePointerData.Value));
+                }
+            }
+
+            if (_remoteRayCasts.Count > 0)
+            {
+                _lastRemoteRayCast = currentTime;
             }
         }
 
@@ -580,18 +588,33 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 return null;
             }
 
-            RayStep firstStep = pointer.Rays[0];
-            RayStep lastStep = pointer.Rays[pointer.Rays.Length - 1];
+            Vector3 start;
+            Vector3 direction;
+            float distance;
 
-            Vector3 start = firstStep.Origin;
-            Vector3 end = lastStep.Terminus;
-            Vector3 direction = (end - start);
+            if (pointer.Rays.Length == 1)
+            {
+                RayStep ray = pointer.Rays[0];
+                start = ray.Origin;
+                direction = ray.Direction;
+                distance = (pointer is BaseControllerPointer) ? ((BaseControllerPointer)pointer).PointerExtent : ray.Length;
+            }
+            else
+            {
+                RayStep firstStep = pointer.Rays[0];
+                RayStep lastStep = pointer.Rays[pointer.Rays.Length - 1];
+
+                start = firstStep.Origin;
+                direction = (lastStep.Terminus - start);
+                distance = direction.magnitude;
+                direction = direction.normalized;
+            }
 
             return DoRemoteRaycast(
                 pointerResult,
                 start,
-                direction.normalized,
-                direction.magnitude);
+                direction,
+                distance);
         }
 
         /// <summary>
@@ -758,6 +781,11 @@ namespace Microsoft.MixedReality.Toolkit.Input
             /// The Azure Remote Rendering ray cast hit.
             /// </summary>
             public RayCastHit RemoteResult => _useLocal ? default : _committed.RemoteResult;
+
+            /// <summary>
+            /// Get if remote data has already be staged this frame.
+            /// </summary>
+            public bool Staged => _lastStagedTime == Time.time;
 
             /// <summary>
             /// The remote Entity that was hit.
@@ -1111,6 +1139,8 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 size = 0;
             }
 
+            public uint Count => size;
+
             public int MaxSize => cache.Length;
 
             public void Add(Task<RayCastHit[]> value)
@@ -1165,7 +1195,11 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 bool completed = true;
                 for (uint i = 0; i < size; i++)
                 {
-                    completed &= cache[i].IsCompleted;
+                    var task = cache[i];
+                    completed &=
+                        task.Status == TaskStatus.RanToCompletion ||
+                        task.Status == TaskStatus.Faulted ||
+                        task.Status == TaskStatus.Canceled;
                 }
                 return completed;
             }

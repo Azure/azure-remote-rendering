@@ -6,7 +6,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class RemoteObjectStage : MonoBehaviour
+public class RemoteObjectStage : MonoBehaviour, IRemoteObjectStage
 {
     private bool _moving;
     private ObjectPlacement _stagesContainerPlacement;
@@ -59,12 +59,25 @@ public class RemoteObjectStage : MonoBehaviour
     private Vector3 stagedAreaOffset = new Vector3(0, 0.1f, 0);
 
     /// <summary>
-    /// he offset applied to staged objects.  This is this offset from the stage origin.
+    /// The offset applied to staged objects.  This is this offset from the stage origin.
     /// </summary>
     public Vector3 StagedAreaOffset
     {
         get => stagedAreaOffset;
         set => stagedAreaOffset = value;
+    }
+
+    [SerializeField]
+    [Tooltip("Should the staged object be hidden when object is moving.")]
+    private bool hideObjectWhenMoving = false;
+
+    /// <summary>
+    /// Should the staged object be hidden when object is moving.
+    /// </summary>
+    public bool HideObjectWhenMoving
+    {
+        get => hideObjectWhenMoving;
+        set => hideObjectWhenMoving = value;
     }
 
     [Header("Object Prefabs")]
@@ -94,13 +107,13 @@ public class RemoteObjectStage : MonoBehaviour
     public UnityEvent<RemoteObject> StagedObjectChanged => stagedObjectChanged;
 
     [SerializeField]
-    [Tooltip("Event raised when the stage has created a new object.")]
-    private UnityEvent<RemoteObject> objectCreated = new RemoteObjectStageEvent();
+    [Tooltip("Event raised when there's a new unstaged object added.")]
+    private UnityEvent<RemoteObject> unstagedObjectsChanged = new RemoteObjectStageEvent();
 
     /// <summary>
-    /// Event raised when the stage has created a new object.
+    /// Event raised when there's a new unstaged object added
     /// </summary>
-    public UnityEvent<RemoteObject> ObjectCreated => objectCreated;
+    public UnityEvent<RemoteObject> UnstagedObjectsChanged => unstagedObjectsChanged;
 
     [SerializeField]
     [Tooltip("Event raised when the stage visual changes visibility. This is only raised with visibility changes via IsStageVisible.Set()")]
@@ -110,6 +123,16 @@ public class RemoteObjectStage : MonoBehaviour
     /// Event raised when the stage visual changes visibility. This is only raised with visibility changes via IsStageVisible.Set()
     /// </summary>
     public UnityEvent<bool> StageVisualVisibilityChanged => stageVisualVisibilityChanged;
+
+
+    [SerializeField]
+    [Tooltip("Event raised when the stage has moved.")]
+    private UnityEvent stageMoved = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the stage has moved.
+    /// </summary>
+    public UnityEvent StageMoved => stageMoved;
 
     #endregion Serialized Fields
 
@@ -136,6 +159,25 @@ public class RemoteObjectStage : MonoBehaviour
     }
 
     /// <summary>
+    /// Get or set if the model containers are visible.
+    /// </summary>
+    public bool IsModelContainerVisible
+    {
+        get
+        {
+            EnsureContainers();
+            return stagedObjectsContainer.activeInHierarchy && unstagedObjectsContainer.activeInHierarchy;
+        }
+
+        set
+        {
+            EnsureContainers();
+            SetModelVisible(stagedObjectsContainer, value);
+            SetModelVisible(unstagedObjectsContainer, value);
+        }
+    }
+
+    /// <summary>
     /// Get the currently staged object.
     /// </summary>
     public RemoteObject StagedObject
@@ -147,12 +189,55 @@ public class RemoteObjectStage : MonoBehaviour
     }
     #endregion Public Properties
 
+    #region IRemoteObjectStage Methods
+    /// <summary>
+    /// Stage the given object. This will delete the old staged object.
+    /// </summary>
+    public void StageObject(GameObject item, bool reposition)
+    {
+        if (item != null)
+        {
+            StageObject(item.GetComponent<RemoteObject>(), reposition);
+        }
+    }
+
+    /// <summary>
+    /// Move this object to the unstaged area
+    /// </summary>
+    public void UnstageObject(GameObject item, bool reposition)
+    {
+        if (item != null)
+        {
+            UnstageObject(item.GetComponent<RemoteObject>(), reposition);
+        }
+    }
+    #endregion IRemoteObjectStage Methods
+
     #region Public Methods
     public void ClearContainer()
     {
-        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}",  "Clearing model containers per request...");
-        ClearContainer(stagedObjectsContainer);
-        ClearContainer(unstagedObjectsContainer);
+        ClearContainer(force: false);
+    }
+
+    public async void ClearContainer(bool force)
+    {
+        bool confirmed = force;
+        if (!confirmed)
+        {
+            confirmed = await AppServices.AppNotificationService.ShowDialog(new DialogOptions()
+            {
+                Title = "Erase All Models",
+                Message = "Do you really want to erase all models?",
+                OKLabel = "Yes"
+            }) == AppDialog.AppDialogResult.Ok;
+        }
+
+        if (confirmed)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", "Clearing all model containers per request...");
+            ClearContainer(stagedObjectsContainer);
+            ClearContainer(unstagedObjectsContainer);
+        }
     }
 
     public async void MoveStage()
@@ -169,7 +254,30 @@ public class RemoteObjectStage : MonoBehaviour
     /// </summary>
     public void ClearStage()
     {
-        ClearContainer(stagedObjectsContainer);
+        ClearStage(force: false);
+    }
+
+    /// <summary>
+    /// Clear the stage area
+    /// </summary>
+    public async void ClearStage(bool force)
+    {
+        bool confirmed = force;
+        if (!confirmed)
+        {
+            confirmed = await AppServices.AppNotificationService.ShowDialog(new DialogOptions()
+            {
+                Title = "Erase Staged Model",
+                Message = "Do you really want to erase the staged model?",
+                OKLabel = "Yes"
+            }) == AppDialog.AppDialogResult.Ok;
+        }
+
+        if (confirmed)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", "Clearing staged model per request...");
+            ClearContainer(stagedObjectsContainer);
+        }
     }
 
     /// <summary>
@@ -187,13 +295,12 @@ public class RemoteObjectStage : MonoBehaviour
         {
             ClearContainer(stagedObjectsContainer);
             remoteObject.transform.SetParent(stagedObjectsContainer.transform, true);
-
             StagedObjectChanged?.Invoke(remoteObject);
         }
 
         if (reposition)
         {
-            MoveObjectAnchorToStage(remoteObject.GetComponent<MovableAnchor>());
+            MoveObjectToStage(remoteObject.GetComponent<MovableObject>());
         }
     }
 
@@ -211,50 +318,13 @@ public class RemoteObjectStage : MonoBehaviour
         if (!remoteObject.transform.IsChildOf(unstagedObjectsContainer.transform))
         {
             remoteObject.transform.SetParent(unstagedObjectsContainer.transform, true);
+            UnstagedObjectsChanged?.Invoke(remoteObject);
         }
 
         if (reposition)
         {
             remoteObject.GetComponent<ObjectPlacement>()?.StartPlacement();
         }
-    }
-
-    /// <summary>
-    /// Load a new object from model data.
-    /// </summary>
-    public RemoteObject Load(RemoteItemBase item)
-    {
-        EnsureContainers();
-        bool staged = IsStageVisible;
-        return Load(item, staged, reposition: true);
-    }
-
-    /// <summary>
-    /// Load a new object from model data.
-    /// </summary>
-    public RemoteObject Load(
-        RemoteItemBase item,
-        bool staged,
-        bool reposition,
-        Action<RemoteObject> initailizeAction = null)
-    {
-        EnsureContainers();
-        RemoteObject remoteObject = RemoteObjectHelper.Load(
-            item,
-            remoteObjectPrefab,
-            unstagedObjectsContainer.transform,
-            initailizeAction);
-
-        if (staged)
-        {
-            StageObject(remoteObject, reposition);
-        }
-        else
-        {
-            UnstageObject(remoteObject, reposition);
-        }
-
-        return remoteObject;
     }
     #endregion Public Methods
 
@@ -270,6 +340,8 @@ public class RemoteObjectStage : MonoBehaviour
             _stagesMovableObject.Moving.AddListener(OnMovingStarted);
             _stagesMovableObject.Moved.AddListener(OnMovingStopped);
         }
+
+        AppServices.RemoteObjectStageService.SetRemoteStage(this);
     }
 
     private void OnDestroy()
@@ -291,8 +363,8 @@ public class RemoteObjectStage : MonoBehaviour
             return;
         }
 
-        int childern = container.transform.childCount;
-        for (int i = 0; i < childern; i++)
+        int children = container.transform.childCount;
+        for (int i = 0; i < children; i++)
         {
             Destroy(container.transform.GetChild(i).gameObject);
         }
@@ -321,7 +393,11 @@ public class RemoteObjectStage : MonoBehaviour
         {
             _moving = true;
             IsStageVisible = true;
-            SetStagedObjectEnablement(false);
+
+            if (hideObjectWhenMoving)
+            {
+                SetStagedObjectEnablement(false);
+            }
         }
     }
 
@@ -330,8 +406,13 @@ public class RemoteObjectStage : MonoBehaviour
         if (_moving)
         {
             _moving = false;
-            SetStagedObjectEnablement(true);
-            ResetObjectAnchors();
+
+            if (hideObjectWhenMoving)
+            {
+                SetStagedObjectEnablement(true);
+            }
+
+            stageMoved?.Invoke();
         }
     }
 
@@ -344,43 +425,28 @@ public class RemoteObjectStage : MonoBehaviour
         }
     }
 
-    private bool IsStagedObject(Transform value)
-    {
-        return value != null &&
-            stagedObjectsContainer != null &&
-            value != transform &&
-            value != stageVisual &&
-            value.IsChildOf(stagedObjectsContainer.transform);
-    }
-
-    private void MoveObjectAnchorToStage(MovableAnchor toStage)
+    private void MoveObjectToStage(MovableObject toStage)
     {
         if (toStage != null)
         {
-            toStage.LocalMoveAnchor(stagedAreaOffset, Quaternion.identity);
+            toStage.MoveOrigin(stagedAreaOffset, Quaternion.identity);
         }
     }
 
-    private void ResetObjectAnchors()
+    private void SetModelVisible(GameObject container, bool visible)
     {
-        MovableAnchor[] anchors = GetComponentsInChildren<MovableAnchor>();
-        if (anchors != null)
+        if (container == null)
         {
-            int count = anchors.Length;
-            for (int i = 0; i < count; i++)
-            {
-                MovableAnchor anchor = anchors[i];
-                Debug.Assert(i != 0 || anchor.gameObject == gameObject, "For resetting all object anchors to work, the root anchor needs to be resetted first.");
-                if (IsStagedObject(anchor.transform))
-                {
-                    MoveObjectAnchorToStage(anchor);
-                }
-                else
-                {
-                    anchor.ResetAnchor();
-                }
-            }
+            return;
         }
+
+        var remoteObjects = container.GetComponentsInChildren<RemoteObject>(includeInactive: true);
+        foreach (var remoteObject in remoteObjects)
+        {
+            remoteObject.IsVisible = visible;
+        }
+
+        container.SetActive(visible);
     }
     #endregion Private Methods
 

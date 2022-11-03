@@ -3,21 +3,45 @@
 
 using Microsoft.MixedReality.Toolkit.UI;
 using Microsoft.MixedReality.Toolkit.Utilities;
+using System;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class AppDialog : MonoBehaviour
 {
     private TaskCompletionSource<AppDialogResult> _taskSource = new TaskCompletionSource<AppDialogResult>();
-
-    public static bool DialogOpen = false;
 
     public enum AppDialogResult
     {
         Ok,
         No,
         Cancel
+    }
+
+    [Flags]
+    public enum AppDialogButtons
+    {
+        Ok = 0x01,
+        No = 0x02,
+        Cancel = 0x04,
+
+        None = 0x0,
+        All = Ok | No | Cancel,        
+    }
+
+    public enum AppDialogLocation
+    {
+        /// <summary>
+        /// The dialog will be placed in front of the user.
+        /// </summary>
+        Default,
+
+        /// <summary>
+        /// The dialog will be placed in the app's menu
+        /// </summary>
+        Menu
     }
     
     #region Serialized Fields
@@ -49,7 +73,34 @@ public class AppDialog : MonoBehaviour
         set => destroyOnClose = value;
     }
 
+    [EnumFlag]
+    [SerializeField]
+    [Tooltip("The buttons to show in the dialog.")]
+    private AppDialogButtons buttons = AppDialogButtons.All;
+
+    /// <summary>
+    /// The buttons to show in the dialog.
+    /// </summary>
+    public AppDialogButtons Buttons
+    {
+        get => buttons;
+        set => buttons = value;
+    }
+
     [Header("Object Parts")]
+
+    [SerializeField]
+    [Tooltip("The button container that layouts buttons.")]
+    private GridObjectCollection buttonContainer;
+
+    /// <summary>
+    /// The button container that layouts buttons.
+    /// </summary>
+    public GridObjectCollection ButtonContainer
+    {
+        get => buttonContainer;
+        set => buttonContainer = value;
+    }
 
     [SerializeField]
     [Tooltip("The button clicked for confirming the dialog request.")]
@@ -92,12 +143,12 @@ public class AppDialog : MonoBehaviour
 
     [SerializeField]
     [Tooltip("The text of the dialog header.")]
-    private TextMesh dialogHeaderText;
+    private TextMeshPro dialogHeaderText;
 
     /// <summary>
     /// The dialog of the text
     /// </summary>
-    public TextMesh DialogHeaderText
+    public TextMeshPro DialogHeaderText
     {
         get => dialogHeaderText;
         set => dialogHeaderText = value;
@@ -105,12 +156,12 @@ public class AppDialog : MonoBehaviour
 
     [SerializeField]
     [Tooltip("The text of the dialog.")]
-    private TextMesh dialogText;
+    private TextMeshPro dialogText;
 
     /// <summary>
     /// The dialog of the text
     /// </summary>
-    public TextMesh DialogText
+    public TextMeshPro DialogText
     {
         get => dialogText;
         set => dialogText = value;
@@ -155,14 +206,35 @@ public class AppDialog : MonoBehaviour
         set => cancelButtonText = value;
     }
 
-    #endregion Serialized Fields
 
-    #region Public Properties
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when the dialog is opened.")]
+    private UnityEvent onOpened = new UnityEvent();
+
     /// <summary>
-    /// The task completed once the dialog closes
+    /// Event raised when the dialog is opened.
     /// </summary>
-    public Task<AppDialogResult> DialogTask => _taskSource.Task;
-    #endregion Public Properties
+    public UnityEvent OnOpened
+    {
+        get => onOpened;
+        set => onOpened = value;
+    }
+
+    [SerializeField]
+    [Tooltip("Event raised when the dialog is closed.")]
+    private UnityEvent onClosed = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the dialog is closed.
+    /// </summary>
+    public UnityEvent OnClose
+    {
+        get => onClosed;
+        set => onClosed = value;
+    }
+    #endregion Serialized Fields
 
     #region MonoBehavior Functions
     private void Start()
@@ -189,6 +261,15 @@ public class AppDialog : MonoBehaviour
     private void OnEnable()
     {
         PlaceInFront();
+
+        SetButtonActive(okButton, AppDialogButtons.Ok);
+        SetButtonActive(noButton, AppDialogButtons.No);
+        SetButtonActive(cancelButton, AppDialogButtons.Cancel);
+
+        if (buttonContainer != null)
+        {
+            buttonContainer.UpdateCollection();
+        }
     }
 
     /// <summary>
@@ -196,7 +277,6 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        DialogOpen = false;
         _taskSource.TrySetResult(AppDialogResult.Cancel);
     }
     #endregion MonoBehavior Functions
@@ -207,17 +287,20 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     public async Task<AppDialogResult> Open()
     {
-        while(DialogOpen) //Prevent multiple dialogs
+        if (_taskSource == null ||
+            _taskSource.Task.IsCompleted)
         {
-            await Task.Delay(200);
+            _taskSource = new TaskCompletionSource<AppDialogResult>();
         }
+
+        onOpened?.Invoke();
+
         if (gameObject != null)
         {
             gameObject.SetActive(true);
         }
-        DialogOpen = true;
 
-        return await DialogTask;
+        return await _taskSource.Task;
     }
 
     /// <summary>
@@ -225,7 +308,8 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     public void Close(bool allowDestroy = true)
     {
-        DialogOpen = false;
+        onClosed?.Invoke();
+
         if (gameObject != null)
         {
             gameObject.SetActive(false);
@@ -239,13 +323,27 @@ public class AppDialog : MonoBehaviour
 
     #region Private Functions
     /// <summary>
+    /// Safely set active state of button
+    /// </summary>
+    private void SetButtonActive(Interactable button, AppDialogButtons type)
+    {
+        if (button != null)
+        {
+            button.gameObject.SetActive((buttons & type) != 0);
+        }
+    }
+
+    /// <summary>
     /// Place dialog in front of the user.
     /// </summary>
     private void PlaceInFront()
     {
-        Transform cameraTransform = CameraCache.Main.transform;
-        transform.position = cameraTransform.position + (cameraTransform.forward.normalized * startDistance);
-        transform.rotation = Quaternion.LookRotation((transform.position - cameraTransform.position).normalized, Vector3.up);
+        if (startDistance > 0.0f)
+        {
+            Transform cameraTransform = CameraCache.Main.transform;
+            transform.position = cameraTransform.position + (cameraTransform.forward.normalized * startDistance);
+            transform.rotation = Quaternion.LookRotation((transform.position - cameraTransform.position).normalized, Vector3.up);
+        }
     }
 
     /// <summary>
@@ -253,8 +351,8 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     private void ClickedOk()
     {
-        _taskSource.TrySetResult(AppDialogResult.Ok);
         Close();
+        _taskSource.TrySetResult(AppDialogResult.Ok);
     }
     
     /// <summary>
@@ -262,8 +360,8 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     private void ClickedNo()
     {
-        _taskSource.TrySetResult(AppDialogResult.No);
         Close();
+        _taskSource.TrySetResult(AppDialogResult.No);
     }
 
     /// <summary>
@@ -271,8 +369,8 @@ public class AppDialog : MonoBehaviour
     /// </summary>
     private void ClickedCanceled()
     {
-        _taskSource.TrySetResult(AppDialogResult.Cancel);
         Close();
+        _taskSource.TrySetResult(AppDialogResult.Cancel);
     }
     #endregion Private Functions
 }

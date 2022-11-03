@@ -52,11 +52,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             if (anchorSettings != null)
             {
                 if (anchorSettings.ShouldSerializeAnchorAccountId() &&
-                    anchorSettings.ShouldSerializeAnchorAccountKey() &&
-                    anchorSettings.ShouldSerializeAnchorAccountDomain())
+                    anchorSettings.ShouldSerializeAnchorAccountKey())
                 {
                     result.AnchorAccountId = anchorSettings.AnchorAccountId;
                     result.AnchorAccountKey = anchorSettings.AnchorAccountKey;
+                }
+
+                if (anchorSettings.ShouldSerializeAnchorAccountDomain())
+                {
                     result.AnchorAccountDomain = anchorSettings.AnchorAccountDomain;
                 }
             }

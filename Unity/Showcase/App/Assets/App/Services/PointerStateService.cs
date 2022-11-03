@@ -65,8 +65,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Prevent the given pointer type from being shown/used. If ShowPointer() is called after this, the pointer
-        /// will be shown until the caller of ShowPointer() disposes its IPointerStateVisibilityOverride object.
+        /// Prevent the given pointer type from being shown. If ShowPointer() is called before or after this, the pointer
+        /// will be shown until all callers of ShowPointer() disposes its IPointerStateVisibilityOverride object.
         /// </summary>
         /// <returns>A IPointerStateVisibilityOverride object. Dispose this object to undo the hide request.</returns>
         public IPointerStateVisibilityOverride HidePointer(PointerType pointerType)
@@ -75,8 +75,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Force the given pointer type to be shown/used. If HidePointer() is called after this, the pointer
-        /// will be hidden until the caller of ShowPointer() disposes its IPointerStateVisibilityOverride object.
+        /// Force the given pointer type to always be shown, even if HidePointer() is called.
         /// </summary>
         /// <returns>A IPointerStateVisibilityOverride object. Dispose this object to undo the show request.</returns>
         public IPointerStateVisibilityOverride ShowPointer(PointerType pointerType)
@@ -105,13 +104,41 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
             currentOverrides.Add(visibilityOverride);
+            behavior = GetHighestPriorityOverride(currentOverrides);
             SetPointerVisibility(type, behavior);
             return visibilityOverride;
         }
 
         /// <summary>
+        /// Get the highest priority behavior in the list of overrides. ShowAlways is a high priority than HideAlways.
+        /// </summary>
+        private PointerBehavior GetHighestPriorityOverride(List<PointerStateVisibilityOverride> overrides)
+        {
+            var result = PointerBehavior.Default;
+            if (overrides == null || overrides.Count == 0)
+            {
+                return PointerBehavior.Default;
+            }
+
+            foreach (var entry in overrides)
+            {
+                if (entry.Behavior != PointerBehavior.Default)
+                {
+                    result = entry.Behavior;
+                }
+
+                if (result == PointerBehavior.AlwaysOn)
+                {
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Handle the disposal of a visibility override. This will remove the visibility override from the pointer's 
-        /// override list, and then (re)apply the most recent visibility override.
+        /// override list, and then (re)apply the highest priority visibility override.
         /// </summary>
         private void HandleOverrideDispose(PointerStateVisibilityOverride visibilityOverride)
         {
@@ -126,12 +153,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             if (_visibilityOverrideRequests.TryGetValue(type, out allOverrides) &&
                 allOverrides.Remove(visibilityOverride))
             {
-                PointerBehavior behavior = PointerBehavior.Default;
-                if (allOverrides.Count > 0)
-                {
-                    behavior = allOverrides[allOverrides.Count - 1].Behavior;
-                }
-                else
+                PointerBehavior behavior = GetHighestPriorityOverride(allOverrides);
+                if (allOverrides.Count == 0)
                 {
                     _visibilityOverrideRequests.Remove(type);
                 }
@@ -145,28 +168,35 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         private bool SetPointerVisibility(PointerType pointerType, PointerBehavior pointerBehavior)
         {
             bool success = true;
-            switch (pointerType)
+            try
             {
-                case PointerType.Gaze:
-                    PointerUtils.SetGazePointerBehavior(pointerBehavior);
-                    break;
+                switch (pointerType)
+                {
+                    case PointerType.Gaze:
+                        PointerUtils.SetGazePointerBehavior(pointerBehavior);
+                        break;
 
-                case PointerType.HandGrab:
-                    PointerUtils.SetHandGrabPointerBehavior(pointerBehavior);
-                    break;
+                    case PointerType.HandGrab:
+                        PointerUtils.SetHandGrabPointerBehavior(pointerBehavior);
+                        break;
 
-                case PointerType.HandPoke:
-                    PointerUtils.SetHandPokePointerBehavior(pointerBehavior);
-                    break;
+                    case PointerType.HandPoke:
+                        PointerUtils.SetHandPokePointerBehavior(pointerBehavior);
+                        break;
 
-                case PointerType.HandRay:
-                    PointerUtils.SetHandRayPointerBehavior(pointerBehavior);
-                    break;
+                    case PointerType.HandRay:
+                        PointerUtils.SetHandRayPointerBehavior(pointerBehavior);
+                        break;
 
-                default:
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  $"Unsupported point type '{pointerType}'");
-                    success = false;
-                    break;
+                    default:
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Unsupported point type '{pointerType}'");
+                        success = false;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Failed to reset pointer '{0}' to {1}. Exception {2}", pointerType, pointerBehavior, ex);
             }
             return success;
         }

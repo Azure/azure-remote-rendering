@@ -1,18 +1,27 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.MixedReality.OpenXR;
 using Microsoft.MixedReality.Toolkit.Build.Editor;
 using Microsoft.MixedReality.Toolkit.Utilities.Editor;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEditor.XR.Management;
+using UnityEditor.XR.OpenXR;
+using UnityEditor.XR.OpenXR.Features;
+using UnityEngine.XR.Management;
+using UnityEngine.XR.OpenXR.Features;
+using UnityEngine.XR.OpenXR;
+using UnityEngine.XR.OpenXR.Features.Interactions;
+using System.Reflection;
 
 public enum CustomBuildType
 {
@@ -26,7 +35,8 @@ public enum CustomBuildPlatform
 {
     x86 = 1,
     ARM = 2,
-    ARM64 = 3
+    ARM64 = 3,
+    x64 = 4
 }
 
 public enum CustomBuildConfiguration
@@ -53,11 +63,9 @@ public class CustomBuildInfo
 
 
 public class CustomBuilder
-{
-    private const string CustomBuildPref_HoloLens_Scene = "SampleScene";
-    private const string CustomBuildPref_Desktop_Scene = "SampleSceneDesktop";
-
-
+{ 
+    private static readonly IEnumerable<string> Scenes_Default = new string[] { "Assets/Scenes/SampleScene.unity" };
+    private static readonly IEnumerable<string>  Scenes_DefaultPC = new string[] { "Assets/Scenes/SampleSceneDesktop.unity" }; 
     private const string CustomBuildPref_HoloLens1BuildDir = "_CustomBuild_HoloLens1BuildDir";
     private const string CustomBuildPref_HoloLens2BuildDir_ARM32 = "_CustomBuild_HoloLens2BuildDir";
     private const string CustomBuildPref_HoloLens2BuildDir_ARM64 = "_CustomBuild_HoloLens2BuildDir_ARM64";
@@ -67,7 +75,7 @@ public class CustomBuilder
     private bool m_building = false;
 
     /// <summary>
-    /// The default directory where the hololens 1 build will be placed.
+    /// The default directory where the HoloLens 1 build will be placed.
     /// </summary>
     public static string HoloLens1BuildDirectory
     {
@@ -76,7 +84,7 @@ public class CustomBuilder
     }
 
     /// <summary>
-    /// The default directory where the hololens 2 build will be placed.
+    /// The default directory where the HoloLens 2 build will be placed.
     /// </summary>
     public static string HoloLens2BuildDirectory_ARM32
     {
@@ -85,7 +93,7 @@ public class CustomBuilder
     }
 
     /// <summary>
-    /// The default directory where the hololens 2 build will be placed.
+    /// The default directory where the HoloLens 2 build will be placed.
     /// </summary>
     public static string HoloLens2BuildDirectory_ARM64
     {
@@ -109,81 +117,43 @@ public class CustomBuilder
     [MenuItem("Builder/Build HoloLens 1 Client", false, 0)]
     public static async void BuildHoloLens1Project()
     {
-        ConfigureBuildScene(CustomBuildType.HoloLens1);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens1);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm)", false, 0)]
     public static async void BuildHoloLens2Project_ARM32()
     {
-        ConfigureBuildScene(CustomBuildType.HoloLens2_ARM32);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM32);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm64)", false, 0)]
     public static async void BuildHoloLens2Project_ARM64()
     {
-        ConfigureBuildScene(CustomBuildType.HoloLens2_ARM64);
         await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM64);
     }
 
     [MenuItem("Builder/Build PC Client", false, 1)]
     public static async void BuildDesktopProject()
     {
-        ConfigureBuildScene(CustomBuildType.PC);
         await s_instance.BuildUnityPlayer(CustomBuildType.PC);
     }
 
-    private static void ConfigureBuildScene(CustomBuildType buildType)
+    [MenuItem("Builder/Build Asset Bundles", isValidateFunction: false, priority = 111)]
+    private static void SelectOutputDirectoryAndBuildAllAssetBundles()
     {
-        Scene targetScene = default;
-        List<string> allDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup).Split(';').ToList();
+        bool build = EditorUtility.DisplayDialogComplex(
+            title: $"Building '{EditorUserBuildSettings.activeBuildTarget}' Assets",
+            message: $"You are about to build asset bundles for the '{EditorUserBuildSettings.activeBuildTarget}' target. You can change this target under the 'File > Building Settings' window.\n\nWould you like to continue?",
+            ok: "Yes",
+            cancel: "No",
+            alt: null) == 0;
 
-        switch (buildType)
+        if (build)
         {
-            case CustomBuildType.HoloLens1:
-            case CustomBuildType.HoloLens2_ARM32:
-            case CustomBuildType.HoloLens2_ARM64:
-                if (!PlayerSettings.virtualRealitySupported)
-                {
-                    if (!allDefines.Contains("USE_MR"))
-                        allDefines.Add("USE_MR");
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, string.Join(";", allDefines));
-                    PlayerSettings.virtualRealitySupported = true;
-                }
-                targetScene = SceneManager.GetSceneByName(CustomBuildPref_Desktop_Scene);
-                break;
-            case CustomBuildType.PC:
-                if (PlayerSettings.virtualRealitySupported)
-                {
-                    if (allDefines.Contains("USE_MR"))
-                        allDefines.Remove("USE_MR");
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup, string.Join(";", allDefines));
-                    PlayerSettings.virtualRealitySupported = false;
-                }
-                targetScene = SceneManager.GetSceneByName(CustomBuildPref_Desktop_Scene);
-                break;
-        }
-
-        if (targetScene != default)
-        {
-            bool targetSceneActive = false;
-            foreach (var editorScene in EditorBuildSettings.scenes)
-            {
-                if (editorScene.path.Equals(targetScene.path))
-                {
-                    editorScene.enabled = true;
-                    targetSceneActive = true;
-                }
-                else
-                {
-                    editorScene.enabled = false;
-                }
-            }
-            if (!targetSceneActive)
-            {
-                EditorBuildSettings.scenes.Append(new EditorBuildSettingsScene(targetScene.path, true));
-            }
+            BuildAssetBundle.BuildAllAssetBundles(EditorUtility.OpenFolderPanel(
+                "Select Output Directory",
+                GetDefaultAssetBundleDirectory(),
+                string.Empty));
         }
     }
 
@@ -195,35 +165,39 @@ public class CustomBuilder
         // We don't need stack traces on all our logs. Makes things a lot easier to read.
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
-        // default to HoloLens2
+        // Default to HoloLens2
         var customBuildInfo = new CustomBuildInfo()
         {
-            CustomType = CustomBuildType.HoloLens2_ARM32,
+            CustomType = CustomBuildType.HoloLens2_ARM64,
             Silent = true,
-            AutoBuildAppx = true,
-            OutputDirectory = ""
+            AutoBuildAppx = false,
+            OutputDirectory = "Build"
         };
 
         // parse command line arguments
         ParseBuildCommandLine(ref customBuildInfo);
 
         Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Starting command line build for application ({0})...", customBuildInfo.CustomType);
-        EditorAssemblyReloadManager.LockReloadAssemblies = true;
-
         bool success = false;
         try
         {
-            UnityPlayerBuildTools.SyncSolution();
-            await s_instance.BuildUnityPlayer(customBuildInfo);
+            success = await s_instance.BuildUnityPlayer(customBuildInfo);
         }
         catch (Exception e)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Build Failed!\n{e.Message}\n{e.StackTrace}");
-            success = false;
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Build Exception: {e}");
         }
 
-        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Exiting command line build... Build success? {success}");
-        EditorApplication.Exit(success ? 0 : 1);
+        if (success)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, $"Success! Unity build completed.");
+            EditorApplication.Exit(0);
+        }
+        else
+        {
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, $"Error! Unity build failed.");
+            EditorApplication.Exit(1);
+        }
     }
 
     /// <summary>
@@ -232,6 +206,10 @@ public class CustomBuilder
     public static void ParseBuildCommandLine(ref CustomBuildInfo buildInfo)
     {
         string[] arguments = Environment.GetCommandLineArgs();
+        
+        // Boolean used to track whether buildInfo contains scenes that are not specified by command line arguments.
+        // These non command line argument scenes should be overwritten by those specified in the command line.
+        bool buildInfoContainsNonCommandLineScene = buildInfo.Scenes != null && buildInfo.Scenes.Count() > 0;
 
         for (int i = 0; i < arguments.Length; ++i)
         {
@@ -243,11 +221,42 @@ public class CustomBuilder
                 case "-hololens1":
                     buildInfo.CustomType = CustomBuildType.HoloLens1;
                     break;
+                case "-hololens":
                 case "-hololens2":
                     buildInfo.CustomType = CustomBuildType.HoloLens2_ARM64;
                     break;
                 case "-buildOutput":
                     buildInfo.OutputDirectory = arguments[++i];
+                    break;
+                case "-sceneList":
+                    if (buildInfoContainsNonCommandLineScene)
+                    {
+                        buildInfo.Scenes = SplitSceneList(arguments[++i]);
+                        buildInfoContainsNonCommandLineScene = false;
+                    }
+                    else
+                    {
+                        buildInfo.Scenes = buildInfo.Scenes.Union(SplitSceneList(arguments[++i]));
+                    }
+                    break;
+                case "-sceneListFile":
+                    string path = arguments[++i];
+                    if (File.Exists(path))
+                    {
+                        if (buildInfoContainsNonCommandLineScene)
+                        {
+                            buildInfo.Scenes = SplitSceneList(File.ReadAllText(path));
+                            buildInfoContainsNonCommandLineScene = false;
+                        }
+                        else
+                        {
+                            buildInfo.Scenes = buildInfo.Scenes.Union(SplitSceneList(File.ReadAllText(path)));
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Scene list file at '{path}' does not exist.");
+                    }
                     break;
             }
         }
@@ -259,8 +268,11 @@ public class CustomBuilder
         switch (type)
         {
             case CustomBuildType.HoloLens1:
-            case CustomBuildType.PC:
                 result = CustomBuildPlatform.x86;
+                break;
+
+            case CustomBuildType.PC:
+                result = CustomBuildPlatform.x64;
                 break;
 
             case CustomBuildType.HoloLens2_ARM32:
@@ -278,38 +290,40 @@ public class CustomBuilder
         return result;
     }
 
-    private Task BuildUnityPlayer(CustomBuildType type)
+    private Task<bool> BuildUnityPlayer(CustomBuildType type)
     {
         return BuildUnityPlayer(new CustomBuildInfo()
         {
             CustomType = type,
             Silent = false,
             AutoBuildAppx = false,
-            OutputDirectory = string.Empty
+            OutputDirectory = string.Empty,
         });
     }
 
-    private async Task BuildUnityPlayer(CustomBuildInfo info)
+    private async Task<bool> BuildUnityPlayer(CustomBuildInfo info)
     {
         if (m_building)
         {
-            return;
+            return false;
         }
-        m_building = true;
 
+        bool success = false;
         try
         {
-            await ExecuteBuild(info);
+            m_building = true;
+            success = await ExecuteBuild(info);
         }
         finally
         {
             m_building = false;
         }
+        return success;
     }
 
-    private bool ValidateSceneCount()
+    private bool ValidateSceneCount(IEnumerable<string> scenes)
     {
-        if (EditorBuildSettings.scenes.Length == 0)
+        if (scenes == null || scenes.Count() == 0)
         {
             EditorUtility.DisplayDialog("Attention!",
                 "No scenes are present in the build settings.\n" +
@@ -322,14 +336,46 @@ public class CustomBuilder
         return true;
     }
 
-    private bool IsPCBuild(CustomBuildType type)
+    private static bool IsPCBuild(CustomBuildType type)
     {
         return type == CustomBuildType.PC;
     }
 
-    private string SelectBuildDirectory(CustomBuildType type)
+    private static CustomBuildType GetCustomBuildTypeFromEditorSettings()
     {
-        string defaultDirectory = null;
+        CustomBuildType type = CustomBuildType.PC;
+        bool isUwp = EditorUserBuildSettings.activeBuildTarget == BuildTarget.WSAPlayer;
+        
+        if (isUwp)
+        {
+            switch (EditorUserBuildSettings.wsaArchitecture)
+            {
+                case "ARM32":
+                    type = CustomBuildType.HoloLens2_ARM32;
+                    break;
+
+                case "x86":
+                case "AMD64":
+                    type = CustomBuildType.PC;
+                    break;
+
+                default:
+                    type = CustomBuildType.HoloLens2_ARM64;
+                    break;
+            }
+        }
+
+        return type;
+    }
+
+    private static string GetDefaultBuildDirectory()
+    {
+        return GetDefaultBuildDirectory(GetCustomBuildTypeFromEditorSettings());
+    }
+
+    private static string GetDefaultBuildDirectory(CustomBuildType type)
+    {
+        string defaultDirectory;
         switch (type)
         {
             case CustomBuildType.HoloLens1:
@@ -340,15 +386,40 @@ public class CustomBuilder
                 defaultDirectory = HoloLens2BuildDirectory_ARM32;
                 break;
 
+            case CustomBuildType.HoloLens2_ARM64:
+                defaultDirectory = HoloLens2BuildDirectory_ARM64;
+                break;
+
             case CustomBuildType.PC:
             default:
                 defaultDirectory = PCBuildDirectory;
                 break;
         }
+        return defaultDirectory;
+    }
 
+    private static string GetDefaultAssetBundleDirectory()
+    {
+        return GetDefaultAssetBundleDirectory(GetDefaultBuildDirectory());
+    }
+
+    private static string GetDefaultAssetBundleDirectory(string parentDirectory)
+    {
+        if (string.IsNullOrEmpty(parentDirectory))
+        {
+            return null;
+        }
+        else
+        {
+            return $"{parentDirectory}/AssetBundles";
+        }
+    }
+
+    private static string SelectBuildDirectory(CustomBuildType type)
+    {
         string buildDirectory = EditorUtility.OpenFolderPanel(
             string.Format("Select '{0}' Build Directory", type.ToString()),
-            defaultDirectory,
+            GetDefaultBuildDirectory(type),
             string.Empty);
 
         if (!string.IsNullOrEmpty(buildDirectory))
@@ -363,6 +434,10 @@ public class CustomBuilder
                     HoloLens2BuildDirectory_ARM32 = buildDirectory;
                     break;
 
+                case CustomBuildType.HoloLens2_ARM64:
+                    HoloLens2BuildDirectory_ARM64 = buildDirectory;
+                    break;
+
                 case CustomBuildType.PC:
                 default:
                     PCBuildDirectory = buildDirectory;
@@ -373,11 +448,12 @@ public class CustomBuilder
         return buildDirectory;
     }
 
-    private async Task ExecuteBuild(CustomBuildInfo customBuildInfo)
+    private Task<bool> ExecuteBuild(CustomBuildInfo customBuildInfo)
     {
-        if (!ValidateSceneCount())
+        var scenes = SelectScenes(customBuildInfo);
+        if (!ValidateSceneCount(scenes))
         {
-            return;
+            throw new ArgumentException("No Unity scene was specified.");
         }
 
         if (!customBuildInfo.AutoBuildAppx && !customBuildInfo.Silent)
@@ -392,31 +468,42 @@ public class CustomBuilder
 
         if (string.IsNullOrEmpty(customBuildInfo.OutputDirectory))
         {
-            return;
+            throw new ArgumentException("No output build directory was specified.");
         }
 
-        // For PC version, make sure there is a "none" VR SDK
-        string[] oldSDKs = PlayerSettings.GetVirtualRealitySDKs(BuildTargetGroup.WSA);
-        if (IsPCBuild(customBuildInfo.CustomType) && !oldSDKs.Contains("None"))
+        // Make sure XR is off for PC
+        XRSettingsCache originalXRSettings = null;
+        if (IsPCBuild(customBuildInfo.CustomType))
         {
-            string[] newSDKs = new string[oldSDKs.Length + 1];
-            newSDKs[0] = "None";
-            oldSDKs.CopyTo(newSDKs, 1);
-            PlayerSettings.SetVirtualRealitySDKs(BuildTargetGroup.WSA, newSDKs);
+            originalXRSettings = XRSettingsHelper.Capture(BuildTargetGroup.WSA);
+            XRSettingsHelper.Disable(BuildTargetGroup.WSA);
+        }
+        else
+        {
+            XRSettingsHelper.Validate(BuildTargetGroup.WSA);
         }
 
-        // Make sure we're using instancing
-        PlayerSettings.stereoRenderingPath = StereoRenderingPath.Instancing;
+        // Update solutions
+        UnityPlayerBuildTools.SyncSolution();
 
         // Post build actions
         void PostBuildAction(BuildReport buildReport)
         {
-            PlayerSettings.SetVirtualRealitySDKs(BuildTargetGroup.WSA, oldSDKs);
+            // Restore settings
+            XRSettingsHelper.Restore(BuildTargetGroup.WSA, originalXRSettings);
+        
+            // Handle error or build appx
             if (buildReport.summary.result != BuildResult.Succeeded)
             {
-                EditorUtility.DisplayDialog($"{PlayerSettings.productName} Unity Build {buildReport.summary.result}!", "See console for failure details.", "OK");
+                string errorMessage = $"{PlayerSettings.productName} Unity Build {buildReport.summary.result}!";
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, context: null, "{0}", errorMessage);
+                if (!customBuildInfo.Silent)
+                {
+                    EditorUtility.DisplayDialog(errorMessage, "See console for failure details.", "OK");
+                } 
             }
-            else if (customBuildInfo.AutoBuildAppx || !EditorUtility.DisplayDialog(PlayerSettings.productName, "Unity build completed successfully.", "OK", "Build AppX"))
+            else if (customBuildInfo.AutoBuildAppx || 
+                (!customBuildInfo.Silent && !EditorUtility.DisplayDialog(PlayerSettings.productName, "Unity build completed successfully.", "OK", "Build AppX")))
             {
                 BuildAppx(new CustomBuildInfo()
                 {
@@ -430,21 +517,45 @@ public class CustomBuilder
             }
         }
 
-        await BuildPlayer(new CustomBuildInfo
+        return BuildPlayer(new CustomBuildInfo
         {
             CustomType = customBuildInfo.CustomType,
             OutputDirectory = customBuildInfo.OutputDirectory,
             BuildPlatform = ToBuildPlatform(customBuildInfo.CustomType).ToString(),
-            Scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path),
+            Scenes = scenes,
             PostBuildAction = PostBuildAction
         });
     }
 
-    private async Task BuildPlayer(CustomBuildInfo customBuildInfo)
+    private IEnumerable<string> SelectScenes(CustomBuildInfo customBuildInfo)
     {
-        await UwpPlayerBuildTools.BuildPlayer(new UwpBuildInfo
+        var scenes = customBuildInfo.Scenes;
+        if (scenes == null || scenes.Count() == 0)
+        {
+            if (IsPCBuild(customBuildInfo.CustomType))
+            {
+                scenes = Scenes_DefaultPC;
+            }
+            else
+            {
+                scenes = Scenes_Default;
+            }
+        }
+
+        if (scenes == null || scenes.Count() == 0)
+        {
+            scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path);
+        }
+
+        return scenes;
+    }
+
+    private Task<bool> BuildPlayer(CustomBuildInfo customBuildInfo)
+    {
+        return UwpPlayerBuildTools.BuildPlayer(new UwpBuildInfo
         {
             OutputDirectory = customBuildInfo.OutputDirectory,
+            BuildPlatform = customBuildInfo.BuildPlatform,
             Scenes = customBuildInfo.Scenes,
             PostBuildAction = (innerBuildInfo, buildReport) =>
             {
@@ -454,7 +565,7 @@ public class CustomBuilder
                 }
             }
         });
-    }
+    }    
 
     private async void BuildAppx(CustomBuildInfo customAppxBuildInfo)
     {
@@ -502,14 +613,22 @@ public class CustomBuilder
     private static void SetLockReloadAssemblies(bool value)
     {
         // Move focus to scene view
-        SceneView.FocusWindowIfItsOpen<UnityEditor.SceneView>(); 
+        try
+        {
+            SceneView.FocusWindowIfItsOpen<UnityEditor.SceneView>();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Exception occurred when trying to focus window during build. Reason: {0}", ex.Message);
+        }
+
         try
         {
             EditorAssemblyReloadManager.LockReloadAssemblies = value;
         }
         catch (Exception ex)
         {
-            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Exception occurred when trying to lock assemblies for building. Reasion: {0}", ex.Message);
+            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Exception occurred when trying to lock assemblies for building. Reason: {0}", ex.Message);
         }
     }
 
@@ -569,5 +688,241 @@ public class CustomBuilder
 
         rootNode.Save(projectFile);
         return true;
+    }
+
+    private static IEnumerable<string> SplitSceneList(string sceneList)
+    {
+        return from scene in sceneList.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                select scene.Trim();
+    }
+
+    /// <summary>
+    /// A helper to cache XR settings with
+    /// </summary>
+    private class XRSettingsCache
+    {
+        public bool InitManagerOnStart { get; private set; }
+
+        public IList<Type> XRLoaders { get; private set; }
+
+        public static XRSettingsCache Create(BuildTargetGroup buildTargetGroup)
+        {
+            // Get current xr settings
+            var xrSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.WSA);
+
+            // Cache settings
+            XRSettingsCache settings = new XRSettingsCache();
+            settings.InitManagerOnStart = xrSettings.InitManagerOnStart;
+            settings.XRLoaders = new List<Type>();
+
+            var manager = xrSettings.Manager;
+            if (manager != null)
+            {
+                var loaders = manager.activeLoaders;
+                for (int i = 0; i <= loaders.Count - 1; i++)
+                {
+                    settings.XRLoaders.Add(loaders[i].GetType());
+                }
+            }
+
+            return settings;
+        }
+    }
+
+    private static class XRSettingsHelper
+    {
+        public static XRSettingsCache Capture(BuildTargetGroup buildTargetGroup)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Saving XR settings for '{0}'.", buildTargetGroup);
+            return XRSettingsCache.Create(buildTargetGroup);
+        }
+
+        public static void Disable(BuildTargetGroup buildTargetGroup)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Disable XR settings for '{0}'.", buildTargetGroup);
+
+            var xrSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(buildTargetGroup);
+            xrSettings.InitManagerOnStart = false;
+
+            var manager = xrSettings.Manager;
+            if (manager != null)
+            {
+                var loaders = manager.activeLoaders;
+                for (int i = loaders.Count - 1; i >= 0; i--)
+                {
+                    if (!manager.TryRemoveLoader(loaders[i]))
+                    {
+                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Failed to disable XR settings for '{0}'. Failed to remove XR loader '{1}'",
+                            buildTargetGroup, loaders[i].name);
+                    }
+                }
+            }
+        }
+
+        public static void Restore(BuildTargetGroup buildTargetGroup, XRSettingsCache settingsCache)
+        {
+            if (settingsCache != null)
+            {
+                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Restoring XR settings for '{0}'.", buildTargetGroup);
+
+                var xrSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(buildTargetGroup);
+                xrSettings.InitManagerOnStart = settingsCache.InitManagerOnStart;
+
+                var manager = xrSettings.Manager;
+                if (manager != null)
+                {
+                    var loaders = settingsCache.XRLoaders;
+                    for (int i = 0; i <= loaders.Count - 1; i++)
+                    {
+                        var loader = ScriptableObject.CreateInstance(loaders[i]) as XRLoader;
+                        if (!manager.TryAddLoader(loader))
+                        {
+                            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "Failed to restore XR settings for '{0}'. Failed to add XR loader '{1}'",
+                                buildTargetGroup, loader.name);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Ignoring request to restore XR settings for '{0}', there were no saved settings", buildTargetGroup);
+            }
+        }
+
+        public static bool Validate(BuildTargetGroup buildTargetGroup)
+        {
+            bool valid = true;
+            var openXRSettings = FindOpenXRSettings();
+            var buildGroupSettings = openXRSettings?.GetSettingsForBuildTargetGroup(buildTargetGroup);
+            if (buildGroupSettings == null)
+            {
+                valid = false;
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "OpenXR validation failure for '{0}'. Could not find OpenXR settings.",
+                    buildTargetGroup);
+            }
+            else
+            {
+                FeatureHelpers.RefreshFeatures(buildTargetGroup);
+                Fix(buildTargetGroup, buildGroupSettings);
+                FeatureHelpers.RefreshFeatures(buildTargetGroup);
+                Print(buildTargetGroup, buildGroupSettings);
+            }
+
+            if (valid)
+            {
+                valid = CheckValidationRules(buildTargetGroup);
+            }
+
+            return valid;
+        }
+
+        private static bool CheckValidationRules(BuildTargetGroup buildTargetGroup)
+        {
+            bool valid = true;
+            var failures = new List<OpenXRFeature.ValidationRule>();
+            OpenXRProjectValidation.GetCurrentValidationIssues(failures, buildTargetGroup);
+
+            for (int i = 0; i < failures.Count; i++)
+            {
+                valid = false;
+                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "OpenXR validation failure for '{0}'. {1}",
+                    buildTargetGroup, failures[i].message);
+            }
+
+            return valid;
+        }
+
+        private static IPackageSettings FindOpenXRSettings()
+        {
+            IPackageSettings result = null;
+            string searchText = string.Format("t:OpenXRPackageSettings");
+            string[] assets = AssetDatabase.FindAssets(searchText);
+            if (assets.Length > 0)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(assets[0]);
+                result = AssetDatabase.LoadAssetAtPath(path, typeof(IPackageSettings)) as IPackageSettings;
+            }
+            return result;
+        }
+
+        private static void Print(BuildTargetGroup buildTargetGroup, OpenXRSettings settings)
+        {
+            var features = settings.GetFeatures();
+            var featureString = new StringBuilder();
+
+            featureString.Append("OpenXR settings for '");
+            featureString.Append(buildTargetGroup);
+            featureString.Append("'");
+            featureString.AppendLine();
+
+            featureString.Append("OpenXR render mode '");
+            featureString.Append(settings.renderMode);
+            featureString.Append("'");
+            featureString.AppendLine();
+
+            featureString.Append("OpenXR depth submission mode '");
+            featureString.Append(settings.depthSubmissionMode);
+            featureString.Append("'");
+            featureString.AppendLine();
+
+            featureString.Append("OpenXR features:");
+            featureString.AppendLine();
+            for (int i = 0; i < features.Length; i++)
+            {
+                var feature = features[i];
+                featureString.Append("    * ");
+                featureString.Append(feature.name);
+                featureString.Append(" (");
+                featureString.Append(feature.GetType().FullName);
+                featureString.Append(")");
+                featureString.Append(" (");
+                featureString.Append(feature.enabled);
+                featureString.Append(")");
+                featureString.AppendLine();
+            }
+
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, featureString.ToString());
+        }
+
+        private static void Fix(BuildTargetGroup buildTargetGroup, OpenXRSettings settings)
+        {
+            FixEditor();
+
+            settings.depthSubmissionMode = OpenXRSettings.DepthSubmissionMode.Depth16Bit;
+            settings.renderMode = OpenXRSettings.RenderMode.SinglePassInstanced;
+
+            int requiredFeatures = _requiredOpenXRFeatures.Length;
+            for (int i = 0; i < requiredFeatures; i++)
+            {
+                var feature = FeatureHelpers.GetFeatureWithIdForBuildTarget(buildTargetGroup, _requiredOpenXRFeatures[i]);
+                if (feature != null)
+                {
+                    feature.enabled = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fix common OpenXR Editor failure
+        /// </summary>
+        private static void FixEditor()
+        {
+            var cls = typeof(UnityEngine.InputSystem.InputDevice).Assembly.GetType("UnityEngine.InputSystem.Editor.InputEditorUserSettings");
+            if (cls == null) return;
+            var prop = cls.GetProperty("lockInputToGameView", BindingFlags.Static | BindingFlags.Public);
+            if (prop == null) return;
+            prop.SetValue(null, true);
+        }
+
+        private static string[] _requiredOpenXRFeatures = new string[]
+        {
+            EyeGazeInteraction.featureId,
+            MicrosoftHandInteraction.featureId,
+            // HandTrackingFeaturePlugin.featureId is marked internal
+            "com.microsoft.openxr.feature.handtracking",
+            // MixedRealityFeaturePlugin.featureId is marked internal
+            "com.microsoft.openxr.feature.hololens",
+        };
+         
     }
 }

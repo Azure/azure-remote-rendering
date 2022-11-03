@@ -5,7 +5,6 @@ using App.Authentication;
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Identity.Client;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,8 +12,7 @@ using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
-    [MixedRealityServiceProfile(typeof(IRemoteRenderingService))]
-    [CreateAssetMenu(fileName = "RemoteRenderingServiceProfile", menuName = "MixedRealityToolkit/RemoteRenderingService Configuration Production Profile")]
+    [CreateAssetMenu(fileName = "RemoteRenderingServiceProfile", menuName = "ARR Showcase/Configuration Profile/Remote Rendering Service/Production")]
     public class RemoteRenderingServiceProfile : BaseRemoteRenderingServiceProfile
     {
         [Header("Session Settings")]
@@ -86,13 +84,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Header("Remote Rendering Account Settings")]
 
-        [Tooltip("The default Azure remote rendering domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
-        public string[] remoteRenderingDomains = { "westus2.mixedreality.azure.com", "eastus.mixedreality.azure.com", "westeurope.mixedreality.azure.com", "southeastasia.mixedreality.azure.com" };
-        public override string[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
-
-        [Tooltip("The default labels for the Azure remote rendering domains.")]
-        public string[] remoteRenderingDomainLabels = { "West US 2", "East US", "West Europe", "Southeast Asia" };
-        public override string[] RemoteRenderingDomainLabels { get => remoteRenderingDomainLabels; set => remoteRenderingDomainLabels = value; }
+        [Tooltip("The default Azure remote rendering account region. The first entry is the preferred region. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public RemoteRenderingServiceRegion[] remoteRenderingDomains = RemoteRenderingServiceRegion.Defaults;
+        public override RemoteRenderingServiceRegion[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
 
         [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountId = Guid.Empty.ToString();
@@ -102,6 +96,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Tooltip("The Azure Active Directory Application ID to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AppId = string.Empty;
+
+        [Tooltip("The Authentication Authority to use, if empty 'AzureAdAndPersonalMicrosoftAccount' will be used. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public string Authority = string.Empty;
 
         [Tooltip("The Tenant ID to use, if empty 'common' will be used. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string TenantId = string.Empty;
@@ -125,7 +122,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         
         public override BaseStorageAccountData StorageAccountData
         {
-            get => new ADStorageAccountData(storageAccountName, storageModelContainer, StorageModelPathByUsername, AppId, TenantId, RedirectURI);
+            get => new ADStorageAccountData(storageAccountName, storageModelContainer, StorageModelPathByUsername, AppId, Authority, TenantId, RedirectURI);
         }
 
         /// <summary>
@@ -138,7 +135,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Get the preferred remote rendering domain.
+        /// Get the preferred account domain.
         /// </summary>
         private string _preferredDomain;
         public override string PreferredDomain
@@ -155,7 +152,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return string.Empty;
                 }
 
-                _preferredDomain = RemoteRenderingDomains[0];
+                _preferredDomain = RemoteRenderingDomains[0].Domain;
                 return _preferredDomain;
             }
 
@@ -165,13 +162,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     if (string.IsNullOrEmpty(value) && RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0)
                     {
-                        value = RemoteRenderingDomains[0];
+                        value = RemoteRenderingDomains[0].Domain;
                     }
                     else if (RemoteRenderingDomains == null)
                     {
                         Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", "'RemoteRenderingDomains' is null.");
                     }
-                    else if (Array.IndexOf(RemoteRenderingDomains, value) < 0)
+                    else if (!RemoteRenderingDomains.Any(entry => entry.Domain == value))
                     {
                         Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"'RemoteRenderingDomains' doesn't contain the preferred domain, '{value}'.");
                     }
@@ -185,7 +182,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public override async Task<RemoteRenderingClient> GetClient(string domain)
         {
-            var authResult = await AADAuth.TryLogin(AppId, AADAuth.Scope.ARR, SelectAccount, ExecuteOnUnityThread.ApplicationToken, TenantId, RedirectURI);
+            var authResult = await AADAuth.TryLogin(
+                AppId,
+                AADAuth.Scope.ARR,
+                SelectAccount, 
+                ExecuteOnUnityThread.ApplicationToken,
+                Authority,
+                TenantId, 
+                RedirectURI);
+
             string accessToken = string.Empty;
             if (authResult != null)
                 accessToken = authResult.AccessToken;
@@ -240,45 +245,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             validateMessages = null;
             return true;
-        }
-
-        public override RemoteRenderingServiceProfileFileData CreateFileData()
-        {
-            RemoteRenderingServiceProfileFileData result = new RemoteRenderingServiceProfileFileData();
-
-            var sessionData = result.Session = new RemoteRenderingServiceSessionData();
-            sessionData.MaxLeaseTime = MaxLeaseTime;
-            sessionData.AutoRenewLease = AutoRenewLease;
-            sessionData.AutoReconnect = AutoReconnect;
-            sessionData.AutoReconnectRate = AutoReconnectRate;
-            sessionData.Size = Size;
-            sessionData.UnsafeSizeOverride = UnsafeSizeOverride;
-            sessionData.SessionOverride = SessionOverride;
-
-            if (RemoteRenderingDomains?.Length > 0 ||
-                RemoteRenderingDomainLabels?.Length > 0 ||
-                !string.IsNullOrEmpty(AccountId) ||
-                !string.IsNullOrEmpty(AccountDomain) ||
-                !string.IsNullOrEmpty(AppId))
-            {
-                var accountData = result.Account = new RemoteRenderingServiceAccountData();
-                accountData.RemoteRenderingDomains = RemoteRenderingDomains;
-                accountData.RemoteRenderingDomainLabels = RemoteRenderingDomainLabels;
-                accountData.AccountId = AccountId;
-                accountData.AccountDomain = AccountDomain;
-                accountData.AppId = AppId;
-                accountData.TenantId = TenantId;
-            }
-
-            if (!string.IsNullOrEmpty(StorageAccountName) ||
-                !string.IsNullOrEmpty(StorageModelContainer))
-            {
-                var storageData = result.Storage = new RemoteRenderingServiceStorageAccountData();
-                storageData.StorageAccountName = StorageAccountName;
-                storageData.StorageModelContainer = StorageModelContainer;
-            }
-
-            return result;
         }
     }
 }

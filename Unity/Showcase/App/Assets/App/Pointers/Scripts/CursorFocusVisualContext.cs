@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using UnityEngine;
 
 /// <summary>
 /// The context used in pair with CursorFocusVisual. Attach this component to objects that can change the cursor visual's materials.

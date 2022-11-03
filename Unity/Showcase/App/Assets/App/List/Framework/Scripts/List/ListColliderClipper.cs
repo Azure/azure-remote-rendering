@@ -9,18 +9,20 @@ using UnityEngine;
 /// </summary>
 public class ListColliderClipper : MonoBehaviour
 {
-    private (int startIndex, int count) _lastVisibleRegion = (-1, 0);
-    private List<object> _lastDataSource = null;
+    private ListScrollerRange _lastVisibleRegion = ListScrollerRange.Empty;
+    private IList<object> _lastDataSource = null;
+    private HashSet<int> _disabledSet = new HashSet<int>();
+    private HashSet<int> _enabledSet = new HashSet<int>();
 
     #region Serialized Fields
     [SerializeField]
     [Tooltip("The list scroller component.")]
-    ListScrollerBase scroller = null;
+    private ListScrollerBase scroller = null;
 
     /// <summary>
     /// Get or set the list scroller component.
     /// </summary>
-    ListScrollerBase Scroller
+    public ListScrollerBase Scroller
     {
         get => scroller;
         set => scroller = value;
@@ -28,16 +30,30 @@ public class ListColliderClipper : MonoBehaviour
 
     [SerializeField]
     [Tooltip("The list repeater component.")]
-    ListItemRepeater itemRepeater = null;
+    private ListItemRepeater itemRepeater = null;
 
     /// <summary>
     /// Get or set the list repeater component.
     /// </summary>
-    ListItemRepeater ItemRepeater
+    public ListItemRepeater ItemRepeater
     {
         get => itemRepeater;
         set => itemRepeater = value;
     }
+
+    [SerializeField]
+    [Tooltip("If true, this will disable the entire list item gameObject, and not just the colliders.")]
+    private bool disableGameObjects = false;
+
+    /// <summary>
+    /// If true, this will disable the entire list item gameObject, and not just the colliders.
+    /// </summary>
+    public bool DisableGameObjects
+    {
+        get => disableGameObjects;
+        set => disableGameObjects = value;
+    }
+
     #endregion Region Serialize Fields
 
     #region MonoBehavior Methods
@@ -52,44 +68,80 @@ public class ListColliderClipper : MonoBehaviour
         {
             itemRepeater = GetComponent<ListItemRepeater>();
         }
+
+        if (itemRepeater != null)
+        {
+            itemRepeater.ListItemCreating.AddListener(InitializeEnableSetOfNewItem);
+        }
     }
 
     private void Update()
     {
-        if (_lastDataSource != itemRepeater.DataSource)
+        if (_lastDataSource != itemRepeater.DataSource ||
+            _lastVisibleRegion != scroller.VisibleRange)
         {
             _lastDataSource = itemRepeater.DataSource;
-            _lastVisibleRegion = (-1, 0);
-            DisableAll();
+            _lastVisibleRegion = scroller.VisibleRange;
+            UpdateEnableState();
         }
+    }
 
-
-        if (_lastVisibleRegion != scroller.VisibleRange)
+    private void OnDestroy()
+    {
+        if (itemRepeater != null)
         {
-            UpdateColliderState(scroller.VisibleRange);
+            itemRepeater.ListItemCreating.RemoveListener(InitializeEnableSetOfNewItem);
         }
     }
     #endregion MonoBehavior Methods
 
     #region Private Methods
-    private void UpdateColliderState((int startIndex, int endIndex) range)
+    private void InitializeEnableSetOfNewItem(ListEventData data)
     {
-        for (int i = _lastVisibleRegion.startIndex; i < _lastVisibleRegion.count; i++)
+        if (data != null && data.ListItem != null && scroller != null)
         {
-            ListItem currentItem = itemRepeater.GetItem(i);
-            if (currentItem != null)
-            {
-                SetCollidersEnableState(currentItem.GetComponentsInChildren<Collider>(), false);
-            }
+            var range = scroller.VisibleRange;
+            bool enabled = data.ListItemIndex >= range.startIndex && data.ListItemIndex < range.endIndex;
+            SetEnableState(data.ListItem, enabled);
         }
+    }
 
-        _lastVisibleRegion = scroller.VisibleRange;
-        for (int i = _lastVisibleRegion.startIndex; i < _lastVisibleRegion.count; i++)
+    private void UpdateEnableState()
+    {
+        if (itemRepeater != null && scroller != null)
         {
-            ListItem currentItem = itemRepeater.GetItem(i);
-            if (currentItem != null)
+            _disabledSet.Clear();
+            _enabledSet.Clear();
+
+            int count = itemRepeater.Count;
+            for (int i = 0; i < count; i++)
             {
-                SetCollidersEnableState(currentItem.GetComponentsInChildren<Collider>(), true);
+                _disabledSet.Add(i);
+            }
+
+            var visible = scroller.VisibleRange;
+            for (int i = visible.startIndex; i < visible.endIndex; i++)
+            {
+                _disabledSet.Remove(i);
+                _enabledSet.Add(i);
+            }
+
+            ApplyEnableState();
+        }
+    }
+
+    private void ApplyEnableState()
+    {
+        if (itemRepeater != null)
+        {
+            foreach (int i in _disabledSet)
+            {
+                SetEnableState(itemRepeater.GetItem(i), false);
+            }
+
+            foreach (int i in _enabledSet)
+            {
+                SetEnableState(itemRepeater.GetItem(i), true);
             }
         }
     }
@@ -99,10 +151,21 @@ public class ListColliderClipper : MonoBehaviour
         int count = itemRepeater.DataSource?.Count ?? 0;
         for (int i = 0; i < count; i++)
         {
-            ListItem currentItem = itemRepeater.GetItem(i);
-            if (currentItem != null)
+            SetEnableState(itemRepeater.GetItem(i), false);
+        }
+    }
+
+    private void SetEnableState(ListItem item, bool enable)
+    {
+        if (item != null)
+        {
+            if (disableGameObjects)
             {
-                SetCollidersEnableState(currentItem.GetComponentsInChildren<Collider>(), false);
+                item.gameObject.SetActive(enable);
+            }
+            else
+            {
+                SetCollidersEnableState(item.GetComponentsInChildren<Collider>(), enable);
             }
         }
     }

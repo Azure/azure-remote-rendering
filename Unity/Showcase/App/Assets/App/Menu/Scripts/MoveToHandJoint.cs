@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Utilities;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -12,8 +12,22 @@ using UnityEngine;
 public class MoveToHandJoint : MonoBehaviour
 {
     Vector3 _goalPosition = Vector3.zero;
+    Coroutine _updatePosition = null;
 
     #region Serialized Fields
+    [SerializeField]
+    [Tooltip("The hand track.")]
+    private Handedness hand;
+
+    /// <summary>
+    /// The hand to track.
+    /// </summary>
+    public Handedness Hand
+    {
+        get => hand;
+        set => hand = value;
+    }
+
     [SerializeField]
     [Tooltip("The hand joint to track.")]
     private TrackedHandJoint joint;
@@ -95,8 +109,7 @@ public class MoveToHandJoint : MonoBehaviour
     #region MonoBehavior Functions
     private void Update()
     {
-        palmEvents = gameObject.EnsureComponent<PalmAngleEvents>();
-        UpdatePosition(true);
+        UpdatePosition(smooth: true);
     }
     #endregion MonoBehavior Functions
 
@@ -108,36 +121,70 @@ public class MoveToHandJoint : MonoBehaviour
     #endregion Public Functions
 
     #region Private Functions
-    private void UpdatePosition(bool smooth)
+    private void StartUpdatePositionCoroutine()
     {
-        Handedness facingUpHand;
-        if (palmEvents.TryGetPalm(out facingUpHand))
+        if (_updatePosition == null)
         {
-            Vector3 palmToMidTip = GetJointPos(TrackedHandJoint.MiddleTip, facingUpHand) - GetJointPos(TrackedHandJoint.Palm, facingUpHand);
-            _goalPosition = GetJointPos(joint, facingUpHand) + (Vector3.up * jointOffset.y) + (palmToMidTip.normalized * jointOffset.z);
-            gameObject.transform.position = smooth ? Vector3.Lerp(gameObject.transform.position, _goalPosition, lerpAmount) : _goalPosition;
-            tether.HandPosition = GetJointPos(joint, facingUpHand);
-            if (orientToJoint)
-            {
-                Vector3 rotation;
-                if (palmEvents.TryGetPalmRotation(facingUpHand, out rotation))
-                {
-                    gameObject.transform.eulerAngles = rotation;
-                }
-            }
+            _updatePosition = StartCoroutine(UpdatePositionCoroutine());
         }
     }
 
-    private Vector3 GetJointPos(TrackedHandJoint joint, Handedness hand)
+    private void StopUpdatePositionCoroutine()
     {
-        MixedRealityPose handJoint;
-        if (HandJointUtils.TryGetJointPose(joint, hand, out handJoint))
+        if (_updatePosition != null)
         {
-            return handJoint.Position;
+            StopCoroutine(_updatePosition);
+            _updatePosition = null;
         }
-        else
+    }
+
+    private IEnumerator UpdatePositionCoroutine()
+    {
+        do
         {
-            return gameObject.transform.position;
+            yield return 0;
+        } while (isActiveAndEnabled);
+    }
+
+    private void UpdatePosition(bool smooth)
+    {
+        Handedness facingUpHand = palmEvents?.UpHand ?? Handedness.None;
+
+        MixedRealityPose palmJointPose;
+        MixedRealityPose middleTipJointPose;
+        if (HandJointUtils.TryGetJointPose(TrackedHandJoint.Palm, facingUpHand, out palmJointPose) &&
+            HandJointUtils.TryGetJointPose(TrackedHandJoint.MiddleTip, facingUpHand, out middleTipJointPose))
+        {
+            bool haveTrackedJointPose;
+            MixedRealityPose trackedJointPose;
+            if (joint == TrackedHandJoint.Palm)
+            {
+                haveTrackedJointPose = true;
+                trackedJointPose = palmJointPose;
+            }
+            else if (joint == TrackedHandJoint.MiddleTip)
+            {
+                haveTrackedJointPose = true;
+                trackedJointPose = middleTipJointPose;
+            }
+            else
+            {
+                haveTrackedJointPose = HandJointUtils.TryGetJointPose(
+                    joint, facingUpHand, out trackedJointPose);
+            }
+
+            if (haveTrackedJointPose)
+            {
+                Vector3 palmToMidTip = middleTipJointPose.Position - palmJointPose.Position;
+                _goalPosition = trackedJointPose.Position + (Vector3.up * jointOffset.y) + (palmToMidTip.normalized * jointOffset.z);
+                gameObject.transform.position = smooth ? Vector3.Lerp(gameObject.transform.position, _goalPosition, lerpAmount) : _goalPosition;
+                tether.HandPosition = trackedJointPose.Position;
+
+                if (orientToJoint)
+                {
+                    gameObject.transform.rotation = trackedJointPose.Rotation;
+                }
+            }
         }
     }
     #endregion Private Functions

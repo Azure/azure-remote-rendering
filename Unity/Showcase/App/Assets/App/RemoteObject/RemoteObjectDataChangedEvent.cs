@@ -5,7 +5,21 @@ using UnityEngine.Events;
 using System;
 
 [Serializable]
-public class RemoteObjectDataChangedEvent : UnityEvent<RemoteItemBase>
+public class RemoteObjectDataChangedEvent : UnityEvent<RemoteObjectDataChangedEventData>
 {
 }
 
+[Serializable]
+public class RemoteObjectDataChangedEventData
+{
+    public RemoteObjectDataChangedEventData(RemoteObject sender, RemoteItemBase data)
+    {
+        Sender = sender;
+        Data = data;
+    }
+
+    #region Public Properties
+    public RemoteObject Sender { get; }
+    public RemoteItemBase Data { get; }
+    #endregion Public Properties
+}

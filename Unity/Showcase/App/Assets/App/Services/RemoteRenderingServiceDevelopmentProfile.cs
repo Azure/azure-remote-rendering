@@ -3,13 +3,13 @@
 
 using Microsoft.Azure.RemoteRendering;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
-    [MixedRealityServiceProfile(typeof(IRemoteRenderingService))]
-    [CreateAssetMenu(fileName = "RemoteRenderingServiceDevelopmentProfile", menuName = "MixedRealityToolkit/RemoteRenderingService Configuration Development Profile")]
+    [CreateAssetMenu(fileName = "RemoteRenderingServiceDevelopmentProfile", menuName = "ARR Showcase/Configuration Profile/Remote Rendering Service/Development")]
     public class RemoteRenderingServiceDevelopmentProfile : BaseRemoteRenderingServiceProfile
     {
         [Header("Session Settings")]
@@ -81,13 +81,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Header("Remote Rendering Account Settings")]
 
-        [Tooltip("The default Azure remote rendering domains. The first entry is the preferred domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
-        public string[] remoteRenderingDomains = { "westus2.mixedreality.azure.com", "eastus.mixedreality.azure.com", "westeurope.mixedreality.azure.com", "southeastasia.mixedreality.azure.com" };
-        public override string[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
-
-        [Tooltip("The default labels for the azure remote rendering domains.")]
-        public string[] remoteRenderingDomainLabels = { "West US 2", "East US", "West Europe", "Southeast Asia" };
-        public override string[] RemoteRenderingDomainLabels { get => remoteRenderingDomainLabels; set => remoteRenderingDomainLabels = value; }
+        [Tooltip("The default Azure remote rendering account region. The first entry is the preferred region. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public RemoteRenderingServiceRegion[] remoteRenderingDomains = RemoteRenderingServiceRegion.Defaults;
+        public override RemoteRenderingServiceRegion[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
 
         [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountId = Guid.Empty.ToString();
@@ -147,7 +143,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return string.Empty;
                 }
 
-                _preferredDomain = RemoteRenderingDomains[0];
+                _preferredDomain = RemoteRenderingDomains[0].Domain;
                 return _preferredDomain;
             }
 
@@ -157,13 +153,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     if (string.IsNullOrEmpty(value) && RemoteRenderingDomains != null && RemoteRenderingDomains.Length > 0)
                     {
-                        value = RemoteRenderingDomains[0];
+                        value = RemoteRenderingDomains[0].Domain;
                     }
                     else if (RemoteRenderingDomains == null)
                     {
                         Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", "'RemoteRenderingDomains' is null.");
                     }
-                    else if (Array.IndexOf(RemoteRenderingDomains, value) < 0)
+                    else if (!RemoteRenderingDomains.Any(entry => entry.Domain == value))
                     {
                         Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"'RemoteRenderingDomains' doesn't contain the preferred domain, '{value}'.");
                     }
@@ -212,46 +208,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
             validateMessages = null;
             return true;
-        }
-
-        public override RemoteRenderingServiceProfileFileData CreateFileData()
-        {
-            RemoteRenderingServiceProfileFileData result = new RemoteRenderingServiceProfileFileData();
-
-            var sessionData = result.Session = new RemoteRenderingServiceSessionData();
-            sessionData.MaxLeaseTime = MaxLeaseTime;
-            sessionData.AutoRenewLease = AutoRenewLease;
-            sessionData.AutoReconnect = AutoReconnect;
-            sessionData.AutoReconnectRate = AutoReconnectRate;
-            sessionData.Size = Size;
-            sessionData.UnsafeSizeOverride = UnsafeSizeOverride;
-            sessionData.SessionOverride = SessionOverride;
-
-            if (RemoteRenderingDomains?.Length > 0 ||
-                RemoteRenderingDomainLabels?.Length > 0 ||
-                !string.IsNullOrEmpty(AccountId) ||
-                !string.IsNullOrEmpty(AccountDomain) ||
-                !string.IsNullOrEmpty(AccountKey))
-            {
-                var accountData = result.Account = new RemoteRenderingServiceAccountData();
-                accountData.RemoteRenderingDomains = RemoteRenderingDomains;
-                accountData.RemoteRenderingDomainLabels = RemoteRenderingDomainLabels;
-                accountData.AccountId = AccountId;
-                accountData.AccountDomain = AccountDomain;
-                accountData.AccountKey = AccountKey;
-            }
-
-            if (!string.IsNullOrEmpty(StorageAccountName) ||
-                !string.IsNullOrEmpty(StorageAccountKey) ||
-                !string.IsNullOrEmpty(StorageModelContainer))
-            {
-                var storageData = result.Storage = new RemoteRenderingServiceStorageAccountData();
-                storageData.StorageAccountName = StorageAccountName;
-                storageData.StorageAccountKey = StorageAccountKey;
-                storageData.StorageModelContainer = StorageModelContainer;
-            }
-
-            return result;
         }
     }
 }

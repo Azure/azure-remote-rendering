@@ -22,6 +22,5 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         BaseStorageAccountData StorageAccountData { get; }
         bool ValidateProfile(out string validateMessages);
         Task<RemoteRenderingClient> GetClient(string domain);
-        RemoteRenderingServiceProfileFileData CreateFileData();
     }
 }

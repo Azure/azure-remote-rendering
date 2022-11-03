@@ -28,6 +28,7 @@ Material:
     - _RimPow: 0.7
     m_Colors:
     - _Color: {r: 0, g: 0.08493916, b: 0.49264705, a: 1}
-    - _Offset: {r: 2.5566254, g: 0.12783127, b: 0, a: 0}
+    - _Offset: {r: 2.586172, g: 0.12930861, b: 0, a: 0}
     - _RimColor: {r: 0, g: 0.27053753, b: 0.71323526, a: 1}
     - _WireColor: {r: 0.034482475, g: 0, b: 1, a: 1}
+  m_BuildTextureStacks: []

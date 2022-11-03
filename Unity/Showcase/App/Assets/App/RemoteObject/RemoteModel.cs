@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.Azure.Storage;
 using System;
 using System.Xml.Serialization;
 using UnityEngine;
@@ -19,11 +20,6 @@ public abstract class RemoteItemBase
     public bool Enabled = true;
 
     /// <summary>
-    /// Does the remote object have colliders
-    /// </summary>
-    public bool HasColliders = true;
-
-    /// <summary>
     /// The local transform of the model
     /// </summary>
     public ModelTransform Transform = new ModelTransform();
@@ -34,8 +30,6 @@ public abstract class RemoteItemBase
     }
 
     public bool ShouldSerializeEnabled() { return !Enabled; }
-
-    public bool ShouldSerializeHasColliders() { return !HasColliders; }
 
     public bool ShouldSerializeTransform()
     {
@@ -111,9 +105,41 @@ public class RemoteContainer : RemoteItemBase
     public RemoteItemBase[] Items = new RemoteItemBase[0];
 
     /// <summary>
+    /// Do any the remote objects have colliders
+    /// </summary>
+    public bool HasColliders = true;
+
+
+    /// <summary>
     /// The preview thumbnail image url.
     /// </summary>
     public string ImageUrl;
+
+    /// <summary>
+    /// The camera overrides that could be applied to the remote camera.
+    /// </summary>
+    public RemoteCameraOverrides CameraOverrides = null;
+
+    public bool HasRemoteModel()
+    {
+        if (Items == null || Items.Length == 0)
+        {
+            return false;
+        }
+
+        bool result = false;
+        foreach (var item in Items)
+        {
+            if (item is RemoteModel)
+            {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+
+    public bool ShouldSerializeHasColliders() { return !HasColliders; }
 
     public bool ShouldSerializeItems()
     {
@@ -123,6 +149,11 @@ public class RemoteContainer : RemoteItemBase
     public bool ShouldSerializeImageUrl()
     {
         return !string.IsNullOrEmpty(ImageUrl);
+    }
+
+    public bool ShouldSerializeCameraOverrides()
+    {
+        return CameraOverrides != null;
     }
 }
 
@@ -138,22 +169,16 @@ public class RemoteModel : RemoteItemBase
     /// </summary>
     public string ExtractBlobPath()
     {
-        string blobPath = string.Empty;
+        return AzureStorageHelper.GetBlobName(Url);
+    }
 
-        var blobUrl = new Uri(Url);
-        if (Uri.IsWellFormedUriString(blobUrl.AbsoluteUri, UriKind.RelativeOrAbsolute) &&
-            Uri.CheckHostName(blobUrl.Host) != UriHostNameType.Unknown &&
-            blobUrl.Segments.Length >= 3) // must hold service endpoint, container name, and blob path
-        {
-            string containerName = blobUrl.Segments[1].Replace("/", "");
-            // The blob path is the local path minus the container name,
-            // which is the first segments of the path. We strip it and the
-            // surrounding directory delimiters from the beginning of the
-            // local path.
-            blobPath = blobUrl.LocalPath.Substring(containerName.Length + 2);
-        }
-
-        return blobPath;
+    /// <summary>
+    /// Try to extract the container name from the Url path.
+    /// <returns>The container name if the Url path has this information, null otherwise.</returns>
+    /// </summary>
+    public string ExtractContainerName()
+    {
+        return AzureStorageHelper.GetContainerName(Url);
     }
 
     /// <summary>
@@ -389,6 +414,33 @@ public class RemoteModelFile
     public bool ShouldSerializeContainers()
     {
         return Containers != null && Containers.Length > 0;
+    }
+}
+
+/// <summary>
+/// Represents camera overrides that could be applied to the remote camera.
+/// </summary>
+[Serializable]
+public class RemoteCameraOverrides
+{
+    /// <summary>
+    /// The near clip plane distance. If zero or less, value is ignored.
+    /// </summary>
+    public float NearClipPlane;
+
+    /// <summary>
+    /// The far clip plane distance. If zero or less, value is ignored.
+    /// </summary>
+    public float FarClipPlane;
+
+    public bool ShouldSerializeNearClip()
+    {
+        return NearClipPlane > 0.0f;
+    }
+
+    public bool ShouldSerializeFarClip()
+    {
+        return FarClipPlane > 0.0f;
     }
 }
 

@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4338333115073164}
   - component: {fileID: -2375357057271603345}
-  - component: {fileID: 652843080765293383}
-  - component: {fileID: 2427008939484532984}
+  - component: {fileID: -8830202108248099390}
+  - component: {fileID: 6446207478998139020}
   m_Layer: 0
   m_Name: RemoteGrabPointer
   m_TagString: Untagged
@@ -46,13 +46,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f21fe9417903b2c428976b2445ab9932, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handedness: 1
-  destroyOnSourceLost: 1
+  destroyOnSourceLost: 0
   useSourcePoseData: 0
+  useSourcePoseAsFallback: 1
   poseAction:
     id: 3
     description: Grip Pose
     axisConstraint: 7
+  handedness: 1
   cursorPrefab: {fileID: 0}
   disableCursorOnStart: 0
   setCursorVisibilityOnSourceDetected: 0
@@ -65,19 +66,30 @@ MonoBehaviour:
     id: 7
     description: Grip Press
     axisConstraint: 3
+  grabAction:
+    id: 0
+    description: None
+    axisConstraint: 0
   requiresHoldAction: 0
   requiresActionBeforeEnabling: 0
   overrideGlobalPointerExtent: 0
   pointerExtent: 10
   defaultPointerExtent: 10
   sphereCastRadius: 0.05
+  pullbackDistance: 0
+  nearObjectSectorAngle: 360
   nearObjectMargin: 0.05
+  nearObjectAxisLerp: 0.9
+  nearObjectSmoothingFactor: 0.2
   grabLayerMasks:
   - serializedVersion: 2
-    m_Bits: 51
+    m_Bits: 2048
   triggerInteraction: 0
   sceneQueryBufferSize: 64
---- !u!114 &652843080765293383
+  ignoreCollidersNotInFOV: 0
+  graspPointPlacement: 0
+  nearInteractableCacheCapacity: 50
+--- !u!114 &-8830202108248099390
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,15 +98,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 1507865967819406}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 856a3cd9096b135429e4c7dae84da373, type: 3}
+  m_Script: {fileID: 11500000, guid: 6682dc6245ac3fd4ea723a628fbee9ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointer: {fileID: -2375357057271603345}
   minTetherLength: 0.02
   visualsRoot: {fileID: 3410206553793258817}
   tetherEndPoint: {fileID: 7841524068500827546}
   tetherLine: {fileID: 7611780190825123387}
---- !u!114 &2427008939484532984
+--- !u!114 &6446207478998139020
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -103,10 +114,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1507865967819406}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 09fcf74b42cb8f2489fd62a531ffb221, type: 3}
+  m_Script: {fileID: 11500000, guid: 889e684278db8a542aa634e254b665aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointerVisual: {fileID: 652843080765293383}
+  pointerVisual: {fileID: -8830202108248099390}
   grabPointMesh: {fileID: 4300012, guid: fd9ad33176d03dd42885a4dce3cb38fb, type: 3}
   grabPointMaterial: {fileID: 2100000, guid: fc1d56dcfc4950949a5b56a1399a1822, type: 2}
   scale: 1.2
@@ -217,6 +228,8 @@ LineRenderer:
   m_MotionVectors: 0
   m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 0
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -408,6 +421,9 @@ MonoBehaviour:
   lineMaterial: {fileID: 2100000, guid: e74b90b0fec1bef4fa500cebdb12d821, type: 2}
   roundedEdges: 0
   roundedCaps: 0
+  fadeLineBrightnessOnEnable: 1
+  fadeLinePercentage: 0.55
+  fadeLineAnimationTime: 0.65
   lineRenderer: {fileID: 4601683360483888622}
   tileMaterialByWorldLength: 1
   tileMaterialScale: 48
@@ -465,6 +481,8 @@ MeshRenderer:
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -489,6 +507,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &8370371037771520967
 GameObject:
   m_ObjectHideFlags: 0

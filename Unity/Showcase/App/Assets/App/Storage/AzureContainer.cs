@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Storage
     public class EnumerationResults
     {
         /// <summary>
-        /// The container url.
+        /// The container URL.
         /// </summary>
         public string Container = string.Empty;
 
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Storage
         public Blob[] Blobs = new Blob[0];
 
         /// <summary>
-        /// The next set of blobss
+        /// The next set of blobs.
         /// </summary>
         public string NextMarker = string.Empty;
 

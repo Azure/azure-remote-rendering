@@ -3,7 +3,6 @@
 
 using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Rendering;
-using Microsoft.MixedReality.Toolkit.Extensions;
 using UnityEngine;
 
 [RequireComponent(typeof(SetPointerState))]
@@ -98,7 +97,7 @@ public class CubeMapButton : ClickableButton
 
         if (previewMaterial != null && remoteCubeMap.Texture != null)
         {
-            previewMaterial.Material.SetTexture(previewTextureName, remoteCubeMap.Texture);
+            previewMaterial.AcquireExistingMaterial().SetTexture(previewTextureName, remoteCubeMap.Texture);
         }
 
         UpdateLabelText();

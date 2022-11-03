@@ -7,12 +7,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-
-#if UNITY_WSA && !UNITY_EDITOR && USE_MR
-using UnityAnchor = UnityEngine.XR.WSA.WorldAnchor;
-#else
-using UnityAnchor = UnityEngine.Object;
-#endif
+using UnityEngine.XR.ARFoundation;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -21,56 +16,34 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     /// </summary>
     public class AppAnchor : IAppAnchor
     {
+        private static GameObject _nativeAnchorContainer = null;
+
+        private Transform _ownedTransform;
         private string _anchorId;
         private bool _createCloudAnchor;
-        private CancellationTokenSource _findAnchorIdCancellation;
-        private Transform _savingTransform;
-        private bool _savingTransformMoved;
+        private CancellationTokenSource _anchorCancellation;
         private IAnchoringService _anchorService;
-        private CloudNativeAnchor _cloudNativeAnchor;
-        private static GameObject _cloudNativeAnchorContainer = null;
+        private AppAnchorType _type;
+        private LogHelper<AppAnchor> _log = new LogHelper<AppAnchor>();
 
         /// <summary>
-        /// Create an empty app anchor with no native or cloud anchor.
+        /// Create an empty app anchor with no native or cloud anchor immediate. To create these, a move must occur.
         /// </summary>
-        /// <param name="createCloudAnchor">Should new cloud anchors be created, when a move occurs.</param>
-        public AppAnchor(bool createCloudAnchor = true)
+        /// <param name="allowNewCloudAnchorsOnMove">Should new cloud anchors be created, when a move occurs.</param>
+        private AppAnchor(string name, AppAnchorType type, bool allowNewCloudAnchorsOnMove = true)
         {
-            _createCloudAnchor = createCloudAnchor;
+            Name = name;
+            _type = type;
             _anchorService = AppServices.AnchoringService ?? throw new ArgumentNullException("AnchoringService can't be null.");
-        }
-
-        /// <summary>
-        /// Create an app anchor from an existing cloud anchor.
-        /// </summary>
-        /// <param name="createCloudAnchor">Should new cloud anchors be created, when a move occurs.</param>
-        public AppAnchor(string anchorId, bool allowNewCloudAnchors = true) : this(allowNewCloudAnchors)
-        {
-            if (string.IsNullOrEmpty(anchorId))
-            {
-                throw new ArgumentNullException("Anchor id is null or empty");
-            }
-
-            FromCloud = true;
-            TryRecreatingCloudNativeAnchor(anchorId);
-        }
-
-        /// <summary>
-        /// Create an app anchor from a tranfrom \.
-        /// </summary>
-        /// <param name="createCloudAnchor">Should new cloud anchors be created.</param>
-        public AppAnchor(Transform transform, bool createCloudAnchor = true) : this(createCloudAnchor)
-        {
-            if (transform == null)
-            {
-                throw new ArgumentNullException("Given transform is null");
-            }
-
-            FromNative = true;
-            TryRecreatingCloudNativeAnchor(transform);
+            _createCloudAnchor = allowNewCloudAnchorsOnMove && _anchorService.IsCloudEnabled;
         }
 
         #region IAppAnchor Properties
+        /// <summary>
+        /// The debug name.
+        /// </summary>
+        public string Name { get; private set; }
+
         /// <summary>
         /// Get the anchor id.
         /// </summary>
@@ -82,32 +55,38 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Get the located native anchor transform.
         /// </summary>
-        public Transform Transform { get; private set; }
+        public Transform Transform => _ownedTransform;
+
+        /// <summary>
+        /// Get the position of the anchor
+        /// </summary>
+        public Vector3 Position => Transform == null ? Vector3.zero : Transform.position;
+
+        /// <summary>
+        /// Get the rotation of the anchor.
+        /// </summary>
+        public Quaternion Rotation => Transform == null ? Quaternion.identity : Transform.rotation;
 
         /// <summary>
         /// Get if the anchor has been located
         /// </summary>
-        public bool IsLocated { get; private set; }
-
-        /// <summary>
-        /// Did this anchor start from a native anchor. If true, the anchor was initialized from a native anchor.
-        /// If false, the anchor was initialized from a cloud anchor id. 
-        /// </summary>
-        public bool FromNative { get; }
+        public bool IsLocated
+        {
+            get => ArAnchor != null && ArAnchor.trackingState == UnityEngine.XR.ARSubsystems.TrackingState.Tracking;
+        }
 
         /// <summary>
         /// Did this anchor start from a cloud anchor. If true, the anchor was initialized from a cloud anchor id.
-        /// If false, the anchor was initialized from a native anchor. 
         /// </summary>
-        public bool FromCloud { get; }
+        public bool FromCloud => _type == AppAnchorType.FromCloud;
+
+        /// <summary>
+        /// Get the ARAnchor if it exists
+        /// </summary>
+        public ARAnchor ArAnchor { get; private set; }
         #endregion IAppAnchor Properties
 
         #region IAppAnchor Events
-        /// <summary>
-        /// Event raised when the cloud anchor has been located.
-        /// </summary>
-        public event Action<IAppAnchor> Located;
-
         /// <summary>
         /// Event raise when the cloud anchor has changed.
         /// </summary>
@@ -120,21 +99,35 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public void Dispose()
         {
-            DestroyCloudNativeAnchor(deleteCloud: false);
+            StopAsyncOperation();
+            ClearOwnedTransform(deleteCloud: false);
         }
 
         /// <summary>
-        /// Move this cloud and native anchor to a new position
+        /// Start moving the cloud and/or native anchor to a new position, and complete a task once finished.
         /// </summary>
-        /// <param name="transform"></param>
-        public void Move(Transform transform)
+        public Task Move(Transform transform)
         {
             if (transform == null)
             {
                 throw new ArgumentNullException("Given transform is null");
             }
-            
-            TryRecreatingCloudNativeAnchor(transform);
+
+            return TryRecreatingCloudNativeAnchor(new Pose(transform.position, transform.rotation));
+        }
+
+        /// <summary>
+        /// Start moving the cloud and/or native anchor to a new position, and complete a task once finished.
+        /// </summary>
+        public Task Move(Pose pose)
+        {
+            if (!pose.position.IsValidVector() ||
+                !pose.rotation.IsValidRotation())
+            {
+                throw new ArgumentNullException("Given pose is invalid");
+            }
+
+            return TryRecreatingCloudNativeAnchor(pose);
         }
 
         /// <summary>
@@ -142,32 +135,83 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public void Delete()
         {
-            DestroyCloudNativeAnchor(deleteCloud: true);
-            Transform = null;
+            ClearOwnedTransform(deleteCloud: true);
             SetAnchorId(null);
         }
         #endregion IAppAnchor Methods
 
-        #region Public Properties
-        /// <summary>
-        /// An id representing an anchor that hasn't been saved to the cloud yet.
-        /// </summary>
-        public static string EmptyAnchorId => AnchoringService.EmptyAnchorId;
-        #endregion Public Properties
-
         #region Public Methods
         /// <summary>
-        /// Get if the platform support anchors.
+        /// Create an anchor from a cloud anchor id.
         /// </summary>
-        public static bool AnchorsSupported()
+        public static async Task<AppAnchor> Create(string name, string anchorId, bool allowNewCloudAnchorsOnMove = true)
         {
-            bool isDisplayOpaque = true;
+            if (string.IsNullOrEmpty(anchorId))
+            {
+                throw new ArgumentNullException("Anchor id is null or empty");
+            }
 
-#if UNITY_WSA
-            isDisplayOpaque = UnityEngine.XR.WSA.HolographicSettings.IsDisplayOpaque;
-#endif
+            AppAnchor result = new AppAnchor(name, AppAnchorType.FromCloud, allowNewCloudAnchorsOnMove);
 
-            return !isDisplayOpaque && !Application.isEditor;
+            try
+            {
+                await result.TryRecreatingCloudNativeAnchor(anchorId);
+            }
+            catch (Exception ex)
+            {
+                result.Dispose();
+                throw ex;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Create an anchor from a transform.
+        /// </summary>
+        public static Task<AppAnchor> Create(string name, Transform transform, bool allowNewCloudAnchorsOnMove = true)
+        {
+            if (transform == null)
+            {
+                throw new ArgumentNullException("Transform is null or empty");
+            }
+
+            return Create(name, new Pose(transform.position, transform.rotation), allowNewCloudAnchorsOnMove);
+        }
+
+        /// <summary>
+        /// Create an anchor from a pose.
+        /// </summary>
+        public static async Task<AppAnchor> Create(string name, Pose pose, bool allowNewCloudAnchorsOnMove = true)
+        {
+            AppAnchor result = new AppAnchor(name, AppAnchorType.FromPose, allowNewCloudAnchorsOnMove);
+
+            try
+            {
+                await result.TryRecreatingCloudNativeAnchor(pose);
+            }
+            catch (Exception ex)
+            {
+                result.Dispose();
+                throw ex;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Create an app anchor from a platform ARAnchor, and take ownership of the ARAnchor.
+        /// </summary>
+        public static AppAnchor Create(string name, ARAnchor arAnchor, bool allowNewCloudAnchorsOnMove = true)
+        {
+            if (arAnchor == null)
+            {
+                throw new ArgumentNullException("AR Anchor is null.");
+            }
+
+            AppAnchor result = new AppAnchor(name, AppAnchorType.FromNative, allowNewCloudAnchorsOnMove);
+            result.SetOwnedTransform(arAnchor.transform);
+            return result;
         }
         #endregion Public Methods
 
@@ -177,15 +221,38 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private static GameObject GetNativeAnchorContainer()
         {
-            if (_cloudNativeAnchorContainer == null)
+            if (_nativeAnchorContainer == null)
             {
-                _cloudNativeAnchorContainer = new GameObject($"Spatial Query Native Anchors");
-                MixedRealityPlayspace.AddChild(_cloudNativeAnchorContainer.transform);
-                _cloudNativeAnchorContainer.transform.position = Vector3.zero;
-                _cloudNativeAnchorContainer.transform.rotation = Quaternion.identity;
+                _nativeAnchorContainer = new GameObject($"Spatial Query Native Anchors");
+                MixedRealityPlayspace.AddChild(_nativeAnchorContainer.transform);
+                _nativeAnchorContainer.transform.position = Vector3.zero;
+                _nativeAnchorContainer.transform.rotation = Quaternion.identity;
             }
 
-            return _cloudNativeAnchorContainer;
+            return _nativeAnchorContainer;
+        }
+
+        /// <summary>
+        /// Called at a start of a new async operation. This will cancel the last async operation
+        /// </summary>
+        private CancellationToken StartAsyncOperation()
+        {
+            StopAsyncOperation();
+            _anchorCancellation = new CancellationTokenSource();
+            return _anchorCancellation.Token;
+        }
+
+        /// <summary>
+        /// Stop the current async operation.
+        /// </summary>
+        private void StopAsyncOperation()
+        {
+            if (_anchorCancellation != null)
+            {
+                _anchorCancellation.Cancel();
+                _anchorCancellation.Dispose();
+                _anchorCancellation = null;
+            }
         }
 
         /// <summary>
@@ -193,10 +260,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private void SetAnchorId(string id)
         {
-            // Only fire a change event if IDs changed, or the ID is an empty GUID. If the IDs are empty guids, the 
+            UpdateOwnedTransformName();
+
+            // Only fire a change event if IDs changed, or the ID is an empty GUID. If the IDs are empty GUIDs, the 
             // anchors could be in the middle of creation, and could be different.
-            if (_anchorId != id || id == EmptyAnchorId)
-            {
+            if (_anchorId != id || id == AnchorSupport.EmptyAnchorId)
+            {               
+                _log.LogVerbose("Saving anchor ID (name: {0}) (old anchor: {1}) (new anchor: {2}) (listeners: {3})", Name, _anchorId, id, (AnchorIdChanged == null ? "null" : "not null"));
                 _anchorId = id;
                 AnchorIdChanged?.Invoke(this, id);
             }
@@ -205,203 +275,306 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Create a new CloudNativeAnchor object from a given Azure Spatial Anchor ID. This will destroy the old CloudNativeAnchor.
         /// </summary>
-        private async void TryRecreatingCloudNativeAnchor(string anchorId)
+        private async Task TryRecreatingCloudNativeAnchor(string anchorId)
         {
-            _savingTransform = null;
-            DestroyCloudNativeAnchor(deleteCloud: true);
-            Transform = null;
+            var cancelToken = StartAsyncOperation();
+            ClearOwnedTransform(deleteCloud: false);
             SetAnchorId(anchorId);
 
-            CloudSpatialAnchor cloudNativeAnchor = null;
-            if (AnchorsSupported() && anchorId != EmptyAnchorId)
+            CloudSpatialAnchor cloudSpatialAnchor = null;
+            if (_anchorService.IsCloudEnabled)
             {
                 try
                 {
-                    Debug.Assert(_findAnchorIdCancellation == null, "Old cancellation sources should have been destroyed at this point.");
-                    _findAnchorIdCancellation = new CancellationTokenSource();
-                    cloudNativeAnchor = await _anchorService.Find(anchorId, _findAnchorIdCancellation.Token);
+                    SetAnchoringServiceFindOptions();
+                    _log.LogVerbose("Searching for cloud anchor. Starting (name: {0}) (id: {1})", Name, anchorId);
+                    cloudSpatialAnchor = await _anchorService.Find(anchorId, cancelToken);
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    _log.LogVerbose("Searching for cloud anchor. Ending (name: {0}) (id: {1})", Name, anchorId);
                 }
                 catch (TaskCanceledException)
                 {
-                    // Ignore cancellations
+                    _log.LogVerbose("Canceled searching for cloud anchor. (name: {0}) (id: {1})", Name, anchorId);
                 }
             }
 
-            // Only commit the new anchor, if the cloudNativeAnchor hasn't changed.
-            if (_cloudNativeAnchor == null &&
-                cloudNativeAnchor != null &&
-                AnchorId == anchorId &&
-                !string.IsNullOrEmpty(AnchorId))
+            // Only commit the new anchor, if the owned transform and anchor id hasn't changed.
+            if (cloudSpatialAnchor != null &&
+                Transform == null && 
+                !AnchorSupport.IsEmptyAnchor(AnchorId) &&
+                AnchorId == anchorId)
             {
-                var nativeAnchorObject = new GameObject($"Native Anchor ({anchorId})");
-                nativeAnchorObject.transform.SetParent(GetNativeAnchorContainer().transform);
-                _cloudNativeAnchor = nativeAnchorObject.EnsureComponent<CloudNativeAnchor>();
-                _cloudNativeAnchor.CloudToNative(cloudNativeAnchor);
-                Transform = _cloudNativeAnchor.transform;
-                StartTrackingNativeAnchor();
+                CreateOwnedTransform(cloudSpatialAnchor);
             }
+            else
+            {
+                _log.LogVerbose("Ignoring anchor search result (has owned transform: {0}) (service returned cloud spatial anchor: {1}) (search anchor id: {2}) (found anchor id: {3})",
+                    Transform != null,
+                    cloudSpatialAnchor != null,
+                   AnchorId,
+                   anchorId);
+            }
+        }
+
+        /// <summary>
+        /// Use the Azure Spatial Anchors default settings when searching for model anchors.
+        /// </summary>
+        private void SetAnchoringServiceFindOptions()
+        {
+            _anchorService.FindOptions = default;
         }
 
         /// <summary>
         /// Create a new CloudNativeAnchor object from a given transform. This will destroy the old CloudNativeAnchor.
         /// </summary>
-        private async void TryRecreatingCloudNativeAnchor(Transform transform)
+        private Task TryRecreatingCloudNativeAnchor(Transform transform, bool deleteOldCloud = true, bool allowNewCloud = true)
         {
-            // If in the process of saving this transform escape early. After first save is done, anchor will be updated if transform moved.
-            if (transform == _savingTransform)
+            return TryRecreatingCloudNativeAnchor(new Pose(transform.position, transform.rotation), deleteOldCloud, allowNewCloud);
+        }
+
+        /// <summary>
+        /// Create a new CloudNativeAnchor object from a given transform. This will destroy the old CloudNativeAnchor.
+        /// </summary>
+        private async Task TryRecreatingCloudNativeAnchor(Pose pose, bool deleteOldCloud = true, bool allowNewCloud = true)
+        {
+            _log.LogVerbose("TryRecreatingCloudNativeAnchorAndWait() starting (name: {0}) (allowNewCloud: {1}) (this._createCloudAnchor: {2})",
+                Name,
+                allowNewCloud,
+                _createCloudAnchor);
+
+            var cancelToken = StartAsyncOperation();
+
+            // Create a new anchor object at the given pose
+            ClearOwnedTransform(deleteCloud: deleteOldCloud);
+            Transform anchorTransform = CreateOwnedTransform(pose);
+
+            // Only create native anchors if the platform supports it.
+            string anchorId;
+            if (_createCloudAnchor && allowNewCloud)
             {
-                _savingTransformMoved = true;
-                return;
+                anchorId = await CreateCloudAnchor(anchorTransform.gameObject, cancelToken);
             }
-
-            DestroyCloudNativeAnchor(deleteCloud: true);
-            Transform = transform;
-            SetAnchorId(EmptyAnchorId);
-            _savingTransform = transform;
-
-            // Singal a move to kickstart the while loop.
-            _savingTransformMoved = true;
-            CloudNativeAnchor cloudNativeAnchor = null;
-
-            // If platform doesn't support anchor's, we still want to assign an empty anchor id
-            // for multi-user sharing purposes.
-            string anchorId = EmptyAnchorId;
-
-            // Update anchor if it moved during saving
-            while (_savingTransformMoved && _savingTransform == transform && _cloudNativeAnchor == null)
+            else
             {
-                _savingTransformMoved = false;
-
-                // Delete old anchor position
-                DestroyCloudNativeAnchor(cloudNativeAnchor, deleteCloud: true);
-
-                // Only create native anchors if the platform supports it.
-                if (AnchorsSupported())
-                {
-                    GameObject nativeAnchorObject = new GameObject($"Native Anchor (Creating Cloud for {transform.name})");
-                    nativeAnchorObject.transform.SetParent(GetNativeAnchorContainer().transform);
-                    nativeAnchorObject.transform.position = transform.position;
-                    nativeAnchorObject.transform.rotation = transform.rotation;
-                    nativeAnchorObject.FindOrCreateNativeAnchor();
-
-                    if (_createCloudAnchor)
-                    {
-                        cloudNativeAnchor = nativeAnchorObject.EnsureComponent<CloudNativeAnchor>();
-                        cloudNativeAnchor.NativeToCloud();
-                        anchorId = await _anchorService.Save(cloudNativeAnchor.CloudAnchor);
-                        cloudNativeAnchor.name = $"Native Anchor ({anchorId})";
-                    }
-                }
+                _log.LogVerbose("TryRecreatingCloudNativeAnchorAndWait() Create cloud anchor ignored. (name: {0}) (existing anchor id: {1})", Name, AnchorId);
+                anchorId = AnchorSupport.EmptyAnchorId;
             }
 
             // Only keep the new anchor if the cloudNativeAnchor hasn't changed, and we're still saving this transform
             // Otherwise destroy the used cloud anchor.
-            if (_cloudNativeAnchor == null &&
-                _savingTransform == transform &&
+            if (!cancelToken.IsCancellationRequested &&
+                Transform != null &&
+                Transform == anchorTransform && 
                 !string.IsNullOrEmpty(anchorId))
             {
-                _cloudNativeAnchor = cloudNativeAnchor;
+                _log.LogVerbose("TryRecreatingCloudNativeAnchorAndWait() applying saved anchor for transform (name: {0}) (existing anchor id: {1}) (created anchor id: {2})",
+                    Name,
+                    AnchorId, 
+                    anchorId);
+
                 SetAnchorId(anchorId);
-                StartTrackingNativeAnchor();
             }
             else
             {
-                DestroyCloudNativeAnchor(cloudNativeAnchor, deleteCloud: true);
+                _log.LogVerbose("TryRecreatingCloudNativeAnchorAndWait() No longer saving this transform, destroying new cloud anchor (name: {0}) (existing anchor id: {1}) (created anchor id: {2}) (already has cloud anchor: {3}) (canceled: {4})",
+                    Name,
+                    AnchorId,
+                    anchorId,
+                    cancelToken.IsCancellationRequested);
+
+                DestroyOwnedTransform(anchorTransform, deleteCloud: true);
             }
 
-            // Only clear flag if this was the last transform being saved.
-            if (_savingTransform == transform)
+            _log.LogVerbose("TryRecreatingCloudNativeAnchorAndWait() ending (name: {0}) (allowNewCloud: {1}) (this._createCloudAnchor: {2})",
+                Name,
+                allowNewCloud,
+                _createCloudAnchor);
+        }
+
+        /// <summary>
+        /// Create a new CloudNativeAnchor object from a given Azure Spatial Anchor.
+        /// </summary>
+        private Transform CreateOwnedTransform(CloudSpatialAnchor cloudSpatialAnchor)
+        {
+            if (cloudSpatialAnchor == null)
             {
-                _savingTransform = null;
+                return null;
+            }
+
+            _log.LogVerbose("Creating game object for cloud anchor. Starting (name: {0}) (id: {1})", Name, cloudSpatialAnchor.Identifier);
+            Pose pose = cloudSpatialAnchor.GetPose();
+
+            var anchorObject = new GameObject();
+            anchorObject.transform.SetParent(GetNativeAnchorContainer().transform);
+            anchorObject.transform.position = pose.position;
+            anchorObject.transform.rotation = pose.rotation;
+            anchorObject.EnsureComponent<ARAnchor>();
+ 
+            SetOwnedTransform(anchorObject.transform);
+            _log.LogVerbose("Creating game object for cloud anchor. Ending (name: {0}) (id: {1}) (position: {2}) (rotation: {3})", Name, cloudSpatialAnchor.Identifier, pose.position, pose.rotation.eulerAngles);
+            return anchorObject.transform;
+        }
+
+        /// <summary>
+        /// Create an owned transform from pose.
+        /// </summary>
+        private Transform CreateOwnedTransform(Pose pose)
+        {
+            _log.LogVerbose("Creating game object for pose. Starting (name: {0}) (pose: {1})", Name, pose);
+            
+            GameObject anchorObject = new GameObject();
+            anchorObject.transform.SetParent(GetNativeAnchorContainer().transform);
+            anchorObject.transform.position = pose.position;
+            anchorObject.transform.rotation = pose.rotation;
+
+            if (_anchorService.IsCloudEnabled)
+            {
+                anchorObject.FindOrCreateNativeAnchor();
+                anchorObject.EnsureComponent<CloudNativeAnchor>();
+            }
+            else
+            {
+                anchorObject.EnsureComponent<ARAnchor>();
+            }
+
+            SetOwnedTransform(anchorObject.transform);
+            _log.LogVerbose("Creating game object for pose. Ending (name: {0}) (pose: {1})", Name, pose);
+            return anchorObject.transform;
+        }
+
+        /// <summary>
+        /// Destroy an owned transform and its cloud anchor
+        /// </summary>
+        /// <param name="destroy"></param>
+        private void DestroyOwnedTransform(Transform destroy, bool deleteCloud = true)
+        {
+            if (destroy != null)
+            {
+                RemoveCloudAnchor(destroy.gameObject, deleteCloud);
+                UnityEngine.Object.Destroy(destroy.gameObject);
             }
         }
 
         /// <summary>
-        /// Destroy the cloud and native anchor for this object.
+        /// Set the owned transform. This will destroy the old owned transform
         /// </summary>
-        private void DestroyCloudNativeAnchor(bool deleteCloud = true)
+        /// <param name="transform"></param>
+        private void SetOwnedTransform(Transform transform)
         {
-            if (_findAnchorIdCancellation != null)
+            ClearOwnedTransform(deleteCloud: false);
+            _ownedTransform = transform;
+
+            if (transform != null)
             {
-                _findAnchorIdCancellation.Cancel();
-                _findAnchorIdCancellation = null;
+                var cloudNativeAnchor = transform.GetComponent<CloudNativeAnchor>();
+                if (cloudNativeAnchor != null)
+                {
+                    ArAnchor = cloudNativeAnchor.NativeAnchor;
+                }
+                else
+                {
+                    ArAnchor = transform.EnsureComponent<ARAnchor>();
+                }
             }
 
-            StopTrackingNativeAnchor();
-            DestroyCloudNativeAnchor(_cloudNativeAnchor, deleteCloud);
-            _cloudNativeAnchor = null;
+            UpdateOwnedTransformName();
         }
 
         /// <summary>
-        /// Destroy the cloud and native anchor for this object.
+        /// Clear the owned transform. 
         /// </summary>
-        private static void DestroyCloudNativeAnchor(CloudNativeAnchor cloudNativeAnchor, bool deleteCloud = true)
+        /// <param name="transform"></param>
+        private void ClearOwnedTransform(bool deleteCloud = false)
         {
+            if (_ownedTransform != null)
+            {
+                DestroyOwnedTransform(_ownedTransform, deleteCloud);
+                _ownedTransform = null;
+            }
+
+            ArAnchor = null;
+        }
+
+        /// <summary>
+        /// Update owned transform's name
+        /// </summary>
+        private void UpdateOwnedTransformName()
+        {
+            if (_ownedTransform != null)
+            {
+                _ownedTransform.name = $"Native Anchor (name: {Name}) ({AnchorId ?? "NULL"})";
+            }
+        }
+
+        /// <summary>
+        /// Add a cloud anchor to the given object if it supports it
+        /// </summary>
+        private async Task<string> CreateCloudAnchor(GameObject anchorObject, CancellationToken cancelToken)
+        {
+            // If platform doesn't support anchor's, we still want to assign an empty anchor id
+            // for multi-user sharing purposes.
+            string anchorId = AnchorSupport.EmptyAnchorId;
+
+            var cloudNativeAnchor = anchorObject.GetComponent<CloudNativeAnchor>();
             if (cloudNativeAnchor != null)
             {
-                if (cloudNativeAnchor.gameObject != null)
+                _log.LogVerbose("AddCloudAnchor() saving anchor (name: {0}) (existing anchor id: {1})", Name, AnchorId);
+                await cloudNativeAnchor.NativeToCloud();
+
+                if (!cancelToken.IsCancellationRequested)
                 {
-                    UnityAnchor.Destroy(cloudNativeAnchor.gameObject);
+                    anchorId = await _anchorService.Save(cloudNativeAnchor.CloudAnchor);
                 }
 
-                if (deleteCloud && cloudNativeAnchor.CloudAnchor != null && !string.IsNullOrEmpty(cloudNativeAnchor.CloudAnchor.Identifier))
+                if (cancelToken.IsCancellationRequested)
                 {
-                    AppServices.AnchoringService.Delete(cloudNativeAnchor.CloudAnchor);
+                    anchorId = AnchorSupport.EmptyAnchorId;
                 }
+                _log.LogVerbose("AddCloudAnchor() saved anchor (name: {0}) (existing anchor id: {1}) (created anchor id: {2})", Name, AnchorId, anchorId);
             }
+
+            return anchorId;
         }
 
         /// <summary>
-        /// Listen for native anchor being located+
+        /// Destroy the cloud anchor component for the given GameObject.
         /// </summary>
-        private void StartTrackingNativeAnchor()
+        private void RemoveCloudAnchor(GameObject anchorObject, bool deleteCloud = true)
         {
-            if (_cloudNativeAnchor == null ||
-                _cloudNativeAnchor.NativeAnchor == null ||
-                !AnchorsSupported())
+            if (anchorObject != null)
             {
-                return;
-            }
-
-#if UNITY_WSA && !UNITY_EDITOR && USE_MR
-            _cloudNativeAnchor.NativeAnchor.OnTrackingChanged += NativeAnchorTrackingUpdated;
-            NativeAnchorTrackingUpdated(_cloudNativeAnchor.NativeAnchor, _cloudNativeAnchor.NativeAnchor.isLocated);
-#endif
-        }
-
-        /// <summary>
-        /// Stop tracking the native anchor
-        /// </summary>
-        private void StopTrackingNativeAnchor()
-        {
-            if (_cloudNativeAnchor == null ||
-                _cloudNativeAnchor.NativeAnchor == null)
-            {
-                return;
-            }
-
-#if UNITY_WSA && !UNITY_EDITOR && USE_MR
-            _cloudNativeAnchor.NativeAnchor.OnTrackingChanged -= NativeAnchorTrackingUpdated;
-            NativeAnchorTrackingUpdated(_cloudNativeAnchor.NativeAnchor, false);
-#else
-            NativeAnchorTrackingUpdated(_cloudNativeAnchor, false);
-#endif
-        }
-
-        /// <summary>
-        /// Handle tracking updates
-        /// </summary>
-        private void NativeAnchorTrackingUpdated(UnityAnchor worldAnchor, bool located)
-        {
-            if (IsLocated != located)
-            {
-                IsLocated = located;
-                if (IsLocated)
+                var cloudNativeAnchor = anchorObject.GetComponent<CloudNativeAnchor>();
+                if (cloudNativeAnchor != null)
                 {
-                    Located?.Invoke(this);
+                    UnityEngine.Object.Destroy(cloudNativeAnchor);
+                    if (deleteCloud && cloudNativeAnchor.CloudAnchor != null)
+                    {
+                        AppServices.AnchoringService.Delete(cloudNativeAnchor.CloudAnchor);
+                    }
                 }
             }
         }
         #endregion Private Methods
+
+        #region Private Enumerations
+        private enum AppAnchorType
+        {
+            /// <summary>
+            /// The anchor was initialized from a cloud anchor id. 
+            /// </summary>
+            FromCloud,
+
+            /// <summary>
+            /// The anchor was initialized from a native anchor. 
+            /// </summary>
+            FromNative,
+
+            /// <summary>
+            /// The anchor was initialized from an app pose. 
+            /// </summary>
+            FromPose,
+        }
+
+        #endregion Private Enumerations
     }
 }

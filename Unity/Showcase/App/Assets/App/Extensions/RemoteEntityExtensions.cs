@@ -183,38 +183,23 @@ public static class RemoteEntityExtensions
     }
 
     /// <summary>
-    /// This creates a "snapshot" of an entity's global positions and rotation. Result is a flattened, depth-first list of root's hierarchy.
+    /// This creates a "snapshot" of an entity's global positions and rotation.
     /// </summary>
-    public static IEnumerable<EntitySnapshot> CreateSnapshot(this Entity root)
+    public static EntitySnapshot CreateSnapshot(this Entity entity)
     {
-        if (root == null)
+        if (entity == null)
         {
             return null;
         }
 
-        List<EntitySnapshot> result = new List<EntitySnapshot>();
-        CreateSnapshotImpl(root, null, result);
+        var result = new EntitySnapshot(entity);
+        while (entity.Parent != null)
+        {
+            entity = entity.Parent;
+            result.Parent = new EntitySnapshot(entity);
+        }
+
         return result;
-    }
-
-    /// <summary>
-    /// This creates a "snapshot" of an entity's global positions and rotation. This includes the entity's entire hierarchy.
-    /// </summary>
-    private static void CreateSnapshotImpl(this Entity entity, EntitySnapshot root, List<EntitySnapshot> results)
-    {
-        if (entity == null || !entity.Valid)
-        {
-            return;
-        }
-
-        EntitySnapshot parent = new EntitySnapshot(entity, root);
-        results.Add(parent);
-
-        var children = entity.Children;
-        foreach (var child in children)
-        {
-            CreateSnapshotImpl(child, parent, results);
-        }
     }
 
     /// <summary>
@@ -346,15 +331,14 @@ public class EntitySnapshot
     private bool _matricesInitialized;
     private UnityEngine.Matrix4x4 _toWorld;
     private UnityEngine.Matrix4x4 _toLocal;
-    private WeakReference<EntitySnapshot> _parent;
 
-    public EntitySnapshot(Entity entity, EntitySnapshot parent)
+    public EntitySnapshot(Entity entity, EntitySnapshot parent = null)
     {
         Entity = entity;
         LocalPosition = entity.Position.toUnityPos();
         LocalRotation = entity.Rotation.toUnity();
         LocalScale = entity.Scale.toUnity();
-        _parent = new WeakReference<EntitySnapshot>(parent);
+        Parent = parent;
     }
 
     public Vector3 LocalPosition { get; }
@@ -365,15 +349,7 @@ public class EntitySnapshot
 
     public Entity Entity { get; }
 
-    public EntitySnapshot Parent
-    {
-        get
-        {
-            EntitySnapshot parent = null;
-            _parent?.TryGetTarget(out parent);
-            return parent;
-        }
-    }
+    public EntitySnapshot Parent { get; set; }
 
     public UnityEngine.Matrix4x4 ToWorld
     {

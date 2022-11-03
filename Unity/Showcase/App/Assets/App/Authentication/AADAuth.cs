@@ -8,28 +8,30 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
 
 namespace App.Authentication
 {
     public static class AADAuth
     {
-        static string authority => "https://login.microsoftonline.com/";
+        private const string defaultRedirect = "http://localhost";
 
-        const string defaultTenant = "common";
+        private static readonly string defaultAuthority = AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount.ToString();
 
-        const string defaultRedirect = "http://localhost";
+        private static readonly string[] arrScopes = new string[] { "https://sts.mixedreality.azure.com/mixedreality.signin" };
 
-        static string[] arrScopes = new string[] { "https://sts.mixedreality.azure.com/mixedreality.signin" };
-
-        static string[] storageScopes = new string[] { "https://storage.azure.com/user_impersonation" };
+        private static readonly string[] storageScopes = new string[] { "https://storage.azure.com/user_impersonation" };
         
         private static IAccount selectedAccount;
+
+        private static IPublicClientApplication clientApp;
+
+        private static readonly LogHelper log = new LogHelper(nameof(AADAuth));
+
         public static IAccount SelectedAccount => selectedAccount;
 
         public static void PrepareOnMainThread()
         {
-            //Nothing needs to be done here, just need to wake up this static class on the main thread
+            // Nothing needs to be done here, just need to wake up this static class on the main thread
             AADTokenCache.PrepareOnMainThread();
         }
 
@@ -39,29 +41,57 @@ namespace App.Authentication
             Storage
         }
 
-        static IPublicClientApplication clientApp;
-        static IPublicClientApplication GetClientApp(string applicationClientId, string tenantID, string redirectURI)
+        private static IPublicClientApplication GetClientApp(string applicationClientId, string authority, string tenantID, string redirectURI)
         {
-            if (string.IsNullOrEmpty(tenantID))
+            if (string.IsNullOrEmpty(authority))
             {
-                tenantID = defaultTenant;
+                authority = defaultAuthority;
             }
+
             if (string.IsNullOrEmpty(redirectURI))
             {
                 redirectURI = defaultRedirect;
             }
-            if (clientApp == null)
+
+            if (clientApp == null || clientApp.AppConfig.ClientId != applicationClientId)
             {
 #if UNITY_EDITOR
                 redirectURI = defaultRedirect;
 #endif
-                clientApp = PublicClientApplicationBuilder.Create(applicationClientId).WithAuthority(authority + tenantID).WithRedirectUri(redirectURI).Build();
+                var builder = PublicClientApplicationBuilder.Create(applicationClientId).WithRedirectUri(redirectURI);
+
+                if (!string.IsNullOrWhiteSpace(tenantID))
+                {
+                    builder = builder.WithTenantId(tenantID);
+                }
+                else 
+                {
+                    AadAuthorityAudience audience;
+                    if (Enum.TryParse(authority, out audience))
+                    {
+                        builder = builder.WithAuthority(audience);
+                    }
+                    else
+                    {
+                        builder = builder.WithAuthority(authority);
+                    }
+                }
+
+                clientApp = builder.Build();
+
                 AADTokenCache.EnableSerialization(clientApp.UserTokenCache);
             }
             return clientApp;
         }
 
-        public static async Task<AuthenticationResult> TryLogin(string applicationClientId, Scope scope, Func<IEnumerable<IAccount>, Task<IAccount>> selectAccount, CancellationToken cancelToken, string tenantID = defaultTenant, string redirectURI = defaultRedirect)
+        public static async Task<AuthenticationResult> TryLogin(
+            string applicationClientId, 
+            Scope scope, 
+            Func<IEnumerable<IAccount>, Task<IAccount>> selectAccount,
+            CancellationToken cancelToken,
+            string authority, 
+            string tenantID, 
+            string redirectURI)
         {
             string[] PrimaryScopes = null;
             string[] ExtraScopes = null;
@@ -77,9 +107,79 @@ namespace App.Authentication
                     break;
             }
 
-            var clientApplication = GetClientApp(applicationClientId, tenantID, redirectURI);
             AuthenticationResult result = null;
+            var clientApplication = GetClientApp(applicationClientId, authority, tenantID, redirectURI);
+            await SelectAccount(clientApplication, selectAccount);
 
+            if (selectedAccount != null)
+            {
+                try
+                {
+                    result = await clientApplication.AcquireTokenSilent(PrimaryScopes, selectedAccount).ExecuteAsync();
+                }
+                catch (MsalUiRequiredException ex)
+                {
+                    log.LogWarning("Failed to acquire token silently. Attempting to display interactive sign-in UI. Exception: {0}", ex);
+                }
+            }
+
+            if (result == null)
+            {
+                result = await AcquireTokenInteractive(clientApplication, PrimaryScopes, ExtraScopes, cancelToken);
+            }
+
+            return result;
+        }
+
+        private static async Task<AuthenticationResult> AcquireTokenInteractive(IPublicClientApplication clientApplication, string[] PrimaryScopes, string[] ExtraScopes, CancellationToken cancelToken)
+        {
+            AuthenticationResult result = null;
+            try
+            {
+#if UNITY_EDITOR
+                var options = new SystemWebViewOptions()
+                {
+                    HtmlMessageError = "<p> An error occurred: {0}. Details {1} </p>",
+                    HtmlMessageSuccess = "<p> Success! You may now close this browser. </p>"
+                };
+                result = await clientApplication.
+                    AcquireTokenInteractive(PrimaryScopes).
+                    WithExtraScopesToConsent(ExtraScopes).
+                    WithUseEmbeddedWebView(false).
+                    WithSystemWebViewOptions(options).
+                    ExecuteAsync(cancelToken);
+#else
+                result = await clientApplication.
+                    AcquireTokenInteractive(PrimaryScopes).
+                    WithExtraScopesToConsent(ExtraScopes).
+                    WithUseEmbeddedWebView(true).
+                    ExecuteAsync(cancelToken);
+#endif
+            }
+            catch (MsalUiRequiredException ex)
+            {
+                log.LogError("Failed to acquire token. MsalUiRequiredException: {0}", ex);
+            }
+            catch (MsalServiceException ex)
+            {
+                log.LogError("Failed to acquire token. MsalServiceException: {0}", ex);
+            }
+            catch (MsalClientException ex)
+            {
+                log.LogError("Failed to acquire token. MsalClientException: {0}", ex);
+                // Mitigation: Use interactive authentication
+            }
+            catch (Exception ex)
+            {
+                log.LogError("Failed to acquire token. Exception: {0}", ex);
+            }
+
+            selectedAccount = result?.Account;
+            return result;
+        }
+
+        private static async Task SelectAccount(IPublicClientApplication clientApplication, Func<IEnumerable<IAccount>, Task<IAccount>> selectAccount)
+        {
             try
             {
                 var accounts = await clientApplication.GetAccountsAsync();
@@ -87,73 +187,27 @@ namespace App.Authentication
                 {
                     selectedAccount = await selectAccount(accounts);
 
-                    //Clean up any accounts not selected (all accounts if none selected)
+                    // Clean up any accounts not selected (all accounts if none selected)
                     foreach (var account in accounts)
                     {
-                        if (account == selectedAccount)
-                            continue;
-                        await clientApplication.RemoveAsync(account);
+                        if (account != selectedAccount)
+                        {
+                            await clientApplication.RemoveAsync(account);
+                        }
                     }
-                }
-
-                if (selectedAccount != null)
-                {
-                    result = await clientApplication.AcquireTokenSilent(PrimaryScopes, selectedAccount).ExecuteAsync();
-
-                    return result;
-                }
-                else
-                {
-                    try
-                    {
-#if UNITY_EDITOR
-                    var options = new SystemWebViewOptions()
-                    {
-                        HtmlMessageError = "<p> An error occured: {0}. Details {1} </p>",
-                        HtmlMessageSuccess = "<p> Success! You may now close this browser. </p>"
-                    };
-                    result = await clientApplication.AcquireTokenInteractive(PrimaryScopes).WithExtraScopesToConsent(ExtraScopes).WithUseEmbeddedWebView(false).WithSystemWebViewOptions(options).ExecuteAsync(cancelToken);
-#else
-                        result = await clientApplication.AcquireTokenInteractive(PrimaryScopes).WithExtraScopesToConsent(ExtraScopes).WithUseEmbeddedWebView(true).ExecuteAsync(cancelToken);
-#endif
-                    }
-                    catch (MsalUiRequiredException ex)
-                    {
-                        Debug.LogError("MsalUiRequiredException");
-                        Debug.LogException(ex);
-                    }
-                    catch (MsalServiceException ex)
-                    {
-                        Debug.LogError($"MsalServiceException during Azure Active Directory Authentication: {ex.ErrorCode}");
-                    }
-                    catch (MsalClientException ex)
-                    {
-                        Debug.LogError("MsalClientException");
-                        Debug.LogException(ex);
-                        // Mitigation: Use interactive authentication
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError("Exception");
-                        Debug.LogException(ex);
-                    }
-
-                    selectedAccount = result?.Account;
-
-                    return result;
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                selectedAccount = null;
+                log.LogWarning("Failed to use cached credentials, clearing cache. Exception: {0}", ex);
 
-                Debug.LogError("Exception using cached credentials, clearing cache");
-                //Clear the cache file if there's an exception using the cache
+                // Clear the cache file if there's an exception using the cache
                 if (File.Exists(AADTokenCache.CacheFilePath))
+                {
                     File.Delete(AADTokenCache.CacheFilePath);
+                }
             }
-            
-            return null;
         }
     }
 }

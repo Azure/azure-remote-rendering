@@ -1,9 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.Azure.RemoteRendering;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.UI;
+using Microsoft.MixedReality.Toolkit.Utilities;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -15,30 +16,17 @@ public class SessionRegionButton : ClickableButton
     private const string _domainFormat = "{0}.mixedreality.azure.com";
     private string _domain;
 
-    /// <remarks>
-    /// This should be updated to use the list of supported remote rendering domains (see IRemoteREnderingSession.LoadedProfile.RemoteRenderingDomains)
-    /// </remarks>
-    public enum SessionLocation
-    {
-        // Do not change the order of these enum values.
-        // Changing the order will break assets in Unity scenes.
-        westus2,
-        eastus,
-        westeurope,
-        southeastasia
-    };
-
     #region Serialized Fields
     [Header("Region Settings")]
 
     [SerializeField]
     [Tooltip("The location of the session server to set when the button is clicked.")]
-    public SessionLocation location;
+    public RemoteRenderingServiceRegionValue location;
 
     /// <summary>
     /// The location of the session server to set when the button is clicked.
     /// </summary>
-    public SessionLocation Location
+    public RemoteRenderingServiceRegionValue Location
     {
         get => location;
         set
@@ -128,16 +116,23 @@ public class SessionRegionButton : ClickableButton
         var loadedProfile = AppServices.RemoteRendering?.LoadedProfile;
         if (loadedProfile != null)
         {
-            int domainIndex = (int)location;
-            if (domainIndex < loadedProfile.RemoteRenderingDomains.Length && domainIndex < loadedProfile.RemoteRenderingDomainLabels.Length)
+            RemoteRenderingServiceRegion region = loadedProfile.RemoteRenderingDomains.FirstOrDefault(entry => entry.ValueEnum == location);
+            if (region.ValueEnum != RemoteRenderingServiceRegionValue.error)
             {
-                _domain = loadedProfile.RemoteRenderingDomains[domainIndex] ?? _domain;
-                LocationName = loadedProfile.RemoteRenderingDomainLabels[domainIndex] ?? LocationName;
+                _domain = region.Domain ?? _domain;
+                LocationName = region.Label ?? LocationName;
             }
-            else
+            else if (Application.isPlaying)
             {
                 // Disable this button.
                 gameObject.SetActive(false);
+
+                // Force parent to re-layout
+                var grid = GetComponentInParent<GridObjectCollection>();
+                if (grid != null)
+                {
+                    grid.UpdateCollection();
+                }
             }
         }
     }

@@ -27,7 +27,7 @@ public abstract class ListScrollerBase : MonoBehaviour
     /// <summary>
     /// Get the visible index range.
     /// </summary>
-    public (int StartIndex, int Count) VisibleRange { get; protected set; }
+    public ListScrollerRange VisibleRange { get; protected set; }
 
     /// <summary>
     /// The total page count.
@@ -124,4 +124,30 @@ public abstract class ListScrollerBase : MonoBehaviour
     /// </summary>
     protected abstract void OnSetScrollSize(Vector2 listSize);
     #endregion Protected Functions
+}
+
+public struct ListScrollerRange
+{
+    public int startIndex;
+    public int endIndex;
+
+    public ListScrollerRange(int startIndex, int endIndex)
+    {
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
+    }
+    public override bool Equals(object obj) => obj is ListScrollerRange other && this.Equals(other);
+
+    public bool Equals(ListScrollerRange other) =>
+        other.endIndex == endIndex &&
+        other.startIndex == startIndex;
+
+    public override int GetHashCode() => 
+        (startIndex, endIndex).GetHashCode();
+
+    public static bool operator ==(ListScrollerRange lhs, ListScrollerRange rhs) => lhs.Equals(rhs);
+
+    public static bool operator !=(ListScrollerRange lhs, ListScrollerRange rhs) => !(lhs == rhs);
+
+    public static ListScrollerRange Empty { get; } = new ListScrollerRange(-1, 0);
 }

@@ -17,3 +17,5 @@ MonoBehaviour:
   SearchTimeout: 300
   AnchorAccountId: 
   AnchorAccountKey: 
+  AnchorAccountDomain: mixedreality.azure.com
+  AnchorExpirationInDays: 0.5

@@ -4,6 +4,7 @@
 using Microsoft.Azure.Storage;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,6 +32,8 @@ using UnityEngine;
 /// </summary>
 public class RemoteObjectListLoader : MonoBehaviour
 {
+    private bool _pendingLoad;
+
     #region Serialized Fields
     [Header("Parts")]
 
@@ -89,11 +92,11 @@ public class RemoteObjectListLoader : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("The xml file url to download data from. Second attempt is to load models from this. Used if 'Override File Name' doesn't exist or fails to load.")]
+    [Tooltip("The xml file URL to download data from. Second attempt is to load models from this. Used if 'Override File Name' doesn't exist or fails to load.")]
     private string cloudFileUrl = "";
 
     /// <summary>
-    /// The xml file url to download data from. Second attempt is to load models from this. Used if 'Override File
+    /// The xml file URL to download data from. Second attempt is to load models from this. Used if 'Override File
     /// Name' doesn't exist or fails to load.
     /// </summary>
     public string CloudFileUrl
@@ -154,52 +157,53 @@ public class RemoteObjectListLoader : MonoBehaviour
         OverrideFilePath = Application.persistentDataPath + "/" + overrideFileName;
         FallbackFilePath = Application.persistentDataPath + "/" + fallbackFileName;
 
-        AppServices.RemoteRendering.StatusChanged += RemoteRendering_StatusChanged;
-        RemoteRendering_StatusChanged(AppServices.RemoteRendering.Status);
+        ConvertModelService.OnModelConversionSuccess += DelayLoadData;
+        DelayLoadData();
+    }
 
-        ConvertModelService.OnModelConversionSuccess += LoadData;
-        OnRefreshRequested += LoadData;
+    private void OnEnable()
+    {
+        DelayLoadData();
     }
 
     private void OnDestroy()
     {
-        ConvertModelService.OnModelConversionSuccess -= LoadData;
-        OnRefreshRequested -= LoadData;
+        ConvertModelService.OnModelConversionSuccess -= DelayLoadData;
     }
     #endregion MonoBehavior Methods
 
     #region Public Methods
-    public static void RefreshLists()
-    {
-        OnRefreshRequested?.Invoke();
-    }
     #endregion Public Methods
 
     #region Private Methods
-
-    private static event Action OnRefreshRequested;
-
-    private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs e)
-    {
-        RemoteRendering_StatusChanged(e.NewStatus);
-    }
-
-    private void RemoteRendering_StatusChanged(RemoteRenderingServiceStatus newStatus)
-    {
-        if(newStatus != RemoteRenderingServiceStatus.Unknown && newStatus != RemoteRenderingServiceStatus.NoSession)
-        {
-            AppServices.RemoteRendering.StatusChanged -= RemoteRendering_StatusChanged;
-            LoadData();
-        }
-    }
-    
     private bool DataEmpty(RemoteModelFile fileData)
     {
         return fileData == null || fileData.Containers == null || fileData.Containers.Length == 0;
     }
 
+    private void DelayLoadData()
+    {
+        _pendingLoad = true;
+        StartCoroutine(DelayLoadDataIfPending());
+    }
+
+    private IEnumerator DelayLoadDataIfPending()
+    {
+        yield return 0;
+        if (_pendingLoad)
+        {
+            LoadData();
+        }
+    }
+
     private async void LoadData()
     {
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
+        _pendingLoad = false;
         RemoteModelFile combinedFileData = new RemoteModelFile();
         
         // Load from Override
@@ -235,7 +239,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         List<object> sortedData = null;
         if (combinedFileData != null)
         {
-            sortedData = await CopyAndSort(combinedFileData);
+            sortedData = await FilterCopyAndSort(combinedFileData);
         }
 
         ApplyData(sortedData);
@@ -267,7 +271,7 @@ public class RemoteObjectListLoader : MonoBehaviour
         }
         catch (Exception ex)
         {
-            var msg = $"Failed to load remote model data from cloud url '{cloudFileUrl}'. Reason: {ex.Message}";
+            var msg = $"Failed to load remote model data from cloud URL '{cloudFileUrl}'. Reason: {ex.Message}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
             Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  msg);
         }
@@ -350,10 +354,30 @@ public class RemoteObjectListLoader : MonoBehaviour
 
     private bool IsEmpty(RemoteModelFile fileData)
     {
-        return fileData?.Containers == null || fileData.Containers.Length == 0;
+        if (fileData?.Containers == null || 
+            fileData.Containers.Length == 0)
+        {
+            return true;
+        }
+
+        bool foundEnabled = false;
+        foreach (var container in fileData.Containers)
+        {
+            if (container != null)
+            {
+                foundEnabled = container.Enabled;
+            }
+
+            if (foundEnabled)
+            {
+                break;
+            }
+        }
+
+        return !foundEnabled;
     }
 
-    private async Task<List<object>> CopyAndSort(RemoteModelFile fileData)
+    private async Task<List<object>> FilterCopyAndSort(RemoteModelFile fileData)
     {
         if (IsEmpty(fileData))
         {
@@ -365,7 +389,11 @@ public class RemoteObjectListLoader : MonoBehaviour
             List<object> sorted = new List<object>(fileData.Containers.Length);
             foreach (var container in fileData.Containers)
             {
-                sorted.Add(container);
+                if (container != null && 
+                    container.Enabled)
+                {
+                    sorted.Add(container);
+                }
             }
             sorted.Sort(CompareContainersByName);
             return sorted;

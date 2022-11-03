@@ -19,7 +19,7 @@ namespace App.Authentication
 
         public static void PrepareOnMainThread()
         {
-            //Nothing needs to be done here, just need to wake up this static class on the main thread
+            // Nothing needs to be done here, just need to wake up this static class on the main thread
         }
 
         public static void EnableSerialization(ITokenCache tokenCache)

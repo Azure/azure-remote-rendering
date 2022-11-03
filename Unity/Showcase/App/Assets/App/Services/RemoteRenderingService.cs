@@ -1,20 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using App.Authentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
 using Microsoft.MixedReality.Toolkit.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using App.Authentication;
-using UnityEngine;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
 
 #if !UNITY_EDITOR && WINDOWS_UWP
 using Windows.System;
@@ -44,6 +44,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         private RemoteRenderingServiceStatus _combinedStatus = RemoteRenderingServiceStatus.Unknown;
         private Timer _editorUpdateTimer;
         private LastSessionData _lastSession = LastSessionData.Empty;
+        private LogHelper<RemoteRenderingService> _log = new LogHelper<RemoteRenderingService>();
         private const string _lastSessionKey = "Microsoft.MixedReality.Toolkit.Extensions.RemoteRenderingService.LastSession2";
 
         public RemoteRenderingService(string name, uint priority, BaseMixedRealityProfile profile) : base(name, priority, profile)
@@ -95,7 +96,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var sessionId = $"Session Id: {_primaryMachine.Session.Id}";
                     var sessionStatus = $"{_primaryMachine.Session.StatusMessage}{_primaryMachine.Session.Connection.ConnectionStatus}";
-
                     if (_primaryMachine.Session.Connection.ConnectionStatus != ConnectionStatus.Connected)
                     {
                         return $"{sessionId}\r\n{sessionStatus}";
@@ -210,6 +210,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     UnityEditor.EditorPrefs.SetString(_lastSessionKey, value.ToJson());
 #else
                     PlayerPrefs.SetString(_lastSessionKey, value.ToJson());
+                    PlayerPrefs.Save();
 #endif
                     _lastSession = value;
                 }
@@ -295,16 +296,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 var msg = $"Dll not found: {e.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                _log.LogError(msg);
             }
             catch (Exception ex)
             {
-                var msg = $"Error creating frontend: {ex.Message}";
+                var msg = $"Error creating remote rendering client: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                _log.LogError(msg);
                 return null;
             }
             Task<CreateRenderingSessionResult> sessionTask;
+
+            string error = null;
+            RemoteRenderingMachine result = null;
 
             try
             {
@@ -331,24 +335,25 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 var resultSession = await sessionTask;
                 if (resultSession.ErrorCode == Result.Success)
                 {
-                    return AddMachine(resultSession.Session);
+                    result = AddMachine(resultSession.Session);
                 }
                 else
                 {
-                    string msg = $"Failed to create session. Reason: {resultSession.Context.Result.ToString()} - {resultSession.Context.ErrorMessage}";
-                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
-
+                    error = $"Failed to create session. Reason: {resultSession.Context.Result.ToString()} - {resultSession.Context.ErrorMessage}";
                 }
             }
             catch (Exception ex)
             {
-                string msg = $"Failed to create session. Reason: {ex.Message}";
-                AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                error = $"Failed to create session. Exception Reason: {ex?.Message}";
             }
 
-            return null;
+            if (error != null && result == null)
+            {
+                AppServices.AppNotificationService.RaiseNotification(error, AppNotificationType.Error);
+                _log.LogError(error);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -364,11 +369,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         public async Task<IRemoteRenderingMachine> Open(string id, string domain)
         {
-            var frontend = await GetClient(domain);
+            var client = await GetClient(domain);
             Task<CreateRenderingSessionResult> sessionTask;
             try
             {
-                sessionTask = frontend.OpenRenderingSessionAsync(id);
+                sessionTask = client.OpenRenderingSessionAsync(id);
                 var resultSession = await sessionTask;
                 return AddMachine(resultSession.Session);
             }
@@ -376,7 +381,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 string msg = $"Failed to open session. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                _log.LogError(msg);
             }
 
             return null;
@@ -437,7 +442,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 var msg = $"Failed to initialize ARR service. Reason: {ex.Message}";
                 AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                _log.LogError(msg);
             }
         }
 
@@ -455,8 +460,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             // Block for now, however may want to make destroy async.
             ClearMachines().Wait();
 
-            // Cleanup front ends
-            DestroyFrontend();
+            // Cleanup remote rendering clients
+            DestroyClient();
 
             // Cleanup editor stuff
             DestroyEditor();
@@ -508,8 +513,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (_arrClient == null || _arrClient.Configuration.RemoteRenderingDomain != domain)
             {
-                DestroyFrontend();
-                ValidateFrontendConfiguration();
+                DestroyClient();
+                ValidateClientConfiguration();
 
                 _arrClient = await LoadedProfile.GetClient(domain);
             }
@@ -518,9 +523,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Validate that the frontend has been configurated correctly.
+        /// Validate that the remote rendering client has been configured correctly.
         /// </summary>
-        private void ValidateFrontendConfiguration()
+        private void ValidateClientConfiguration()
         {
             string error = null;
 
@@ -532,7 +537,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
         }
 
-        private void DestroyFrontend()
+        private void DestroyClient()
         {
             if (_arrClient != null)
             {
@@ -588,10 +593,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return null;
             }
 
+            _log.LogInformation("ARR Session: {0}", arrSession.SessionUuid);
+
             RemoteRenderingMachine machine = new RemoteRenderingMachine(arrSession, LoadedProfile)
             {
                 PrimaryMachineAction = MakePrimaryMachine
             };
+
+            // Try using the local pose mode. The `machine` will avoid applying this state, if the app state doesn't support it.
+            machine.PoseMode = PoseMode.Local;
 
             lock (_machines)
             {
@@ -617,7 +627,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void UpdateCombinedStatus()
         {
-            Debug.Assert(UnityEngine.WSA.Application.RunningOnAppThread(), "Not running on app thread.");
+            _log.LogAssert(UnityEngine.WSA.Application.RunningOnAppThread(), "Not running on app thread.");
 
             if (_primaryMachine == null)
             {
@@ -677,7 +687,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (Application.isPlaying)
             {
-                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main));
+                // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
+                // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
+                // This value is configurable by the user, see usage of `RemoteRenderingMachine::PoseMode::set` for more details.
+                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main, PoseMode.Local));
             }
             else
             {
@@ -740,7 +753,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Find the best machine session, and attempt to connect to it.
         /// </summary>
         /// <param name="allowCreation">
-        /// If true, new remote rendering sessiodns may be created.
+        /// If true, new remote rendering sessions may be created.
         /// </param>
         /// <remarks>
         /// This tries connecting to a list of machine. The connection attempts occur in the following order;
@@ -771,7 +784,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var msg = $"Failed to connect to primary machine. Reason: {ex.Message}";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                    _log.LogError(msg);
                 }
 
                 if (!connected)
@@ -794,7 +807,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var msg = $"Failed to open last session ({LastSession.Id}). Reason: {ex.Message}.";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                    _log.LogWarning(msg);
                 }
 
                 if (lastMachine != null)
@@ -809,7 +822,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                         var msg = $"Failed to connect to last session ({LastSession.Id}). Reason: {ex.Message}.";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                        _log.LogWarning(msg);
                     }
                 }
 
@@ -830,7 +843,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var msg = $"Failed to create a new remote machine. Reason: {ex.Message}.";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                    _log.LogWarning(msg);
                 }
 
                 if (lastMachine != null)
@@ -845,7 +858,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                         var msg = $"Failed to connect a new remote machine. Reason: {ex.Message}.";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", msg);
+                        _log.LogWarning(msg);
                     }
                 }
 
@@ -961,9 +974,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private TaskCompletionSource<bool> _initialized = new TaskCompletionSource<bool>();
             private IRemoteRenderingStorageAccountData _storageAccountData;
             private const string _modelExtension = ".arrAsset";
+            private const string _imageExtension = ".png";
             private const string _modelIndexName = "models.xml";
             private static readonly Vector3 _minModelSize = new Vector3(0.5f, 0.5f, 0.5f);
             private static readonly Vector3 _maxModelSize = new Vector3(1.0f, 1.0f, 1.0f);
+            private static LogHelper<RemoteRenderingStorage> _log = new LogHelper<RemoteRenderingStorage>();
 
             public void Initialize(IRemoteRenderingStorageAccountData storageAccountData)
             {
@@ -1011,13 +1026,16 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </returns>
             private static async Task<RemoteContainer[]> QueryModelsBackgroundWorker(IRemoteRenderingStorageAccountData storageAccountData)
             {
+                HashSet<string> remoteModelUrls  = new HashSet<string>();
                 List<RemoteContainer> remoteModelContainers = new List<RemoteContainer>();
+                Dictionary<string, string> remoteModelImageUrls = new Dictionary<string, string>();
                 string nextMarker = null;
 
-                // load all model blobs in the container
                 string authData = await storageAccountData.GetAuthData();
                 CloudBlobContainer cloudBlobContainer = null;
                 SharedAccessBlobPolicy oneDayReadOnlyPolicy = null;
+
+                // load all model blobs in the container
                 do
                 {
                     EnumerationResults enumerationResults = null;
@@ -1026,15 +1044,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         StorageCredentials storageCredentials;
                         if (storageAccountData.AuthType == AuthenticationType.AccessToken)
                         {
-                            string modelFolder = null;
-                            if(storageAccountData.ModelPathByUsername) modelFolder = AADAuth.SelectedAccount.Username;
+                            string modelFolder = storageAccountData.ModelPathByUsername ? AADAuth.SelectedAccount.Username : null;
                             enumerationResults = await ContainerHelper.QueryWithAccessToken(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
                             storageCredentials = new StorageCredentials(new TokenCredential(authData));
                         }
                         else
                         {
-                            string modelFolder = null;
-                            if(storageAccountData.ModelPathByUsername) modelFolder = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
+                            string modelFolder = storageAccountData.ModelPathByUsername ? AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER : null;
                             enumerationResults = await ContainerHelper.QueryWithAccountKey(storageAccountData.StorageAccountName, authData, storageAccountData.DefaultContainer, modelFolder, nextMarker);
                             storageCredentials = new StorageCredentials(storageAccountData.StorageAccountName, authData);
                         }
@@ -1051,45 +1067,49 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load container data. Reason: {ex.Message}");
+                        _log.LogError("Failed to load container data. Reason: {0}", ex.Message);
                     }
 
                     if (enumerationResults != null && enumerationResults.Blobs != null && enumerationResults.Blobs.Length > 0)
                     {
-                        Dictionary<string, int> assetNameToImageBlobIndex = new Dictionary<string, int>();
-                        for (var blobIndex = 0; blobIndex < enumerationResults.Blobs.Length; blobIndex++)
+                        // Step 1. Find all the PNG thumbnail images, and cache their blobIndex. These will be applied to model entries.
+                        foreach (var blob in enumerationResults.Blobs)
                         {
-                            var blob = enumerationResults.Blobs[blobIndex];
-                            if (String.Equals(Path.GetExtension(blob.Name), ".png", StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(Path.GetExtension(blob.Name), _imageExtension, StringComparison.OrdinalIgnoreCase))
                             {
+                                // Assume all images will be used, so create a SAS url for all images
                                 // The Azure Blob Storage file system uses case sensitive names, so using the raw blob name is fine.
-                                assetNameToImageBlobIndex.Add(Path.ChangeExtension(blob.Name, ""), blobIndex);
+                                remoteModelImageUrls.Add(
+                                    Path.ChangeExtension(blob.Name, _modelExtension), 
+                                    CreateSasUrl(blob, cloudBlobContainer, oneDayReadOnlyPolicy));
                             }
                         }
 
+                        // Step 2. Load models from the cloud index file, to avoid adding double inserting indexed models during step 3. 
                         foreach (Blob blob in enumerationResults.Blobs)
                         {
-                            RemoteContainer modelContainer = ToModelContainer(enumerationResults.Container, blob);
-                            if (modelContainer != null)
-                            {
-                                int textureBlobIndex;
-                                if (assetNameToImageBlobIndex.TryGetValue(Path.ChangeExtension(blob.Name, ""), out textureBlobIndex))
-                                {
-                                    var textureBlob = enumerationResults.Blobs[textureBlobIndex];
-                                    CloudBlockBlob blockBlob = cloudBlobContainer.GetBlockBlobReference(textureBlob.Name);
-                                    string sasBlobToken = blockBlob.GetSharedAccessSignature(oneDayReadOnlyPolicy);
-                                    modelContainer.ImageUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
-                                }
-
-                                remoteModelContainers.Add(modelContainer);
-                            }
-
                             RemoteModelFile indexFile = await ToModelIndex(storageAccountData, authData, enumerationResults.Container, blob);
                             if (indexFile != null)
                             {
-                                AppendContainer(remoteModelContainers, indexFile);
+                                AppendContainer(remoteModelContainers, remoteModelUrls, indexFile);
                             }
                         }
+
+                        // Step 3. Add all remaining models that weren't defined in the model file
+                        foreach (Blob blob in enumerationResults.Blobs)
+                        {
+                            RemoteContainer modelContainer = ToModelContainer(enumerationResults.Container, blob);
+                            if (modelContainer != null && modelContainer.Items.Length == 1)
+                            {
+                                RemoteModel item = modelContainer.Items[0] as RemoteModel;
+                                if (!string.IsNullOrEmpty(item?.Url) && !remoteModelUrls.Contains(item.Url))
+                                {
+                                    remoteModelContainers.Add(modelContainer);
+                                }
+                            }
+                        }
+
+                        // Keep loading next set of results
                         nextMarker = enumerationResults.NextMarker;
                     }
                     else
@@ -1098,7 +1118,51 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                 } while (!string.IsNullOrEmpty(nextMarker));
 
+                // Step 4. Create SAS urls for set image urls, or apply found images to model containers.
+                foreach (var modelContainer in remoteModelContainers)
+                {
+                    if (!string.IsNullOrEmpty(modelContainer.ImageUrl))
+                    {
+                        if (AzureStorageHelper.InContainer(modelContainer.ImageUrl, cloudBlobContainer))
+                        {
+                            modelContainer.ImageUrl = CreateSasUrl(AzureStorageHelper.GetBlobName(modelContainer.ImageUrl), cloudBlobContainer, oneDayReadOnlyPolicy);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var model in modelContainer.Items)
+                        {
+                            var remoteModel = model as RemoteModel;
+                            if (remoteModel != null &&
+                                remoteModelImageUrls.TryGetValue(remoteModel.ExtractBlobPath(), out var imageUrl))
+                            {
+                                modelContainer.ImageUrl = imageUrl;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 return remoteModelContainers.ToArray();
+            }
+
+            /// <summary>
+            /// Create a sas url for the given blob.
+            /// </summary>
+            private static string CreateSasUrl(Blob blob, CloudBlobContainer container, SharedAccessBlobPolicy policy)
+            {
+                return CreateSasUrl(blob.Name, container, policy);
+            }
+
+            /// <summary>
+            /// Create a sas url for the given blob name
+            /// </summary>
+            private static string CreateSasUrl(string blobName, CloudBlobContainer container, SharedAccessBlobPolicy policy)
+            {
+                CloudBlockBlob blockBlob = container.GetBlockBlobReference(blobName);
+                string sasBlobToken = blockBlob.GetSharedAccessSignature(policy);
+                string sasUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
+                return sasUrl;
             }
 
             /// <summary>
@@ -1179,7 +1243,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to load data from model index file '{blobUrl}'. Reason: {ex.Message}");
+                    _log.LogWarning("Failed to load data from model index file '{0}'. Reason: {1}", blobUrl, ex.Message);
                 }
                 return fileData;
             }
@@ -1187,7 +1251,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Append file data containers to target
             /// </summary>
-            private static void AppendContainer(IList<RemoteContainer> target, RemoteModelFile fileData)
+            private static void AppendContainer(List<RemoteContainer> target, HashSet<string> remoteUrls, RemoteModelFile fileData)
             {
                 if (target == null || fileData?.Containers == null)
                 {
@@ -1198,6 +1262,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 foreach (var container in fileData.Containers)
                 {
                     target.Add(container);
+                    foreach (var item in container.Items)
+                    {
+                        if (item is RemoteModel)
+                        {
+                            remoteUrls.Add(((RemoteModel)item).Url);
+                        }
+                    }
                 }
             }
         }
@@ -1212,6 +1283,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             RemoteRenderingConnection _connection = null;
             RemoteRenderingActions _actions = null;
             RemoteRenderingSessionProperties _properties = null;
+            LogHelper<RemoteRenderingMachine> _log = new LogHelper<RemoteRenderingMachine>();
+            PoseMode _poseMode = PoseMode.Remote;
 
             /// <summary>
             /// Create a new machine wrapper from an RenderingSession
@@ -1261,6 +1334,22 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public IRemoteRenderingSession Session => _session;
 
             /// <summary>
+            /// Get or set the requested pose mode.
+            /// </summary>
+            public PoseMode PoseMode
+            {
+                get => _poseMode;
+                set
+                {
+                    if (_poseMode != value)
+                    {
+                        _poseMode = value;
+                        TryUpdatePoseMode();
+                    }
+                }
+            }
+
+            /// <summary>
             /// Release resources
             /// </summary>
             public void Dispose()
@@ -1270,12 +1359,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     return;
                 }
 
+                IsDisposed = true;
+
                 _connection.Dispose();
                 _session.Dispose();
 
                 PrimaryMachineAction = null;
                 _arrSession = null;
-                IsDisposed = true;
             }
 
             /// <summary>
@@ -1297,9 +1387,35 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (InvalidOperationException)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Couldn't update service stats.");
-                }
+                    _log.LogWarning("Couldn't update service stats.");
+                }             
+
                 _arrSession.Connection?.Update();
+            }
+
+            private void TryUpdatePoseMode()
+            {
+                if (_arrSession == null || Application.isEditor)
+                {
+                    return;
+                }
+
+                try
+                {
+                    var result = _arrSession.GraphicsBinding.SetPoseMode(_poseMode);
+                    if (result != Result.Success)
+                    {
+                        var msg = $"Failed to set pose mode. Reason: {result}";
+                        AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                        _log.LogError(msg);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Failed to set pose mode. Exception reason: {ex.Message}";
+                    AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
+                    _log.LogError(msg);
+                }
             }
         }
 
@@ -1311,6 +1427,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private RenderingSession _arrSession = null;
             private TimeSpan _updateDelay = TimeSpan.FromSeconds(15);
             private Task<RenderingSessionProperties> _lastUpdateTask = null;
+            private LogHelper<RemoteRenderingSessionProperties> _log = new LogHelper<RemoteRenderingSessionProperties>();
 
             /// <summary>
             /// Create a property cache for the given arr session.
@@ -1364,7 +1481,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 catch (Exception ex)
                 {
                     _updateDelay = TimeSpan.FromSeconds(15);
-                    Debug.LogFormat(LogType.Warning, LogOption.None, null, "{0}",  $"Failed to update session properties. Reason: {ex.Message}");
+                    _log.LogWarning("Failed to update session properties. Reason: {0}", ex.Message);
                 }
 
                 return Value;
@@ -1384,6 +1501,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private TimeSpan _autoRenewProperties = TimeSpan.FromSeconds(15);
             private Timer _expirationTimer;
             private Timer _updatePropertiesTimer;
+            LogHelper<RemoteRenderingSession> _log = new LogHelper<RemoteRenderingSession>();
 
             /// <summary>
             /// Create a new session wrapper from an RenderingSession
@@ -1637,7 +1755,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         var msg = $"Failed to connect to ARR Inspector. Reason: {ex.Message}";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                        _log.LogError(msg);
                     }
                 }
 
@@ -1652,7 +1770,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         {
                             var msg = $"URI '{fileUrl}' failed to launch).";
                             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                            Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                            _log.LogError(msg);
                         }
                     }, false);
 #else
@@ -1771,6 +1889,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private static object _connectionCountLock = new object();
             private static readonly TimeSpan _autoReconnectDelay = TimeSpan.FromSeconds(15);
             private Result _lastConnectError = Result.Success;
+            private LogHelper<RemoteRenderingConnection> _log = new LogHelper<RemoteRenderingConnection>();
 
             /// <summary>
             /// Create a new session wrapper from an RenderingSession
@@ -1899,7 +2018,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     var msg = $"Failed to disconnect from runtime. Reason: {ex.Message}";
                     AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                    _log.LogError(msg);
                 }
 
                 if (_arrSession != null)
@@ -1959,7 +2078,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to get rendering properties during connection. Reason: {ex.Message}");
+                    _log.LogWarning("Failed to get rendering properties during connection. Reason: {0}", ex.Message);
                 }
 
                 bool tryConnect = false;
@@ -1967,19 +2086,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     if (_isDisposed)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because object is disposed.");
+                        _log.LogWarning("Ignoring connection request, because object is disposed.");
                     }
                     else if (_connectionCount != connectionId)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because another connection request has been made.");
+                        _log.LogWarning("Ignoring connection request, because another connection request has been made.");
                     }
                     else if (_properties.Value.Status != RenderingSessionStatus.Ready)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because the session is still not ready ({0}).", _properties.Value.Status);
+                        _log.LogWarning("Ignoring connection request, because the session is still not ready ({0}).", _properties.Value.Status);
                     }
                     else if (_disconnectRequested)
                     {
-                        Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "Ignoring connection request, because a disconnect request has been made.");
+                        _log.LogWarning("Ignoring connection request, because a disconnect request has been made.");
                     }
                     else
                     {
@@ -1999,7 +2118,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     try
                     {
-                        ConnectionStatus res = await _arrSession.ConnectAsync(new RendererInitOptions());
+                        await _arrSession.ConnectAsync(new RendererInitOptions());
                     }
                     catch (Exception ex)
                     {
@@ -2010,7 +2129,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                             msg += $" Error code: {rre.ErrorCode.ToString()}";
                         }
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                        _log.LogError(msg);
                     }
                 }
 
@@ -2040,7 +2159,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         var msg = $"Session disconnected unexpectedly. Error: {error}";
                         AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);
-                        Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", msg);
+                        _log.LogError(msg);
                     }
                 }
             }
@@ -2103,6 +2222,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         {
             private RenderingSession _arrSession = null;
             private RemoteMaterialCache _materialCache = null;
+            private LogHelper<RemoteRenderingActions> _log = new LogHelper<RemoteRenderingActions>();
 
             /// <summary>
             /// Create a new remote action wrapper from a known host name
@@ -2158,7 +2278,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     return _arrSession.Connection.LoadModelAsync(LoadModelOptions.CreateForBlobStorage(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
-                        AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
+                        model.ExtractContainerName() ?? AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
                         parent), progress.OnProgressUpdated);
                 }
@@ -2188,7 +2308,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 {
                     return _arrSession.Connection.LoadModelAsync(LoadModelOptions.CreateForBlobStorage(
                         $"{AppServices.RemoteRendering.LoadedProfile.StorageAccountData.StorageAccountName}.blob.core.windows.net",
-                        AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
+                        model.ExtractContainerName() ?? AppServices.RemoteRendering.LoadedProfile.StorageAccountData.DefaultContainer,
                         model.ExtractBlobPath(),
                         parent), null);
                 }
@@ -2355,7 +2475,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                    _log.LogError("Failed to load 2D texture '{0}'. Reason: {1}", url, ex.Message);
                     return null;
                 }
             }
@@ -2371,7 +2491,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                    _log.LogError("Failed to load cube map texture '{0}'. Reason: {1}", url, ex.Message);
                     return null;
                 }
             }
@@ -2416,7 +2536,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}", $"Failed to load texture '{url}'. Reason: {ex.Message}");
+                    _log.LogError("Failed to load lighting texture '{0}'. Reason: {1}", url, ex.Message);
                 }
 
                 if (texture != null)

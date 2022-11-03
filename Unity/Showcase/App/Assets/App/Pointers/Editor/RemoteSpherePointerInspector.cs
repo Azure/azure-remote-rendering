@@ -10,44 +10,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
     /// A custom editor inspector for the RemoteSpherePointer behavior.
     /// </summary>
     [CustomEditor(typeof(RemoteSpherePointer))]
-    public class RemoteSpherePointerInspector : BaseControllerPointerInspector
+    public class RemoteSpherePointerInspector : SpherePointerInspector
     {
-        private SerializedProperty sphereCastRadius;
-        private SerializedProperty nearObjectMargin;
-        private SerializedProperty grabLayerMasks;
-        private SerializedProperty triggerInteraction;
-        private bool spherePointerFoldout = true;
-
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-
-            sphereCastRadius = serializedObject.FindProperty("sphereCastRadius");
-            nearObjectMargin = serializedObject.FindProperty("nearObjectMargin");
-            grabLayerMasks = serializedObject.FindProperty("grabLayerMasks");
-            triggerInteraction = serializedObject.FindProperty("triggerInteraction");
-        }
-
-        public override void OnInspectorGUI()
-        {
-            base.OnInspectorGUI();
-
-            serializedObject.Update();
-
-            spherePointerFoldout = EditorGUILayout.Foldout(spherePointerFoldout, "Sphere Pointer Settings", true);
-
-            if (spherePointerFoldout)
-            {
-                using (new EditorGUI.IndentLevelScope())
-                {
-                    EditorGUILayout.PropertyField(sphereCastRadius);
-                    EditorGUILayout.PropertyField(nearObjectMargin);
-                    EditorGUILayout.PropertyField(triggerInteraction);
-                    EditorGUILayout.PropertyField(grabLayerMasks, true);
-                }
-            }
-
-            serializedObject.ApplyModifiedProperties();
-        }
     }
 }

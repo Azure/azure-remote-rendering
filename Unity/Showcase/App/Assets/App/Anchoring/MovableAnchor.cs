@@ -3,7 +3,6 @@
 
 using System;
 using UnityEngine;
-using UnityEngine.Events;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -16,17 +15,17 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         private IAppAnchor _anchor = null;
         private bool _started = false;
         private float _maxAnchorDistanceSquared;
+        private LogHelper<MovableAnchor> _log = new LogHelper<MovableAnchor>();
 
         #region Serialized Fields
         [Header("Anchor Settings")]
 
         [SerializeField]
-        [Tooltip("The distance to movable transform can be from the anchor before the anchor is moved.")]
+        [Tooltip("The distance the movable transform can be from the anchor before a new anchor is created. If negative, new anchors are not created after a move.")]
         private float maxAnchorDistance = 5.0f;
 
         /// <summary>
-        /// The distance to movable transform can be
-        /// from the anchor before the anchor is moved.
+        /// The distance the movable transform can be from the anchor before a new anchor is created. If negative, new anchors are not created after a move.
         /// </summary>
         public float MaxAnchorDistance
         {
@@ -41,79 +40,28 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
             }
         }
-
-        [SerializeField]
-        [Tooltip("Should a cloud anchor be created for this 'movable' anchor.")]
-        private bool createCloudAnchor = true;
-
-        /// <summary>
-        /// Should a cloud anchor be created for this 'movable' anchor.
-        /// </summary>
-        public bool CreateCloudAnchor
-        {
-            get => createCloudAnchor;
-            set => createCloudAnchor = value;
-        }
-
-        [Header("Anchor Fallbacks")]
-
-        [SerializeField]
-        [Tooltip("If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.")]
-        private Transform fallbackOrigin = null;
-
-        /// <summary>
-        /// If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.
-        /// </summary>
-        public Transform FallbackOrigin
-        {
-            get => fallbackOrigin;
-            set => fallbackOrigin = value;
-        }
-
-        [Tooltip("If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.")]
-        private Vector3 fallbackPosition = Vector3.positiveInfinity;
-
-        /// <summary>
-        /// If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.
-        /// </summary>
-        public Vector3 FallbackPosition
-        {
-            get => fallbackPosition;
-        }
-
-        [Tooltip("If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.")]
-        private Quaternion fallbackRotation = QuaternionStatics.PositiveInfinity;
-
-        /// <summary>
-        /// If a cloud anchor id is supplied and not found, the 'Fallback Origin', 'Fallback Position', and 'Fallback Rotation' are used to place this transform.
-        /// </summary>
-        public Quaternion FallbackRotation
-        {
-            get => fallbackRotation;
-        }
-
-        [Header("Anchor Events")]
-
-        [SerializeField]
-        [Tooltip("Event fired when the anchor id has changed.")]
-        private AnchorIdChangedEvent anchorIdChanged = new AnchorIdChangedEvent();
-
-        /// <summary>
-        /// Event fired when the anchor id has changed.
-        /// </summary>
-        public AnchorIdChangedEvent AnchorIdChanged => anchorIdChanged;
         #endregion Serialized Fields
 
         #region Public Properties
         /// <summary>
-        /// Get the id that represent an anchor with no cloud id.
+        /// Is object's anchor located
         /// </summary>
-        public static string EmptyAnchorId => AppAnchor.EmptyAnchorId;
+        public bool IsAnchorLocated => _anchor?.IsLocated ?? false;
 
         /// <summary>
-        /// Get the current cloud anchor id.
+        /// Is there an anchor
         /// </summary>
-        public string AnchorId => _anchor?.AnchorId;
+        public bool HasAnchor => _anchor != null;
+
+        /// <summary>
+        /// Get the anchor's cloud id
+        /// </summary>
+        public string AnchorId => _anchor != null ? _anchor.AnchorId : null;
+
+        /// <summary>
+        /// Get the inner anchor position
+        /// </summary>
+        public Transform AnchorTransform => _anchor == null ? null : _anchor.Transform;
         #endregion Public Properties
 
         #region MonoBehaviour Functions
@@ -122,17 +70,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         protected void Start()
         {
+            _log.LogVerbose($"Start() ENTER (name: {name})");
             _started = true;
             _maxAnchorDistanceSquared = maxAnchorDistance * maxAnchorDistance;
-
-            if (_anchor == null)
-            {
-                ApplyNativeAnchor();
-            }
-            else
-            {
-                ApplyCurrentAnchor();
-            }
+            CreateAnchorIfEmpty();
         }
         
         /// <summary>
@@ -140,17 +81,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private void Update()
         {
-            if (_anchor != null && _anchor.IsLocated &&  _anchor.Transform != null)
-            {
-                transform.position = _anchor.Transform.position;
-                transform.rotation = _anchor.Transform.rotation;
-            }
+            ForceUpdate();
         }
 
         protected override void OnDestroy()
         {
             base.OnDestroy();
-            ReleaseOldAnchor();
+            ReleaseOldAnchor(preventDelete: true);
         }
 
         private void OnApplicationQuit()
@@ -162,115 +99,26 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         #region Public Functions
         /// <summary>
-        /// Move anchor to the last known fallback transform, plus the additional movement performed on the Movable child transform.
+        /// Force updating pose to the current anchor pose.
         /// </summary>
-        public void ResetAnchor()
+        public void ForceUpdate()
         {
-            if (fallbackPosition.IsValidVector() && fallbackRotation.IsValidRotation() && fallbackOrigin != null)
+            if (_anchor != null && _anchor.IsLocated)
             {
-                transform.localPosition = fallbackPosition;
-                transform.localRotation = fallbackRotation;
-            }
-
-            if (Movable != null)
-            {
-                transform.position = Movable.position;
-                transform.rotation = Movable.rotation;
-            }
-
-            MoveAnchor(transform.position, transform.rotation);
-        }
-
-        /// <summary>
-        /// Move the inner anchor via local postion and rotation values.
-        /// </summary>
-        public void LocalMoveAnchor(Vector3 localPosition, Quaternion localRotation)
-        {
-            transform.localPosition = localPosition;
-            transform.localRotation = localRotation;
-
-            if (Movable != null)
-            {
-                Movable.localPosition = Vector3.zero;
-                Movable.localRotation = Quaternion.identity;
-            }
-
-            TrySavingFallback();
-            _anchor?.Move(transform);
-            NotifyMoved();
-        }
-
-        /// <summary>
-        /// Move the inner anchor via world position and rotation values.
-        /// </summary>
-        public void MoveAnchor(Vector3 worldPosition, Quaternion worldRotation)
-        {
-            transform.position = worldPosition;
-            transform.rotation = worldRotation;
-
-            if (Movable != null)
-            {
-                Movable.localPosition = Vector3.zero;
-                Movable.localRotation = Quaternion.identity;
-            }
-
-            TrySavingFallback();
-            _anchor?.Move(transform);
-            NotifyMoved();
-        }
-
-        /// <summary>
-        /// Apply the given cloud anchor to this object. Note this will delete the old anchor that's currently being used.
-        /// </summary>
-        public void ApplyCloudAnchor(string anchorId, Vector3 fallbackPosition, Quaternion fallbackRotation)
-        {
-            this.fallbackPosition = fallbackPosition;
-            this.fallbackRotation = fallbackRotation;
-            TryUsingFallback();
-
-            if ((_anchor == null || _anchor.AnchorId != anchorId) &&
-                (!string.IsNullOrEmpty(anchorId)))
-            {
-                SetAnchor(new AppAnchor(anchorId, allowNewCloudAnchors: createCloudAnchor));
+                transform.position = _anchor.Position;
+                transform.rotation = _anchor.Rotation;
             }
         }
 
         /// <summary>
-        /// Create and apply a new native anchor to this object. Note this will delete the old that's currently being used.
+        /// Apply a copy of the give app anchor
         /// </summary>
-        public void ApplyNativeAnchor(Vector3 fallbackPosition, Quaternion fallbackRotation)
+        public void ApplyAnchor(IAppAnchor anchor)
         {
-            this.fallbackPosition = fallbackPosition;
-            this.fallbackRotation = fallbackRotation;
-            TryUsingFallback();
-
-            if (transform != null)
+            if (anchor != null)
             {
-                SetAnchor(new AppAnchor(transform, createCloudAnchor));
+                SetAnchor(anchor);
             }
-        }
-
-        /// <summary>
-        /// Create and apply a new native anchor to this object. Note this will delete the old that's currently being used.
-        /// </summary>
-        public void ApplyNativeAnchor()
-        {
-            TrySavingFallback();
-
-            if (transform != null)
-            {
-                SetAnchor(new AppAnchor(transform, createCloudAnchor));
-            }
-        }
-
-        /// <summary>
-        /// Create and apply an empty anchor to this object. Note this will delete the old that's currently being used.
-        /// An empty won't have a cloud or native anchor attached.
-        /// </summary>
-        public void ApplyEmptyAnchor()
-        {
-            TrySavingFallback();
-            SetAnchor(new AppAnchor(createCloudAnchor));
         }
         #endregion Public Functions
 
@@ -279,99 +127,56 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Invoked when the object has stopped being moved. If the anchor's movable part moves too far from the anchor's origin,
         /// reset the anchor so it's at the movable part's location.
         /// </summary>
-        protected override void HandleOnManipulationEnded()
+        protected override void HandleOnMovingEnding()
         {
-            bool movableTransformFarFromAnchor = (Movable != null) && ((transform.position - Movable.position).sqrMagnitude >= _maxAnchorDistanceSquared);
-            bool resetExistingAnchor = _anchor == null || movableTransformFarFromAnchor;
-
-            // Only reset if the current platform supports anchors.
-            if (resetExistingAnchor && AppAnchor.AnchorsSupported())
+            if (HasMovableChild && _anchor != null)
             {
-                MoveAnchor(Movable.position, Movable.rotation);
+                Vector3 movedDistance = _anchor.Position - Movable.position;
+                bool resetExistingAnchor = maxAnchorDistance >= 0 && movedDistance.sqrMagnitude >= _maxAnchorDistanceSquared;
+
+                if (resetExistingAnchor)
+                {
+                    _log.LogVerbose("Moving anchor, as object moved farther than the max distance of {0} m (name: {1}) (anchor: {2})", maxAnchorDistance, name, _anchor?.AnchorId);
+                    MoveAnchorDuringMoveEnding(Movable.position, Movable.rotation);
+                }
+                else
+                {
+                    _log.LogVerbose("Not moving anchor, as object did not moved farther than the max distance of {0} m (name: {1}) (anchor: {2})", maxAnchorDistance, name, _anchor?.AnchorId);
+                }
             }
         }
         #endregion Protected Functions
 
         #region Private Functions
         /// <summary>
-        /// Apply the current anchor that may have been set before Start() was called.
+        /// Create a new anchor if current anchor is null.
         /// </summary>
-        private void ApplyCurrentAnchor()
+        private async void CreateAnchorIfEmpty()
         {
-            HandleNewAnchor();
-        }
-
-        /// <summary>
-        /// If the fallback origin is null, find it.
-        /// </summary>
-        private bool EnsureFallbackOrigin()
-        {
-            if (fallbackOrigin == null)
+            IAppAnchor newAnchor = null;
+            if (_anchor == null)
             {
-                fallbackOrigin = FindFallbackOrigin();
-            }
-
-            return fallbackOrigin != null;
-        }
-
-        /// <summary>
-        /// Find the topmost MovableAnchor, and use it as the fallback origin.
-        /// </summary>
-        private Transform FindFallbackOrigin()
-        {
-            MovableAnchor result = transform.GetComponentInParent<MovableAnchor>();
-            while (result.transform.parent != null)
-            {
-                var next = result.transform.parent.GetComponentInParent<MovableAnchor>();
-                if (next == null)
+                try
                 {
-                    break;
+                    newAnchor = await AppAnchor.Create(name, transform);
                 }
-                result = next;
+                catch (Exception ex)
+                {
+                    _log.LogError("Failed to create app anchor. {0}", ex);
+                }
             }
 
-            if (result.transform == transform)
+            if (newAnchor != null)
             {
-                return null;
+                if (_anchor == null)
+                {
+                    SetAnchor(newAnchor);
+                }
+                else
+                {
+                    newAnchor.Dispose();
+                }
             }
-            else
-            {
-                return result.transform;
-            }
-        }
-
-        /// <summary>
-        /// Attempt to move to fallback position and rotation. This is called when the fallback's are changed. If
-        /// an anchor originated locally, this request is ignored. 
-        /// </summary>
-        private void TryUsingFallback()
-        {
-            EnsureFallbackOrigin();
-            if (fallbackOrigin == null || !fallbackPosition.IsValidVector() || !fallbackRotation.IsValidRotation())
-            {
-                return;
-            }
-
-            transform.position = fallbackOrigin.TransformPoint(fallbackPosition);
-            transform.rotation = fallbackOrigin.rotation * fallbackRotation;
-        }
-
-        /// <summary>
-        /// Attempt to save the current position and rotation as the fallback positions and rotations.
-        /// </summary>
-        /// <returns>
-        /// True if the fallback values have changed.
-        /// </returns>
-        private void TrySavingFallback()
-        {
-            EnsureFallbackOrigin();
-            if (fallbackOrigin == null)
-            {
-                return;
-            }
-
-            fallbackPosition = fallbackOrigin.InverseTransformPoint(transform.position);
-            fallbackRotation = transform.rotation * Quaternion.Inverse(fallbackOrigin.rotation);
         }
 
         /// <summary>
@@ -379,89 +184,61 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// </summary>
         private void SetAnchor(IAppAnchor value)
         {
-            bool possibleChangedId = (_anchor == null || value == null || _anchor.AnchorId != value.AnchorId);
+            bool possibleChangedId = (_anchor == null || value == null || _anchor.AnchorId != value.AnchorId || !value.FromCloud);
             if (_anchor != value && possibleChangedId)
             {
-                ReleaseOldAnchor();
+                ReleaseOldAnchor(preventDelete: true);
                 _anchor = value;
-                HandleNewAnchor();
             }
         }
 
         /// <summary>
-        /// Initialize anchor handlers
+        /// Move both the anchor and the Movable transform to the given global location
         /// </summary>
-        private void HandleNewAnchor()
+        private async void MoveAnchorDuringMoveEnding(Vector3 globalPosition, Quaternion globalRotation)
         {
-            if (!_started)
+            _log.LogVerbose("MoveAnchor() ENTER (name: {0})", name);
+
+            transform.position = globalPosition;
+            transform.rotation = globalRotation;
+            Movable.localPosition = Vector3.zero;
+            Movable.localRotation = Quaternion.identity;
+
+            if (_anchor.Position != globalPosition ||
+                _anchor.Rotation != globalRotation)
             {
-                return;
+                _log.LogVerbose("MoveAnchor() START ASYNC (name: {0})", name);
+                try
+                {
+                    await _anchor.Move(transform);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError("MoveAnchor() Failed to move anchor, object won't be positioned correctly (name: {0}): {1}", name, ex);
+                }
+                _log.LogVerbose("MoveAnchor() STOP ASYNC (name: {0})", name);
             }
 
-            if (_anchor != null)
-            {
-                _anchor.AnchorIdChanged += OnAnchorIdChanged;
-            }
-
-            FireAnchorChanged();
+            _log.LogVerbose("MoveAnchor() EXIT (name: {0})", name);
         }
 
         /// <summary>
         /// Release anchor handlers
         /// </summary>
-        private void ReleaseOldAnchor()
+        private void ReleaseOldAnchor(bool preventDelete = false)
         {
             if (_anchor == null)
             {
                 return;
             }
 
-            _anchor.AnchorIdChanged -= OnAnchorIdChanged;
-            _anchor.Delete();
+            if (!preventDelete)
+            {
+                _anchor.Delete();
+            }
+
             _anchor = null;
         }
-
-        /// <summary>
-        /// Handle anchor id changes.
-        /// </summary>
-        private void OnAnchorIdChanged(IAppAnchor sender, string newId)
-        {
-            FireAnchorChanged();
-        }
-
-        /// <summary>
-        /// Fire an event indicating that the anchor id has changed.
-        /// </summary>
-        private void FireAnchorChanged()
-        {
-            AnchorIdChanged?.Invoke(new AnchorIdChangedEventArgs()
-            {
-                anchorId = AnchorId,
-                fallbackPosition = fallbackPosition,
-                fallbackRotation = fallbackRotation
-            });
-        }
         #endregion Private Functions
-
-        #region Public Classes
-        /// <summary>
-        /// An event raised when the anchor id changes.
-        /// </summary>
-        [Serializable]
-        public class AnchorIdChangedEvent : UnityEvent<AnchorIdChangedEventArgs>
-        {
-        }
-
-        /// <summary>
-        /// Event data used when an event is raised during anchor id changes.
-        /// </summary>
-        [Serializable]
-        public struct AnchorIdChangedEventArgs
-        {
-            public string anchorId;
-            public Vector3 fallbackPosition;
-            public Quaternion fallbackRotation;
-        }
-        #endregion Public Classes
     }
 }

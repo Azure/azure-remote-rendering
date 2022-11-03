@@ -5,7 +5,6 @@ using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Input;
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Animations;
 
 /// <summary>
 /// Change the attached cursor visual with the material specified by the focused object's context.
@@ -48,7 +47,7 @@ public class CursorFocusVisual : InputSystemGlobalHandlerListener, IMixedReality
         get => sizeAnimationTime;
         set => sizeAnimationTime = value;
     }
-    #endregion Serieliazed Fields
+    #endregion Serialized Fields
 
     #region MonoBehavior Methods
     protected override void Start()
@@ -152,7 +151,7 @@ public class CursorFocusVisual : InputSystemGlobalHandlerListener, IMixedReality
     }
 
     /// <summary>
-    /// Update the materials later, so to  avoud many material changes in signle frame.
+    /// Update the materials later, so to avoid many material changes within single frame.
     /// </summary>
     private void ApplyContext()
     {

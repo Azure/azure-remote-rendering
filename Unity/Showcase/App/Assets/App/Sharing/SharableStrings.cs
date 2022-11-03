@@ -32,6 +32,16 @@ public static class SharableStrings
     public const string AnchorId = "anchor";
 
     /// <summary>
+    /// A property name for sharing an anchor id and a fallback pose.
+    /// </summary>
+    public const string AnchorIdAndFallback = "anchorBack";
+
+    /// <summary>
+    /// A property name for the location when an anchor can be used.
+    /// </summary>
+    public const string AnchorLocationId = "anchorLocation";
+
+    /// <summary>
     /// A property name for sharing an anchor's fallback pose.
     /// </summary>
     public const string AnchorFallbackPose = "anchorPose";
@@ -115,4 +125,34 @@ public static class SharableStrings
     /// A property name for sharing the player's username for display.
     /// </summary>
     public const string PlayerName = "playername";
+
+    /// <summary>
+    /// A property name for sharing if the local player is currently speaking
+    /// </summary>
+    public const string PlayerSpeaking = "speaking";
+
+    /// <summary>
+    /// A property name for sharing if the local player is currently speaking, but the voice is not being transmitted.
+    /// </summary>
+    public const string PlayerMuted = "muted";
+
+    /// <summary>
+    /// A property name for sharing if the player's primary avatar color.
+    /// </summary>
+    public const string PlayerPrimaryColor = "primarycolor";
+
+    /// <summary>
+    /// A property name for sharing if the debug ruler should be shown.
+    /// </summary>
+    public const string DebugRuler = "debugruler";
+
+    /// <summary>
+    /// a property name for sharing latency to another player
+    /// </summary>
+    public const string PlayerLatency = "latency";
+
+    /// <summary>
+    /// a property name for sharing when user camera is capturing
+    /// </summary>
+    public const string PlayerCapturing = "capture";
 }

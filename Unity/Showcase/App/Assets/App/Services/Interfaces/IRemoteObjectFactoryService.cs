@@ -34,5 +34,5 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Load a model.
         /// </summary>
         Task<LoadModelResult> Load(RemoteModel model, Entity parent);
-    }
+	}
 }

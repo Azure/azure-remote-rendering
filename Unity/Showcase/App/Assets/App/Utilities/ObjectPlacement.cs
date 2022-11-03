@@ -2,29 +2,27 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit;
-using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Extensions;
+using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Physics;
-using Microsoft.MixedReality.Toolkit.WindowsMixedReality.SpatialAwareness;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
-using Microsoft.MixedReality.Toolkit.SpatialAwareness;
 
 /// <summary>
 /// This behavior helps place an object via the MRTK's primary pointer.
 /// </summary>
 public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPointerHandler
 {
-    private Vector3 _placementPosition;
-    private Quaternion _placementRotation;
+    private ObjectPlacementHit _placementHit;
     private IMixedRealityFocusProvider _focusProvider;
     private IMixedRealityPointer _pointerOverride;
     private IMixedRealityPointer _lastUsedPointer;
     private TaskCompletionSource<bool> _placementFinished;
     private IPointerStateVisibilityOverride[] _currentVisibilityOverrides;
-    private const float _maxSnapDistance = 1000.0f;
+    private LogHelper<ObjectPlacement> _log = new LogHelper<ObjectPlacement>();
+    private ObjectPlacementSnapPoint _snapPoint = null;
 
     #region Serialized Fields
     [Header("General Settings")]
@@ -222,6 +220,24 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     /// Get if system is currently in placement
     /// </summary>
     public bool InPlacement { get; private set; }
+
+    /// <summary>
+    /// The last snap point being used. If null, then no snap point is used.
+    /// </summary>
+    public ObjectPlacementSnapPoint SnapPoint
+    {
+        get => _snapPoint;
+
+        private set
+        {
+            if (_snapPoint != value)
+            {
+                _snapPoint?.Unsnap();
+                _snapPoint = value;
+                _snapPoint?.Snap();
+            }
+        }
+    }
     #endregion Public Properties
 
     #region Public Methods
@@ -230,6 +246,9 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     /// </summary>
     public Task StartPlacement()
     {
+        _log.LogVerbose("StartPlacement() Entered ({0})", name);
+
+        SetSpatialMeshVisibility(true);
         StopOtherPlacements();
         SetInitialPosition();
 
@@ -241,16 +260,14 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         DisposePointerVisibilityOverrides();
         _currentVisibilityOverrides = new IPointerStateVisibilityOverride[]
         {
+            AppServices.PointerStateService.ShowPointer(PointerType.HandRay),
             AppServices.PointerStateService.HidePointer(PointerType.HandGrab),
-            AppServices.PointerStateService.HidePointer(PointerType.HandPoke),
-            AppServices.PointerStateService.ShowPointer(PointerType.HandRay)
+            AppServices.PointerStateService.HidePointer(PointerType.HandPoke)
         };
 
         bool wasInPlacement = InPlacement;
 
-        SetSpatialMeshVisibility(true);
-        _placementPosition = target.position;
-        _placementRotation = target.rotation;
+        _placementHit = new ObjectPlacementHit() { pose = new Pose(target.position, target.rotation) };
         InPlacement = true;
         RegisterHandlers();
         UpdatePlacementVisualActiveState();
@@ -260,6 +277,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             onPlacing?.Invoke();
         }
 
+        _log.LogVerbose("StartPlacement() Exitting ({0})", name);
         return _placementFinished.Task;
     }
 
@@ -268,6 +286,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     /// </summary>
     public void StopPlacement()
     {
+        _log.LogVerbose("StopPlacement() Entered ({0})", name);
+
         DisposePointerVisibilityOverrides();
         UnregisterHandlers();
         SetSpatialMeshVisibility(false);
@@ -277,6 +297,11 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         InPlacement = false;
         _lastUsedPointer = null;
         UpdatePlacementVisualActiveState();
+
+        if (wasInPlacement)
+        {
+            SnapPoint?.Select();
+        }
 
         if (_placementFinished != null)
         {
@@ -288,19 +313,19 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         {
             onPlaced?.Invoke();
         }
+
+        SnapPoint = null;
+        _log.LogVerbose("StopPlacement() Exitting ({0})", name);
     }
     #endregion Public Methods
 
     #region MonoBehavior Methods
-    private void Awake()
-    {
-        EnsureSpatialAwarenessSystem();
-    }
-
     protected override void Start()
     {
         base.Start();
         _focusProvider = CoreServices.InputSystem?.FocusProvider;
+
+        
         UpdatePlacementVisualActiveState();
     }
 
@@ -321,31 +346,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             return;
         }
 
-        IMixedRealityPointer usePointer = _pointerOverride ?? _focusProvider?.PrimaryPointer;
-        bool? isVisible = usePointer?.BaseCursor?.IsVisible;
-        if (usePointer == null || usePointer.BaseCursor == null || (!isVisible ?? true))
-        {
-            return;
-        }
-
-        // Save last used pointer
-        _lastUsedPointer = usePointer;
-
-        // Use the pointer's last hit target. If there's no target fallback to a default distance
-        Vector3 newPlacementPosition;
-        if (TryFindPlacementPosition(_lastUsedPointer, out newPlacementPosition))
-        {
-            _placementPosition = newPlacementPosition;
-        }
-
-        // If requested, rotate object towards the main camera
-        if (faceTowards)
-        {
-            Vector3 mainCameraPosition = CameraCache.Main.transform.position;
-            Vector3 mainCameraToObject = _placementPosition - mainCameraPosition;
-            var direction = new Vector3(mainCameraToObject.x, 0, mainCameraToObject.z);
-            _placementRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
-        }
+        // Update placement pose
+        UpdatePoseViaPointer();
 
         // Smooth transform to the goal
         UpdateTransformToGoal(target);
@@ -416,12 +418,34 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     }
     #endregion InputSystemGlobalHandlerListener
 
-    #region Private Methods
+    #region Private Methods    
+    /// <summary>
+    /// Update the pose via the current pointer.
+    /// </summary>
+    private void UpdatePoseViaPointer()
+    {
+        IMixedRealityPointer usePointer = _pointerOverride ?? _focusProvider?.PrimaryPointer;
+        bool? isVisible = usePointer?.BaseCursor?.IsVisible;
+        if (usePointer == null || usePointer.BaseCursor == null || (!isVisible ?? true))
+        {
+            return;
+        }
+
+        // Save last used pointer
+        _lastUsedPointer = usePointer;
+
+        // Use the pointer's last hit target. If there's no target fallback to a default distance
+        TryFindPlacementPose(_lastUsedPointer, ref _placementHit);
+        SnapPoint = TryFindPlacementSnapPoint(ref _placementHit);
+    }
+
     /// <summary>
     /// Cancel this object's visibility override requests
     /// </summary>
     private void DisposePointerVisibilityOverrides()
     {
+        _log.LogVerbose("DisposePointerVisibilityOverrides() Entered ({0})", name);
+
         if (_currentVisibilityOverrides != null)
         {
             foreach (IPointerStateVisibilityOverride visibilityOverride in _currentVisibilityOverrides)
@@ -430,6 +454,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             }
             _currentVisibilityOverrides = null;
         }
+
+        _log.LogVerbose("DisposePointerVisibilityOverrides() Exitting ({0})", name);
     }
 
     /// <summary>
@@ -437,6 +463,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     /// </summary>
     private void StopOtherPlacements()
     {
+        _log.LogVerbose("StopOtherPlacements() Entered ({0})", name);
+
         var allPlacements = Resources.FindObjectsOfTypeAll<ObjectPlacement>();
         if (allPlacements != null)
         {
@@ -448,6 +476,8 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
                 }
             }
         }
+
+        _log.LogVerbose("StopOtherPlacements() Exitting ({0})", name);
     }
 
     /// <summary>
@@ -460,79 +490,105 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             return;
         }
 
+        _log.LogVerbose("SetInitialPosition() Entered ({0})", name);
         var camera = CameraCache.Main.transform;
         if (camera != null)
         {
             var direction = camera.TransformDirection(directionFromHead.normalized).normalized;
             target.position = camera.position + (direction * distanceFromHead);
         }
+        _log.LogVerbose("SetInitialPosition() Exitting ({0})", name);
     }
 
     /// <summary>
-    /// Find the best placement position given a pointer object. This calculates the position based on the pointer's
+    /// Find the best placement pose given a pointer object. This calculates the pose based on the pointer's
     /// first intersection that is not part of this game object's hierarchy. If there is no such intersection, the
-    /// returned position is the 'default distance' from the pointer's start position.
+    /// returned pose is the 'default distance' from the pointer's start pose.
     /// </summary>
-    /// <param name="pointer"></param>
-    /// <returns></returns>
-    private bool TryFindPlacementPosition(IMixedRealityPointer pointer, out Vector3 position)
+    private bool TryFindPlacementPose(IMixedRealityPointer pointer, ref ObjectPlacementHit hit)
     {
-        position = Vector3.zero;
-        bool hasResult = false;
+        hit.valid = false;
+        hit.transform = null;
+
         if (pointer == null ||
             pointer.Rays == null ||
             pointer.Rays.Length == 0)
         {
-            return hasResult;
+            _log.LogVerbose("TryFindPlacementPosition() Failed. No Pointer ({0})", name);
+            return hit.valid;
         }
 
+        // Perform a new raycast, using the component defined mask.
         RayStep pointerRay = pointer.Rays[0];
-        FocusDetails focusDetails;
-
-        // Attempt to use the focus provider to find a hit position
-        if (CoreServices.InputSystem.FocusProvider.TryGetFocusDetails(pointer, out focusDetails) &&
-            focusDetails.Object != null)
+        var hits = Physics.RaycastAll(pointerRay, this.maxDistance, MeshPhysicsLayerMask.value);
+        int hitsCount = hits?.Length ?? 0;
+        float distance = float.MaxValue;
+        for (int i = 0; i < hitsCount; i++)
         {
-            // Only use focus provider result if target is not part of this hierarchy, otherwise
-            // try to find a hit object that is "behind" this object.
-            if (!focusDetails.Object.transform.IsChildOf(target))
+            var currentHit = hits[i];
+            if (currentHit.collider != null && 
+                ValidHitTarget(currentHit.collider.transform) &&
+                currentHit.distance < distance)
             {
-                position = focusDetails.Point;
-                hasResult = true;
-            }
-            else
-            {
-                var hits = Physics.RaycastAll(pointer.Rays[0], this.maxDistance);
-                int hitsCount = hits?.Length ?? 0;
-                for (int i = 0; i < hitsCount && !hasResult; i++)
-                {
-                    var currentHit = hits[i];
-                    if (currentHit.collider != null &&
-                        !currentHit.collider.transform.IsChildOf(target))
-                    {
-                        position = currentHit.point;
-                        hasResult = true;
-                    }
-                }
+                distance = currentHit.distance;
+                hit.pose.position = currentHit.point;
+                hit.transform = currentHit.collider.transform;
+                hit.valid = true;
             }
         }
 
         // Fallback to the default distance, if nothing can be focused.
-        if (!hasResult)
+        if (!hit.valid)
         {
-            position = pointerRay.Origin + (pointerRay.Direction * this.defaultDistance);
-            hasResult = true;
+            hit.pose.position = pointerRay.Origin + (pointerRay.Direction * this.defaultDistance);
+            hit.valid = true;
         }
 
         // Cap the distance of the object at this max distance.
-        if ((hasResult) &&
+        if ((hit.valid) &&
             (this.maxDistance > 0) &&
-            (position - pointerRay.Origin).sqrMagnitude > (this.maxDistance * this.maxDistance))
+            (hit.pose.position - pointerRay.Origin).sqrMagnitude > (this.maxDistance * this.maxDistance))
         {
-            position = pointerRay.Origin + (pointerRay.Direction * this.maxDistance);
+            hit.pose.position = pointerRay.Origin + (pointerRay.Direction * this.maxDistance);
         }
 
-        return hasResult;
+        // If requested, rotate object towards the main camera
+        if (faceTowards)
+        {
+            Vector3 mainCameraPosition = CameraCache.Main.transform.position;
+            Vector3 mainCameraToObject = hit.pose.position - mainCameraPosition;
+            var direction = new Vector3(mainCameraToObject.x, 0, mainCameraToObject.z);
+            hit.pose.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        }
+        else
+        {
+            hit.pose.rotation = target.rotation;
+        }
+
+        return hit.valid;
+    }
+
+    private ObjectPlacementSnapPoint TryFindPlacementSnapPoint(ref ObjectPlacementHit hit)
+    {
+        ObjectPlacementSnapPoint snapPoint = null;
+        if (hit.transform != null)
+        {
+            snapPoint = hit.transform.GetComponentInParent<ObjectPlacementSnapPoint>();
+        }
+
+        if (snapPoint != null)
+        {
+            hit.pose.position = snapPoint.transform.position;
+            hit.pose.rotation = snapPoint.transform.rotation;
+        }
+
+        return snapPoint;
+    }
+
+    private bool ValidHitTarget(Transform hitTarget)
+    {
+        return (hitTarget.GetComponentInParent<ObjectPlacementSnapPoint>() != null) ||
+            (!hitTarget.IsChildOf(target));
     }
 
     /// <summary>
@@ -542,25 +598,13 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     {
         if (enableSmoothing)
         {
-            Vector3 pos = target.position;
-            Quaternion rot = target.rotation;
-
-            pos = SmoothTo(pos, _placementPosition, Time.deltaTime, moveLerpTime);
-            if (faceTowards)
-            {
-                rot = SmoothTo(rot, _placementRotation, Time.deltaTime, rotateLerpTime);
-            }
-
-            target.position = pos;
-            target.rotation = rot;
+            target.position = SmoothTo(target.position, _placementHit.pose.position, Time.deltaTime, moveLerpTime);
+            target.rotation = SmoothTo(target.rotation, _placementHit.pose.rotation, Time.deltaTime, rotateLerpTime);
         }
         else
         {
-            target.position = _placementPosition;
-            if (faceTowards)
-            {
-                target.rotation = _placementRotation;
-            }
+            target.position = _placementHit.pose.position;
+            target.rotation = _placementHit.pose.rotation;
         }
     }
 
@@ -606,39 +650,22 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
             return;
         }
 
-        if (CoreServices.SpatialAwarenessSystem == null)
+        SpatialMeshObserverHelper.SetState(new SpatialMeshObserverHelperState()
         {
-            return;
-        }
-
-        if (visible)
-        {
-            CoreServices.SpatialAwarenessSystem.Enable();
-            CoreServices.SpatialAwarenessSystem.ResumeObservers<WindowsMixedRealitySpatialMeshObserver>();
-        }
-        else
-        {
-            CoreServices.SpatialAwarenessSystem.SuspendObservers<WindowsMixedRealitySpatialMeshObserver>();
-            CoreServices.SpatialAwarenessSystem.Disable();
-        }
-
-        CoreServices.SpatialAwarenessSystem.SpatialAwarenessObjectParent?.SetActive(visible); 
-    }
-
-    /// <summary>
-    /// Ensure spatial awareness system has been created.
-    /// </summary>
-    private void EnsureSpatialAwarenessSystem()
-    {
-        if (CoreServices.SpatialAwarenessSystem == null)
-        {
-            object[] args = { MixedRealityToolkit.Instance.ActiveProfile.SpatialAwarenessSystemProfile };
-            if (!MixedRealityToolkit.Instance.RegisterService<IMixedRealitySpatialAwarenessSystem>(
-                 MixedRealityToolkit.Instance.ActiveProfile.SpatialAwarenessSystemSystemType, args: args) && CoreServices.SpatialAwarenessSystem != null)
-            {
-                Debug.LogFormat(LogType.Error, LogOption.NoStacktrace, null, "{0}",  "Failed to start the Spatial Awareness System!");
-            }
-        }
+            active = visible,
+            visible = visible,
+            ignoreRaycasts = !visible
+        });
     }
     #endregion Private Methods
+
+    #region Private Struct
+    private struct ObjectPlacementHit
+    {
+        public Pose pose;
+        public Transform transform;
+        public bool valid;
+    }
+
+    #endregion Private Struct
 }

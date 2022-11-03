@@ -43,7 +43,7 @@ public class ConvertModelService : MonoBehaviour
     private IRemoteRenderingService _remoteRenderingService;
 
 #if ENABLE_WINMD_SUPPORT
-	private FileOpenPicker openPicker;
+    private FileOpenPicker openPicker;
 #endif
 
     #endregion
@@ -56,7 +56,7 @@ public class ConvertModelService : MonoBehaviour
         {
             // Button listener
             UploadModelButton.OnClick.AddListener(SelectModel);
-
+            
             // Remote rendering status
             _remoteRenderingService.StatusChanged += RemoteRendering_StatusChanged;
             RemoteRendering_StatusChanged(_remoteRenderingService.Status);
@@ -69,7 +69,7 @@ public class ConvertModelService : MonoBehaviour
     {
         RemoteRendering_StatusChanged(e.NewStatus);
     }
-
+    
     private void RemoteRendering_StatusChanged(RemoteRenderingServiceStatus newStatus)
     {
         if (newStatus != RemoteRenderingServiceStatus.Unknown)
@@ -87,35 +87,35 @@ public class ConvertModelService : MonoBehaviour
 
     private void SelectModel()
     {
-#if ENABLE_WINMD_SUPPORT
-		UnityEngine.WSA.Application.InvokeOnUIThread(()=> SelectFileAsync(), false);
+    #if ENABLE_WINMD_SUPPORT
+        UnityEngine.WSA.Application.InvokeOnUIThread(()=> SelectFileAsync(), false);
 #elif UNITY_EDITOR
         var modelPath = UnityEditor.EditorUtility.OpenFilePanel("Model", Application.streamingAssetsPath, "fbx,glb,bin");
         if (modelPath.Length != 0)
         {
-            ConvertModel(modelPath);
+            _ = ConvertModel(modelPath);
         }
 #endif
     }
 
-#if ENABLE_WINMD_SUPPORT
-	private async void SelectFileAsync()
-	{
-		FileOpenPicker openPicker = new FileOpenPicker();
-		openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-		openPicker.FileTypeFilter.Add(".fbx");
-		openPicker.FileTypeFilter.Add(".glb");
-		openPicker.FileTypeFilter.Add(".bin");
+ #if ENABLE_WINMD_SUPPORT
+    private async void SelectFileAsync()
+    {
+        FileOpenPicker openPicker = new FileOpenPicker();
+        openPicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+        openPicker.FileTypeFilter.Add(".fbx");
+        openPicker.FileTypeFilter.Add(".glb");
+        openPicker.FileTypeFilter.Add(".bin");
 
-		StorageFile file = await openPicker.PickSingleFileAsync();
-		if (file != null)
-		{
-			IRandomAccessStream uwpStream = await file.OpenReadAsync();
-			Stream stream = uwpStream.AsStream();
-			UnityEngine.WSA.Application.InvokeOnAppThread(()=> ConvertModel(file.Path, stream), false);
-		}
-	}
-#endif
+        StorageFile file = await openPicker.PickSingleFileAsync();
+        if (file != null)
+        {
+            IRandomAccessStream uwpStream = await file.OpenReadAsync();
+            Stream stream = uwpStream.AsStream();
+            UnityEngine.WSA.Application.InvokeOnAppThread(()=> ConvertModel(file.Path, stream), false);
+        }
+    }
+ #endif
 
     private async Task ConvertModel(string modelPath, Stream modelStream = null)
     {
@@ -125,7 +125,7 @@ public class ConvertModelService : MonoBehaviour
             string msg;
             const string inputContainerName = "arrinput";
             const string outputContainerName = "arroutput";
-
+            
             string modelFile = Path.GetFileName(modelPath);
             string outputFile = Path.ChangeExtension(modelFile, "arrAsset");
 
@@ -135,31 +135,31 @@ public class ConvertModelService : MonoBehaviour
 
             // Default model folder name
             string folderName = string.Empty;
-
+            
             // ARR Profile
             var loadedProfile = AppServices.RemoteRendering.LoadedProfile;
-
+            
             // Initialize storage
             var storageAccountData = loadedProfile.StorageAccountData;
             StorageCredentials storageCredentials;
-
-            if (storageAccountData.AuthType == AuthenticationType.AccountKey)
+            
+            if(storageAccountData.AuthType == AuthenticationType.AccountKey)
             {
                 string authKey = await loadedProfile.StorageAccountData.GetAuthData();
                 storageCredentials = new StorageCredentials(loadedProfile.StorageAccountData.StorageAccountName, authKey);
-                if (loadedProfile.StorageModelPathByUsername) folderName = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
+                if(loadedProfile.StorageModelPathByUsername) folderName = AKStorageAccountData.MODEL_PATH_BY_USERNAME_FOLDER;
             }
             else
             {
                 string authToken = await loadedProfile.StorageAccountData.GetAuthData();
                 storageCredentials = new StorageCredentials(new TokenCredential(authToken));
-                if (loadedProfile.StorageModelPathByUsername) folderName = AADAuth.SelectedAccount.Username;
+                if(loadedProfile.StorageModelPathByUsername) folderName = AADAuth.SelectedAccount.Username;
             }
             var storageAccount = new CloudStorageAccount(storageCredentials, loadedProfile.StorageAccountData.StorageAccountName, null, true);
 
             // Storage client
             var blobClient = storageAccount.CreateCloudBlobClient();
-
+            
             // Input container
             var inputContainer = blobClient.GetContainerReference(inputContainerName);
             await inputContainer.CreateIfNotExistsAsync();
@@ -174,7 +174,7 @@ public class ConvertModelService : MonoBehaviour
 
             // Upload model
             CloudBlockBlob modelBlockBlob;
-            if (loadedProfile.StorageModelPathByUsername)
+            if(loadedProfile.StorageModelPathByUsername)
             {
                 var modelFolder = inputContainer.GetDirectoryReference(folderName);
                 modelBlockBlob = modelFolder.GetBlockBlobReference(modelFile);
@@ -183,9 +183,9 @@ public class ConvertModelService : MonoBehaviour
             {
                 modelBlockBlob = inputContainer.GetBlockBlobReference(modelFile);
             }
-
+            
             // Upload using path or provided stream
-            if (modelStream == null)
+            if(modelStream == null)
             {
                 await modelBlockBlob.UploadFromFileAsync(modelPath);
             }
@@ -195,8 +195,8 @@ public class ConvertModelService : MonoBehaviour
             }
 
             // Conversion parameters
-            string inputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{inputContainerName}";
-            string outputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{outputContainerName}";
+            var inputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{inputContainerName}";
+            var outputUri = $"https://{loadedProfile.StorageAccountName}.blob.core.windows.net/{outputContainerName}";
 
             var inputParams = new AssetConversionInputOptions(inputUri, null, folderName, modelFile);
             var outputParams = new AssetConversionOutputOptions(outputUri, null, folderName, outputFile);
@@ -249,7 +249,7 @@ public class ConvertModelService : MonoBehaviour
                 else
                 {
                     // Done, success/fail
-                    switch (status)
+                    switch(status)
                     {
                         case ConversionSessionStatus.Unknown:
                         case ConversionSessionStatus.Aborted:
@@ -270,7 +270,7 @@ public class ConvertModelService : MonoBehaviour
                 }
             }
         }
-        catch (Exception e)
+        catch(Exception e)
         {
             var msg = $"Conversion Process Failed.\n{e}";
             AppServices.AppNotificationService.RaiseNotification(msg, AppNotificationType.Error);

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <!-- Start Document -->
+  <xs:element name="Models">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="Containers" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Container" type="ContainerType" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+  <!-- End Document -->
+
+  <!-- Start Type Defines -->
+  <xs:complexType name="Vector2">
+    <xs:all>
+      <xs:element name="x" type="xs:float" minOccurs="1" maxOccurs="1" />
+      <xs:element name="y" type="xs:float" minOccurs="1" maxOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="Vector3">
+    <xs:all>
+      <xs:element name="x" type="xs:float" minOccurs="1" maxOccurs="1" />
+      <xs:element name="y" type="xs:float"  minOccurs="1" maxOccurs="1" />
+      <xs:element name="z" type="xs:float"  minOccurs="1" maxOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="ColorARGB">
+    <xs:all>
+      <xs:element name="a" type="xs:float" minOccurs="1" maxOccurs="1" />
+      <xs:element name="r" type="xs:float" minOccurs="1" maxOccurs="1" />
+      <xs:element name="g" type="xs:float" minOccurs="1" maxOccurs="1" />
+      <xs:element name="b" type="xs:float" minOccurs="1" maxOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="Transform">
+    <xs:all>
+      <xs:element name="Center" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+      <xs:element name="Position" type="Vector3" minOccurs="0" maxOccurs="1" />
+      <xs:element name="Rotation" type="Vector3"  minOccurs="0" maxOccurs="1" />
+      <xs:element name="Scale" type="Vector3" minOccurs="0" maxOccurs="1" />
+      <xs:element name="MinSize" type="Vector3"  minOccurs="0" maxOccurs="1" />
+      <xs:element name="MaxSize" type="Vector3" minOccurs="0" maxOccurs="1" />      
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="CameraOverrides">
+    <xs:all>
+      <xs:element name="NearClipPlane" type="xs:float" minOccurs="0" maxOccurs="1" />
+      <xs:element name="FarClipPlane" type="xs:float" minOccurs="0" maxOccurs="1" />
+    </xs:all>
+  </xs:complexType>
+  <xs:complexType name="AssetBase">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string" minOccurs="0" maxOccurs="1" />
+      <xs:element name="Enabled" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+      <xs:element name="Transform" type="Transform" minOccurs="0" maxOccurs="1" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="RemoteModel">
+    <xs:complexContent>
+      <xs:extension base="AssetBase">
+        <xs:sequence>
+          <xs:element name="Url" type="xs:string" minOccurs="0" maxOccurs="1" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="PlaceholderAsset">
+    <xs:complexContent>
+      <xs:extension base="AssetBase">
+        <xs:sequence>
+          <xs:element name="Url" type="xs:string" minOccurs="0" maxOccurs="1" />
+          <xs:element name="AssetName" type="xs:string" minOccurs="0" maxOccurs="1" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="RemoteLight">
+    <xs:complexContent mixed="false">
+      <xs:extension base="AssetBase">
+        <xs:sequence>
+          <xs:element name="Color" type="ColorARGB" minOccurs="0" maxOccurs="1" />
+          <xs:element name="Intensity" type="xs:float" minOccurs="0" maxOccurs="1" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="RemotePointLight">
+    <xs:complexContent mixed="false">
+      <xs:extension base="RemoteLight">
+        <xs:sequence>
+          <xs:element name="Radius" type="xs:float" minOccurs="0" maxOccurs="1" />
+          <xs:element name="Length" type="xs:float" minOccurs="0" maxOccurs="1" />
+          <xs:element name="AttenuationCutoff" type="Vector2" minOccurs="0" maxOccurs="1" />
+          <xs:element name="ProjectedCubeMap" type="xs:string" minOccurs="0" maxOccurs="1" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="RemoteSpotlight">
+    <xs:complexContent mixed="false">
+      <xs:extension base="RemoteLight">
+        <xs:sequence>
+          <xs:element name="Radius" type="xs:float" minOccurs="0" maxOccurs="1" />
+          <xs:element name="AttenuationCutoff" type="Vector2" minOccurs="0" maxOccurs="1" />
+          <xs:element name="Angle" type="Vector2" minOccurs="0" maxOccurs="1" />
+          <xs:element name="Falloff" type="xs:float" minOccurs="0" maxOccurs="1" />
+          <xs:element name="Projected2DTexture" type="xs:string" minOccurs="0" maxOccurs="1" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="RemoteDirectionalLight">
+    <xs:complexContent mixed="false">
+      <xs:extension base="RemoteLight" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="ContainerType">
+    <xs:complexContent mixed="false">
+      <xs:extension base="AssetBase">
+        <xs:sequence>
+          <xs:element name="CameraOverrides" type="CameraOverrides" minOccurs="0" maxOccurs="1" />
+          <xs:element name="HasColliders" type="xs:boolean" minOccurs="0" maxOccurs="1" />
+          <xs:element name="ImageUrl" type="xs:string" minOccurs="0" maxOccurs="1" />          
+          <xs:element name="Items" minOccurs="0" maxOccurs="1">
+            <xs:complexType>
+              <xs:choice minOccurs="1" maxOccurs="unbounded">
+                <xs:element name="Model" type="RemoteModel" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="Placeholder" type="PlaceholderAsset" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="PointLight" type="RemotePointLight" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="Spotlight" type="RemoteSpotlight" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="DirectionalLight" type="RemoteDirectionalLight" minOccurs="0" maxOccurs="unbounded" />
+              </xs:choice>
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <!-- End Type Defines -->
+</xs:schema>

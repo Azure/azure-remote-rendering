@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a0abd8429b79e8e4a9276f502dad90e2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - movableAnchor: {instanceID: 0}
+  - anchorPrefab: {fileID: 6206259410498729470, guid: 67faad895d99ff34394bb9c61ca8e8aa,
+      type: 3}
+  - movablePrefab: {fileID: 4924774098738540585, guid: caf8f1b1690abec4fbf489081cb1114d,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

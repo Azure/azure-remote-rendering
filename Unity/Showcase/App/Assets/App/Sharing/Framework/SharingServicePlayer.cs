@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -12,24 +11,34 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     /// </summary>
     public class SharingServicePlayer : ISharingServicePlayer, IDisposable
     {
-        private Pose _pose;
         private ISharingService _service;
         private Dictionary<string, object> _properties = new Dictionary<string, object>();
+        private SharingServicePlayerData _data = default;
 
-        public SharingServicePlayer(ISharingService service, int playerId, bool isLocal)
+        /// <summary>
+        /// Create a player that is part of the current room/session
+        /// </summary>
+        public SharingServicePlayer(ISharingService service, SharingServicePlayerData data, bool isLocal)
         {
-            _service = service ?? throw new ArgumentNullException("Sharing service can't be null");
-            PlayerId = playerId;
-            IsLocal = isLocal;
-            // Start with an invalid pose until one is received from the server
-            _pose = new Pose(Vector3.positiveInfinity, Quaternion.identity);
+            _service = service;
+            this.Data = data;
+            this.IsLocal = isLocal;
         }
 
         #region ISharingServicePlayer Properties
         /// <summary>
-        /// The id of this player.
+        /// The player information
         /// </summary>
-        public int PlayerId { get; }
+        public SharingServicePlayerData Data
+        {
+            get => _data;
+
+            set
+            {
+                _data = value;
+                DataChanged?.Invoke(this, value);
+            }
+        }
 
         /// <summary>
         /// Get if this is the local player.
@@ -37,14 +46,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         public bool IsLocal { get; }
 
         /// <summary>
-        /// The pose of the player
+        /// Get if this is an offline player. Offline meaning not connected to the current room/session.
         /// </summary>
-        public Pose Pose => _pose;
+        public bool InRoom => string.IsNullOrEmpty(Data.PlayerId);
 
-        /// <summary>
-        /// Get the current properties for this player.
-        /// </summary>
-        public IReadOnlyDictionary<string, object> Properties => _properties;
         #endregion ISharingServicePlayer Properties
 
         #region ISharingServicePlayer Events
@@ -52,27 +57,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Event fired when a property changes.
         /// </summary>
         public event Action<ISharingServicePlayer, string, object> PropertyChanged;
+
+        /// <summary>
+        /// Something in the player data has changed.
+        /// </summary>
+        public event Action<ISharingServicePlayer, SharingServicePlayerData> DataChanged;
         #endregion ISharingServicePlayer Events
 
         #region ISharingServicePlayer Functions
-        /// <summary>
-        /// Set the local player's postion and rotation. This is ignored if the player is not the local player.
-        /// </summary>
-        public void SetTransform(Vector3 position, Quaternion rotation)
-        {
-            if (_service == null || !IsLocal)
-            {
-                return;
-            }
-
-            // Always send position and rotation, even if not changed, as new clients would have missed old events.
-            // Also, when running on device, these values will likely be changing every frame anyways.
-
-            _pose.position = position;
-            _pose.rotation = rotation;
-            _service.SendLocalPlayerPose(_pose);
-        }
-
         /// <summary>
         /// Set a property on the given target to a praticular value.
         /// </summary>
@@ -89,7 +81,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 _properties[property] = value;
             }
 
-            _service?.SetPlayerProperty(PlayerId, property, value);
+            _service?.SetPlayerProperty(Data.PlayerId, property, value);
         }
 
         /// <summary>
@@ -108,7 +100,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             else
             {
                 found = (_properties.TryGetValue(property, out value) && value != null) ||
-                    (_service.TryGetPlayerProperty(PlayerId, property, out value));
+                    (_service.TryGetPlayerProperty(Data.PlayerId, property, out value));
             }
             return found;
         }
@@ -147,7 +139,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 object value;
                 found = (_properties.TryGetValue(property, out value) && value != null) ||
-                     _service.HasPlayerProperty(PlayerId, property);
+                     _service.HasPlayerProperty(Data.PlayerId, property);
             }
             return found;
         }
@@ -165,14 +157,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         #region Public Functions
         /// <summary>
-        /// Invoked by the sharing service when a new player position is received.
-        /// </summary>
-        public void ReceivedPose(Pose pose)
-        {
-            _pose = pose;
-        }
-
-        /// <summary>
         /// Invoked by the sharing service when a new property value is received.
         /// </summary>
         public void ReceivedPropertiesChanged(string property, object value)
@@ -186,6 +170,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 _properties[property] = value;
             }
             PropertyChanged?.Invoke(this, property, value);
+        }
+
+        /// <summary>
+        /// Invoked by the sharing service when the player's display name changed
+        /// </summary>
+        public void ReceivedPlayerDisplayName(string name)
+        {
+            if (Data.DisplayName != name)
+            {
+                var newData = _data;
+                newData.DisplayName = name;
+                Data = newData;
+            }
         }
         #endregion Public Functions
     }

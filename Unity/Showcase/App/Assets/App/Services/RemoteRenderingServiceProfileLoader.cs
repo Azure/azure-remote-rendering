@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -16,7 +15,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// Attempt to load the profile from the Override File Path. 
         /// </summary>
         /// <param name="fallback"></param>
-        /// <returns></returns>
         public static async Task<BaseRemoteRenderingServiceProfile> Load(BaseRemoteRenderingServiceProfile fallback = null)
         {
             ServiceConfigurationFile file = new ServiceConfigurationFile();
@@ -30,28 +28,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             fallback = CreateProfile(overrideFile, fallback);
 
             return fallback;
-        }
-
-        /// <summary>
-        /// Attempt to save the profile to the Override File Path. 
-        /// </summary>
-        /// <param name="fallback"></param>
-        /// <returns></returns>
-        public static async Task Save(BaseRemoteRenderingServiceProfile data)
-        {
-            if (data == null)
-            {
-                return;
-            }
-
-            try
-            {
-                await LocalStorageHelper.Save(ServiceConfigurationFile.DefaultOverrideFilePath, data.CreateFileData());
-            }
-            catch (Exception ex)
-            {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Failed to save override file. Reason: {ex.Message}");
-            }
         }
 
         private static BaseRemoteRenderingServiceProfile CreateProfile(ServiceConfigurationFile.FileData fileData, BaseRemoteRenderingServiceProfile fallback)
@@ -70,16 +46,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             {
                 return result;
             }
-            if (fileData.Account == null)
+            
+            // If an account key and domain is provided, assume a 'development' profile, and ignore AAD authentication.
+            bool useDevelopmentProfile = 
+                fileData.Account == null || 
+                (fileData.Account.ShouldSerializeAccountDomain() && fileData.Account.ShouldSerializeAccountKey());
+
+            if (useDevelopmentProfile)
             {
-                return ScriptableObject.CreateInstance<RemoteRenderingServiceDevelopmentProfile>();
+                result = ScriptableObject.CreateInstance<RemoteRenderingServiceDevelopmentProfile>();
             }
             else
             {
-                if (fileData.IsDevelopmentProfileData)
-                    result = ScriptableObject.CreateInstance<RemoteRenderingServiceDevelopmentProfile>();
-                else
-                    result = ScriptableObject.CreateInstance<RemoteRenderingServiceProfile>();
+                result = ScriptableObject.CreateInstance<RemoteRenderingServiceProfile>();
             }
 
             if (fileData.Session != null)
@@ -115,13 +94,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (fileData.Account != null)
             {
-                if (fileData.IsDevelopmentProfileData)
+                if (result is RemoteRenderingServiceDevelopmentProfile)
                 {
                     var devResult = (RemoteRenderingServiceDevelopmentProfile)result;
                     // Copy all or nothing from remote rendering account credentials
-                    if (fileData.Account.ShouldSerializeAccountId() &&
-                        fileData.Account.ShouldSerializeAccountDomain() &&
-                        fileData.Account.ShouldSerializeAccountKey())
+                    if (fileData.Account.ShouldSerializeAccountId())
                     {
                         devResult.AccountId = fileData.Account.AccountId;
                         devResult.AccountKey = fileData.Account.AccountKey;
@@ -133,10 +110,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         devResult.RemoteRenderingDomains = fileData.Account.RemoteRenderingDomains;
                     }
 
-                    if (fileData.Account.ShouldSerializeRemoteRenderingDomainLabels())
-                    {
-                        devResult.RemoteRenderingDomainLabels = fileData.Account.RemoteRenderingDomainLabels;
-                    }
+
                     result = devResult;
                 }
                 else
@@ -150,6 +124,21 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         relResult.AppId = fileData.Account.AppId;
                     }
 
+                    if (fileData.Account.ShouldSerializeAuthority())
+                    {
+                        relResult.Authority = fileData.Account.Authority;
+                    }
+
+                    if (fileData.Account.ShouldSerializeTenantId())
+                    {
+                        relResult.TenantId = fileData.Account.TenantId;
+                    }
+
+                    if (fileData.Account.ShouldSerializeReplyUri())
+                    {
+                        relResult.RedirectURI = fileData.Account.ReplyUri;
+                    }
+
                     if (fileData.Account.ShouldSerializeRemoteRenderingDomains())
                     {
                         relResult.RemoteRenderingDomains = fileData.Account.RemoteRenderingDomains;
@@ -160,17 +149,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         relResult.AccountDomain = fileData.Account.AccountDomain;
                     }
 
-                    if (fileData.Account.ShouldSerializeRemoteRenderingDomainLabels())
-                    {
-                        relResult.RemoteRenderingDomainLabels = fileData.Account.RemoteRenderingDomainLabels;
-                    }
                     result = relResult;
                 }
             }
 
             if (fileData.Storage != null)
             {
-                if (fileData.IsDevelopmentProfileData)
+                if (result is RemoteRenderingServiceDevelopmentProfile)
                 {
                     var devResult = (RemoteRenderingServiceDevelopmentProfile)result;
                     // Copy all or nothing from storage account credentials

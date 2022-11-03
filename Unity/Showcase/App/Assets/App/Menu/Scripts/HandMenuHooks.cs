@@ -1,26 +1,45 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication;
 using Microsoft.MixedReality.Toolkit.UI;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// Hooks up HandMenu UI to make the appropriate application calls.
 /// </summary>
-public class HandMenuHooks : MonoBehaviour
+public class HandMenuHooks : MonoBehaviour, IMainMenu
 {
     private IRemoteRenderingService _remoteRenderingService;
     private ISharingService _sharingService;
     private IAnchoringService _anchoringService;
     private Coroutine _updatePlayerCount;
     private bool _sessionFirstConnect;
+    private MenuState? _lockedState;
+
+    // IMainMenu
+    public string Name => gameObject.name;
 
     #region Serialized Fields
+    [Header("Components")]
+
+    [SerializeField]
+    [Tooltip("The app's network watching, watching for network connections.")]
+    private NetworkWatcher networkWatcher;
+
+    /// <summary>
+    /// The app's network watching, watching for network connections.
+    /// </summary>
+    public NetworkWatcher NetworkWatcher
+    {
+        get => networkWatcher;
+        set => networkWatcher = value;
+    }
+
     [Header("Primary Buttons")]
 
     [SerializeField]
@@ -64,97 +83,17 @@ public class HandMenuHooks : MonoBehaviour
 
     [SerializeField]
     [Tooltip("The button to be used to show the status panel.")]
-    private Interactable statsButtonLogic = null;
+    private Interactable shareButtonLogic = null;
 
     /// <summary>
     /// The button to be used to show the status panel.
     /// </summary>
     public Interactable StatsButtonLogic
     {
-        get => statsButtonLogic;
-        set => statsButtonLogic = value;
+        get => shareButtonLogic;
+        set => shareButtonLogic = value;
     }
-
-    [Header("Tool Buttons")]
-
-    [SerializeField]
-    [Tooltip("The button to be used to change the pointer into a 'move' tool.  This will move, scale, or rotate the entire model.")]
-    private Interactable moveButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to change the pointer into a 'move' tool. This will move, scale, or rotate the entire model.
-    /// </summary>
-    public Interactable MoveButtonLogic
-    {
-        get => moveButtonLogic;
-        set => moveButtonLogic = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The button to be used to change the pointer into a 'move piece' tool. This will move, scale, or rotate pieces of a model.")]
-    private Interactable movePieceButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to change the pointer into a 'move piece' tool.  This will move, scale, or rotate pieces of a model.
-    /// </summary>
-    public Interactable MovePieceButtonLogic
-    {
-        get => movePieceButtonLogic;
-        set => movePieceButtonLogic = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The button to be used to turn on the slice (or clipping) plane.")]
-    private Interactable sliceButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to turn on the slice (or clipping) plane.
-    /// </summary>
-    public Interactable SliceButtonLogic
-    {
-        get => sliceButtonLogic;
-        set => sliceButtonLogic = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The button to be used to change the pointer into a 'erase' tool. This will erase an entire model.")]
-    private Interactable eraseButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to change the pointer into a 'erase' tool. This will erase an entire model.
-    /// </summary>
-    public Interactable EraseButtonLogic
-    {
-        get => eraseButtonLogic;
-        set => eraseButtonLogic = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The button to be used to change the pointer into a 'explode' tool. This will explode pieces of the model outwards.")]
-    private Interactable explodeButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to change the pointer into a 'explode' tool. This will explode pieces of the model outwards.
-    /// </summary>
-    public Interactable ExplodeButtonLogic
-    {
-        get => explodeButtonLogic;
-        set => explodeButtonLogic = value;
-    }
-
-    [SerializeField]
-    [Tooltip("The button to be used to change the pointer into a 'revert' tool. This will revert a model back to its original state.")]
-    private Interactable revertButtonLogic = null;
-
-    /// <summary>
-    /// The button to be used to change the pointer into a 'revert' tool. This will revert a model back to its original state.
-    /// </summary>
-    public Interactable RevertButtonLogic
-    {
-        get => revertButtonLogic;
-        set => revertButtonLogic = value;
-    }
-
+    
     [Header("Session Buttons & Parts")]
 
     [SerializeField]
@@ -186,7 +125,6 @@ public class HandMenuHooks : MonoBehaviour
     [SerializeField]
     [Tooltip("The button to be used to open a new web browser to the current Azure Remote Rendering session's 'Inspector' page.")]
     private Interactable webInspectorButtonLogic = null;
-    private InteractableEnabledHelper webInspectorButtonHelper = null;
 
     /// <summary>
     /// The button to be used to open a new web browser to the current Azure Remote Rendering session's 'Inspector' page.
@@ -305,8 +243,8 @@ public class HandMenuHooks : MonoBehaviour
     /// </summary>
     public Interactable LeaveRoomButtonLogic
     {
-        get => LeaveRoomButtonLogic;
-        set => LeaveRoomButtonLogic = value;
+        get => leaveRoomButtonLogic;
+        set => leaveRoomButtonLogic = value;
     }
 
     [SerializeField]
@@ -349,11 +287,11 @@ public class HandMenuHooks : MonoBehaviour
     }
 
     [SerializeField]
-    [Tooltip("The text mesh displaying the number of players in the curent room.")]
+    [Tooltip("The text mesh displaying the number of players in the current room.")]
     private TextMeshPro sharingPlayerCountText = null;
 
     /// <summary>
-    /// The text mesh displaying the number of players in the curent room.
+    /// The text mesh displaying the number of players in the current room.
     /// </summary>
     public TextMeshPro SharingPlayerCountText
     {
@@ -388,57 +326,81 @@ public class HandMenuHooks : MonoBehaviour
         get => pointerToolIcon;
         set => pointerToolIcon = value;
     }
-    #endregion Serialized Fields
 
-    #region MonoBehavior Functions
+    [Header("Dialog Parts")]
 
-    private void Awake()
-    {
-        webInspectorButtonHelper = webInspectorButtonLogic.GetComponent<InteractableEnabledHelper>();
-    }
+    [SerializeField]
+    [Tooltip("The component that will host dialogs inside the app's menu.")]
+    private AppDialog menuDialog = null;
 
     /// <summary>
-    /// Initialize all the buttons click listners and various other menu states.
+    /// The component that will host dialogs inside the app's menu.
+    /// </summary>
+    public AppDialog MenuDialog
+    {
+        get => menuDialog;
+        set => menuDialog = value;
+    }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event raised when the menu state has changed.")]
+    private UnityEvent stateChanged = new UnityEvent();
+
+    /// <summary>
+    /// Event raised when the menu state has changed.
+    /// </summary>
+    public UnityEvent StateChanged => stateChanged;
+    #endregion Serialized Fields
+
+    #region Public Properties
+    /// <summary>
+    /// Get the current menu state.
+    /// </summary>
+    public MenuState State { get; private set; }
+    #endregion Public Properties
+
+    #region MonoBehavior Functions
+    /// <summary>
+    /// Initialize all the buttons click listeners and various other menu states.
     /// </summary>
     private void Start()
     {
-        moveButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.Manipulate); });
-        movePieceButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.ManipulatePiece); });
-        sliceButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.ClipBar); });
-        eraseButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.Delete); });
-        explodeButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.Explode); });
-        revertButtonLogic.OnClick.AddListener(delegate { SetPointerMode(PointerMode.Reset); });
+        AppServices.AppSettingsService.RegisterMainMenu(this);
+
+        SetMenuState(MenuState.None);
+
         startSessionButtonLogic.OnClick.AddListener(delegate { StartAndConnectSession(); });
         stopSessionButtonLogic.OnClick.AddListener(delegate { StopSession(); });
         forgetSessionButtonLogic.OnClick.AddListener(delegate { ForgetSession(); });
         toolsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Tools); });
         modelsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Models); });
         sessionButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Session); });
-        statsButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Stats); });
+        shareButtonLogic.OnClick.AddListener(delegate { SetMenuState(MenuState.Share); });
         webInspectorButtonLogic.OnClick.AddListener(delegate { _remoteRenderingService?.PrimaryMachine?.Session.OpenWebInspector(); });
-        createAndJoinRoomButtonLogic.OnClick.AddListener(delegate
-        {
-            ClearMenu();
-            _sharingService?.CreateAndJoinRoom();
-        });
+        createAndJoinRoomButtonLogic.OnClick.AddListener(delegate { CreateSharedRoom(); });
         leaveRoomButtonLogic.OnClick.AddListener(delegate { _sharingService?.LeaveRoom(); });
+        menuDialog.OnOpened.AddListener(delegate { ClearAndLockState(); });
+        menuDialog.OnClose.AddListener(delegate { UnlockState(); });
+        networkWatcher.IsConnectedChanged.AddListener(delegate { UpdateNotificationsAndSessionButtons(); });
 
         _remoteRenderingService = AppServices.RemoteRendering;
         if (_remoteRenderingService != null)
         {
             _remoteRenderingService.StatusChanged += RemoteRendering_StatusChanged;
-            UpdateNotifcationsAndSessionButtons();
-            // Hide web inspector on non debug profile builds
-            if(_remoteRenderingService.LoadedProfile.AuthType == AuthenticationType.AccessToken)
-                webInspectorButtonLogic.gameObject.SetActive(false);
+            UpdateNotificationsAndSessionButtons();
         }
+
 
         _sharingService = AppServices.SharingService;
         if (_sharingService != null)
         {
             _sharingService.CurrentRoomChanged += SharingService_CurrentRoomChanged;
             _sharingService.Connected += SharingService_ConnectionChanged;
+            _sharingService.Connecting += SharingService_ConnectionChanged;
             _sharingService.Disconnected += SharingService_ConnectionChanged;
+            _sharingService.StatusMessageChanged += SharingService_StatusMessageChanged;
             _sharingService.PlayerAdded += SharingService_PlayerAdded;
             _sharingService.PlayerRemoved += SharingService_PlayerRemoved;
             UpdateSharingConnectionStatus();
@@ -456,8 +418,8 @@ public class HandMenuHooks : MonoBehaviour
             notificationBar.NotificationBarHidden.AddListener(WhenNotificationBarHiddenShowAnchorInformation);
         }
 
-        // Set default state to manipulation
-        SetPointerMode(PointerMode.Manipulate);
+        // Disable tools by default
+        AppServices.PointerStateService.Mode = PointerMode.None;
     }
 
     /// <summary>
@@ -500,7 +462,9 @@ public class HandMenuHooks : MonoBehaviour
         {
             _sharingService.CurrentRoomChanged -= SharingService_CurrentRoomChanged;
             _sharingService.Connected -= SharingService_ConnectionChanged;
+            _sharingService.Connecting -= SharingService_ConnectionChanged;
             _sharingService.Disconnected -= SharingService_ConnectionChanged;
+            _sharingService.StatusMessageChanged -= SharingService_StatusMessageChanged;
             _sharingService.PlayerAdded -= SharingService_PlayerAdded;
             _sharingService.PlayerRemoved -= SharingService_PlayerRemoved;
         }
@@ -528,36 +492,63 @@ public class HandMenuHooks : MonoBehaviour
     }
 
     /// <summary>
-    /// Turn off all pointer tools.
+    /// Open a player panel for the given player id.
     /// </summary>
-    public void ClearPointerMode()
+    public void OpenPlayerPanel(string playerId = null)
     {
-        AppServices.PointerStateService.Mode = PointerMode.None;
+        if (State != MenuState.Share)
+        {
+            SetMenuState(MenuState.Share);
+        }
+
+        var shareObject = shareButtonLogic.GetComponent<ToggleObject>().TargetObject;
+        var subMenuController = shareObject.GetComponent<SubMenuController>();
+        subMenuController.GoToMenu<ShareUserSubMenu>()?.SetPlayer(playerId);
     }
 
     /// <summary>
-    /// Set the pointer to a particular tool. If a tool is already selected, set the selection to manipulate.
+    /// Open an invite user panel
     /// </summary>
-    /// <param name="pointerMode"></param>
-    public void SetPointerMode(PointerMode pointerMode)
+    public void OpenInviteUserPanel()
     {
-        if(AppServices.PointerStateService.Mode == pointerMode)
+        if (State != MenuState.Share)
         {
-            pointerMode = PointerMode.Manipulate;
+            SetMenuState(MenuState.Share);
         }
-        AppServices.PointerStateService.Mode = pointerMode;
+
+        var shareObject = shareButtonLogic.GetComponent<ToggleObject>().TargetObject;
+        var subMenuController = shareObject.GetComponent<SubMenuController>();
+        subMenuController.GoToMenu<ShareInviteUserSubMenu>();
+    }
+
+    /// <summary>
+    /// Open the sharing room create panel
+    /// </summary>
+    public void OpenCreateRoomPanel()
+    {
+        CreateSharedRoom();
+    }
+
+    /// <summary>
+    /// Open the sharing join room panel
+    /// </summary>
+    public void OpenJoinRoomPanel()
+    {
+        if (State != MenuState.Share)
+        {
+            SetMenuState(MenuState.Share);
+        }
+
+        var shareObject = shareButtonLogic.GetComponent<ToggleObject>().TargetObject;
+        var subMenuController = shareObject.GetComponent<SubMenuController>();
+        subMenuController.GoToMenu<ShareRoomListSubMenu>();
     }
     #endregion Public Functions
 
     #region Private Functions
-    private async void StartAndConnectSession()
+    private void StartAndConnectSession()
     {
-        if (_remoteRenderingService != null)
-        {
-            await _remoteRenderingService.StopAll();
-            var machine = await _remoteRenderingService.Create();
-            machine?.Session.Connection.Connect();
-        }
+        RemoteRenderingStartHelper.StartWithPrompt(AppDialog.AppDialogLocation.Menu);
     }
 
     private async void StopSession()
@@ -572,10 +563,10 @@ public class HandMenuHooks : MonoBehaviour
 
     private void RemoteRendering_StatusChanged(object sender, IRemoteRenderingStatusChangedArgs args)
     {
-        UpdateNotifcationsAndSessionButtons();
+        UpdateNotificationsAndSessionButtons();
     }
 
-    private void UpdateNotifcationsAndSessionButtons()
+    private void UpdateNotificationsAndSessionButtons()
     {
         if (_remoteRenderingService == null)
         {
@@ -605,10 +596,8 @@ public class HandMenuHooks : MonoBehaviour
                 notificationBar.SetScrollableNotification(3f, "Session connected.");
                 showStartSessionButton = false;
                 showWebInspectorButton = _remoteRenderingService.LoadedProfile.AuthType == AuthenticationType.AccountKey;
-                // Switch to session menu if not already there, and prevent calling this twice
                 if(!_sessionFirstConnect && !sessionButtonLogic.GetComponent<ToggleObject>().TargetObject.activeInHierarchy)
                 {
-                    SetMenuState(MenuState.Session);
                     _sessionFirstConnect = true;
                 }
                 break;
@@ -653,7 +642,7 @@ public class HandMenuHooks : MonoBehaviour
         sessionStatusTextAlt.text = sessionStatusText.text;
 
         // force anchor states to override the last message
-        shouldHideNotification &= !TrySendingNotificationAreaWithAnchorInformation();
+        shouldHideNotification &= !TrySendingPresistentNotification();
 
         // hide notification is there's no session and no anchoring messagess
         if (shouldHideNotification)
@@ -681,8 +670,17 @@ public class HandMenuHooks : MonoBehaviour
         
         startSessionButtonLogic.gameObject.SetActive(showStartSessionButton);
         stopSessionButtonLogic.gameObject.SetActive(!showStartSessionButton);
-        
-        webInspectorButtonHelper.IsEnabled = showWebInspectorButton;
+
+
+        // Hide web inspector on non debug profile builds
+        if (!showWebInspectorButton || _remoteRenderingService.LoadedProfile.AuthType == AuthenticationType.AccessToken)
+        {
+            webInspectorButtonLogic.gameObject.SetActive(false);
+        }
+        else
+        {
+            webInspectorButtonLogic.gameObject.SetActive(true);
+        }
     }
 
     /// <summary>
@@ -690,17 +688,47 @@ public class HandMenuHooks : MonoBehaviour
     /// </summary>
     private void WhenNotificationBarHiddenShowAnchorInformation()
     {
-        TrySendingNotificationAreaWithAnchorInformation();
+        TrySendingPresistentNotification();
+    }
+
+    /// <summary>
+    /// Try senting one of the presistent notification messages.
+    /// </summary>
+    /// <returns></returns>
+    private bool TrySendingPresistentNotification()
+    { 
+        return TrySendingNotificationWithSharingServiceInformation() ||
+            TrySendingNotificationWithAddressAndAnchorInformation() ||
+            TrySendingNotificationAboutDisconnectedFromNetwork();
+    }
+
+    /// <summary>
+    /// Try sending a notification with sharing service information.
+    /// </summary>
+    /// <returns></returns>
+    private bool TrySendingNotificationWithSharingServiceInformation()
+    {
+        bool sentNotification = false;
+
+        if (!string.IsNullOrEmpty(_sharingService?.StatusMessage))
+        {
+            string message = $"{_sharingService.StatusMessage}.";
+            notificationBar.SetNotification(-1f, 0.3f, new string[] { message, message + ".", message + ".." });
+            sentNotification = true;
+        }
+
+        return sentNotification;
     }
 
     /// <summary>
     /// Try sending a notification with anchor information. If a notification was sent, return true.
     /// </summary>
-    private bool TrySendingNotificationAreaWithAnchorInformation()
+    private bool TrySendingNotificationWithAddressAndAnchorInformation()
     {
         bool sentNotification = false;
-        // Force the anchor searches and creations to show in notification area.
-        if (_anchoringService != null)
+
+        // If still haven't sent a notification, force the anchor searches and creations to show in notification area.
+        if (_anchoringService != null && !sentNotification)
         {
             if (_anchoringService.ActiveCreationsCount > 0)
             {
@@ -715,6 +743,20 @@ public class HandMenuHooks : MonoBehaviour
                 sentNotification = true;
             }
         }
+
+        return sentNotification;
+    }
+
+    private bool TrySendingNotificationAboutDisconnectedFromNetwork()
+    {
+        bool sentNotification = false;
+
+        if (networkWatcher != null && !networkWatcher.IsConnected)
+        {
+            notificationBar.SetScrollableNotification(duration: -1f, "Disconnected from the Internet.");
+            sentNotification = true;
+        }
+
         return sentNotification;
     }
 
@@ -727,9 +769,15 @@ public class HandMenuHooks : MonoBehaviour
     {
         UpdateSharingConnectionStatus();
     }
+
     private void SharingService_PlayerAdded(ISharingService sender, ISharingServicePlayer player)
     {
         InvalidateSharingPlayerCount();
+    }
+
+    private void SharingService_StatusMessageChanged(ISharingService arg1, string arg2)
+    {
+        UpdateNotificationsAndSessionButtons();
     }
 
     private void SharingService_PlayerRemoved(ISharingService sender, ISharingServicePlayer player)
@@ -743,26 +791,24 @@ public class HandMenuHooks : MonoBehaviour
         if (sharingRoomText != null)
         {
             sharingRoomText.text = joinedRoom ? _sharingService.CurrentRoom.Name : "None";
-            if(joinedRoom)
+            if (joinedRoom)
             {
-                int count = _sharingService.Players?.Count ?? 0;
-                notificationBar.SetScrollableNotification(3f, $"Joined Shared {_sharingService.CurrentRoom.Name} with {count} users.");
+                notificationBar.SetScrollableNotification(3f, $"Joined {_sharingService.CurrentRoom.Name}.");
             }
         }
 
         if (sharingStatusText != null && _sharingService != null)
         {
-            sharingStatusText.text = _sharingService.IsConnected ? "Connected" : "Disconnected";
-        }
-        
-        createAndJoinRoomButtonLogic.gameObject.SetActive(!joinedRoom);
-        updateRoomsButtonLogic.gameObject.SetActive(!joinedRoom);
-        leaveRoomButtonLogic.gameObject.SetActive(joinedRoom);
+            sharingStatusText.text = 
+                _sharingService.IsConnected ? "Connected" : 
+                _sharingService.IsConnecting ? "Connecting" :
+                "Disconnected";
+        }        
     }
 
     private void InvalidateSharingPlayerCount()
     {
-        if (_updatePlayerCount == null)
+        if (_updatePlayerCount == null  && isActiveAndEnabled)
         {
             _updatePlayerCount = StartCoroutine(UpdateSharingPlayerCount());
         }
@@ -783,6 +829,12 @@ public class HandMenuHooks : MonoBehaviour
 
     private void SetMenuState(MenuState state)
     {
+        // If there is a value here. The menu state is locked
+        if (_lockedState.HasValue)
+        {
+            return;
+        }
+
         // sets toggle state of menu objects.
         // if menu is currently open, hitting button again will turn it off.
         ToggleObject toggleLogic = toolsButtonLogic.GetComponent<ToggleObject>();
@@ -797,9 +849,9 @@ public class HandMenuHooks : MonoBehaviour
         if(state == MenuState.Session && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
         toggleLogic.SetObjectActive(state == MenuState.Session);
 
-        toggleLogic = statsButtonLogic.GetComponent<ToggleObject>();
-        if(state == MenuState.Stats && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
-        toggleLogic.SetObjectActive(state == MenuState.Stats);
+        toggleLogic = shareButtonLogic.GetComponent<ToggleObject>();
+        if(state == MenuState.Share && toggleLogic.TargetObject.activeInHierarchy) state = MenuState.None;
+        toggleLogic.SetObjectActive(state == MenuState.Share);
 
         pointerToolIcon.HandMenuStateShow = state == MenuState.Tools || state == MenuState.None;
         
@@ -808,36 +860,101 @@ public class HandMenuHooks : MonoBehaviour
             case MenuState.Tools:
                 break;
             case MenuState.Models:
-                RemoteObjectListLoader.RefreshLists();
                 break;
             case MenuState.Session:
                 break;
-            case MenuState.Stats:
+            case MenuState.Share:
+                AppServices.SharingService.Login();
                 break;
             case MenuState.None:
                 break;
+            case MenuState.Locked:
+                break;
+        }
+
+        if (State != state)
+        {
+            State = state;
+            stateChanged?.Invoke();
+        }
+    }
+
+    private async void CreateSharedRoom()
+    {
+        if (_sharingService == null)
+        {
+            return;
+        }
+
+        AppDialog.AppDialogResult result = AppDialog.AppDialogResult.Ok;
+
+        if (_sharingService.HasPrivateRooms)
+        {
+            result = await AppServices.AppNotificationService.ShowDialog(new DialogOptions()
+            {
+                Title = "Public or Private Room",
+                Message = "Do you want to create a public or private room?\n\nIf you create a private room, you must invite users after the room is created.",
+                Location = AppDialog.AppDialogLocation.Menu,
+                Buttons = AppDialog.AppDialogButtons.All,
+                OKLabel = "Public",
+                NoLabel = "Private"
+            });
+        }
+
+        if (result == AppDialog.AppDialogResult.Ok)
+        {
+            await _sharingService.CreateAndJoinRoom();
+        }
+        else if (result == AppDialog.AppDialogResult.No)
+        {
+            // passing in a non-null invite list makes the room private
+            await _sharingService.CreateAndJoinRoom(new SharingServicePlayerData[0]);
         }
     }
 
     private void AnchoringService_ActiveSearchesCountChanged(IAnchoringService sender, AnchoringServiceSearchingArgs searchingArgs)
     {
-        UpdateNotifcationsAndSessionButtons();
+        UpdateNotificationsAndSessionButtons();
     }
 
     private void AnchoringService_ActiveCreationsCountChanged(IAnchoringService sender, AnchoringServiceCreatingArgs creatingArgs)
     {
-        UpdateNotifcationsAndSessionButtons();
+        UpdateNotificationsAndSessionButtons();
+    }
+
+    /// <summary>
+    /// Save, then clear the current menu state.
+    /// </summary>
+    private void ClearAndLockState()
+    {
+        var previousState = State;
+        SetMenuState(MenuState.Locked);
+        _lockedState = previousState;
+    }
+
+    /// <summary>
+    /// Restore the last saved state
+    /// </summary>
+    private void UnlockState()
+    {
+        if (_lockedState.HasValue)
+        {
+            var previousState = _lockedState.Value;
+            _lockedState = null;
+            SetMenuState(previousState);
+        }
     }
     #endregion Private Functions
 
-    #region Private Enums
-    private enum MenuState
+    #region Public Enums
+    public enum MenuState
     {
+        None = 0,
         Tools,
         Models,
         Session,
-        Stats,
-        None
+        Share,
+        Locked,
     }
-    #endregion Private Enums
+    #endregion Public Enums
 }

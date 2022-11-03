@@ -86,8 +86,9 @@ public static class LocalBounds
                 bounds.Encapsulate(meshes[i].bounds);
             }
         }
-
-        bounds.center = bounds.center - transform.position;
+        
+        bounds.center = transform.InverseTransformPoint(bounds.center);
+        bounds.size = transform.InverseTransformSize(bounds.size);
         transform.rotation = currentRotation;
 
         return bounds;

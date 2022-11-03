@@ -9,7 +9,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     /// The anchoring service settings that can be set via the Mixed Reality Toolkits inspector.
     /// </summary>
 	[MixedRealityServiceProfile(typeof(IAnchoringService))]
-    [CreateAssetMenu(fileName = "AnchoringServiceProfile", menuName = "MixedRealityToolkit/AnchoringService Configuration Profile")]
+    [CreateAssetMenu(fileName = "AnchoringServiceProfile", menuName = "ARR Showcase/Configuration Profile/Anchoring Service")]
     public class AnchoringServiceProfile : BaseMixedRealityProfile
     {
         [Header("General Settings")]
@@ -30,5 +30,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         [Tooltip("The account domain to use for Azure Spatial Anchors")]
         public string AnchorAccountDomain;
+
+        [Tooltip("The number of day(s) new anchors will expire. If zero or negative, anchors will never expire.")]
+        public float AnchorExpirationInDays = 1;
     }
 }

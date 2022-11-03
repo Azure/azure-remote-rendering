@@ -1,34 +1,21 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.Identity.Client;
+using Microsoft.MixedReality.Toolkit.Extensions;
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
 public class ClearObjectsDialogController : MonoBehaviour
 {
-    #region Serialized Fields
-    [SerializeField]
-    [Tooltip("The dialog used to confirm the clearing of remote objects when creating a room.")]
-    private AppDialog createDialogPrefab = null;
-    [SerializeField]
-    [Tooltip("The dialog used to confirm the clearing of remote objects when joining a room.")]
-    private AppDialog joinDialogPrefab = null;
-    
+    #region Serialized Fields    
     private static Func<Task<AppDialog.AppDialogResult>> OnCreateRoomNeedsConfirmation;
     private static Func<Task<AppDialog.AppDialogResult>> OnJoinRoomNeedsConfirmation;
-
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
     private void Start()
     {
-        if (createDialogPrefab == null || joinDialogPrefab == null)
-        {
-            DestroyController();
-        }
-
         OnCreateRoomNeedsConfirmation += ShowCreateDialog;
         OnJoinRoomNeedsConfirmation += ShowJoinDialog;
     }
@@ -44,7 +31,7 @@ public class ClearObjectsDialogController : MonoBehaviour
 
         ExecuteOnUnityThread.Enqueue(async () =>
         {
-            if(createRoom)
+            if (createRoom)
             {
                 result = await OnCreateRoomNeedsConfirmation?.Invoke();
             }
@@ -66,90 +53,34 @@ public class ClearObjectsDialogController : MonoBehaviour
 
     private async Task<AppDialog.AppDialogResult> ShowCreateDialog()
     {
-        if (createDialogPrefab == null)
+        AppDialog.AppDialogResult bringObjects = await AppServices.AppNotificationService.ShowDialog(new DialogOptions()
         {
-            DestroyController();
-            return AppDialog.AppDialogResult.Cancel;
-        }
-
-        AppDialog.AppDialogResult bringObjects;
-
-        GameObject dialogObject = null;
-        try
-        {
-            dialogObject = Instantiate(createDialogPrefab.gameObject, transform);
-            var appDialog = dialogObject.GetComponent<AppDialog>();
-
-            appDialog.DialogText.text = 
-                "You are about to create a shared room.\n" +
-                "Would you like to bring your holograms\n" +
-                "with you or start an empty room?";
-            appDialog.DialogHeaderText.text = "Bring Objects into New Room?";
-            appDialog.OkButtonText.text = "Bring";
-            appDialog.NoButtonText.text = "Empty";
-            appDialog.CancelButtonText.text = "Cancel";
-
-            bringObjects = await appDialog.Open();
-        }
-        finally
-        {
-            if (dialogObject != null)
-            {
-                GameObject.Destroy(dialogObject);
-            }
-        }
+            Title = "Bring Objects to New Room?",
+            Message = "You are about to create a shared room.\n\nWould you like to bring your holograms with you or start an empty room?",
+            OKLabel = "Bring",
+            NoLabel = "Empty",
+            CancelLabel = "Cancel",
+            Location = AppDialog.AppDialogLocation.Menu,
+            Buttons = AppDialog.AppDialogButtons.All
+        });
 
         return bringObjects;
     }
     
     private async Task<AppDialog.AppDialogResult> ShowJoinDialog()
     {
-        if (joinDialogPrefab == null)
+        AppDialog.AppDialogResult clearObjects = await AppServices.AppNotificationService.ShowDialog(new DialogOptions()
         {
-            DestroyController();
-            return AppDialog.AppDialogResult.Cancel;
-        }
-
-        AppDialog.AppDialogResult clearObjects;
-
-        GameObject dialogObject = null;
-        try
-        {
-            dialogObject = Instantiate(joinDialogPrefab.gameObject, transform);
-            var appDialog = dialogObject.GetComponent<AppDialog>();
-
-            appDialog.DialogText.text = 
-                "You are about to join a shared room,\n" +
-                "all your holograms will be cleared.\n" +
-                "Would you like to continue?";
-            appDialog.DialogHeaderText.text = "Confirm Clearing Objects?";
-            appDialog.OkButtonText.text = "Yes";
-            appDialog.CancelButtonText.text = "No";
-
-            clearObjects = await appDialog.Open();
-        }
-        finally
-        {
-            if (dialogObject != null)
-            {
-                GameObject.Destroy(dialogObject);
-            }
-        }
+            Title = "Confirm Clearing Objects?",
+            Message = "You are about to join a shared room, all your holograms will be cleared.\n\nWould you like to clear your holograms?",
+            NoLabel = "Clear",
+            CancelLabel = "Cancel",
+            Location = AppDialog.AppDialogLocation.Menu,
+            Buttons = AppDialog.AppDialogButtons.No | AppDialog.AppDialogButtons.Cancel
+        });
 
         return clearObjects;
     }
     #endregion
-
-    #region Private Functions
-
-    private void DestroyController()
-    {
-        if (gameObject != null)
-        {
-            GameObject.Destroy(gameObject);
-        }
-    }
-
-    #endregion Private Functions
 }
 

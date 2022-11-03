@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// An optional behavior to place on sub-menu containers. This is controlled by a SubMenuController class. This
@@ -22,6 +23,26 @@ public class SubMenu : MonoBehaviour
         get => showable;
         set => showable = value;
     }
+
+    [Header("Events")]
+
+    [SerializeField]
+    [Tooltip("Event fired when the sub-menu is visible.")]
+    private UnityEvent activated = new UnityEvent();
+
+    /// <summary>
+    /// TEvent fired when the sub-menu is visible.
+    /// </summary>
+    public UnityEvent Activated => activated;
+
+    [SerializeField]
+    [Tooltip("Event fired when the sub-menu is hidden.")]
+    private UnityEvent deactivated = new UnityEvent();
+
+    /// <summary>
+    /// TEvent fired when the sub-menu is hidden.
+    /// </summary>
+    public UnityEvent Deactivated => deactivated;
     #endregion Serialized Fields
 
     #region Public Properties
@@ -34,17 +55,19 @@ public class SubMenu : MonoBehaviour
     /// <summary>
     /// Invoke this when the sub-menu has been activated.
     /// </summary>
-    public void OnActivated()
+    public virtual void OnActivated()
     {
         SetActiveParts(true);
+        activated?.Invoke();
     }
 
     /// <summary>
     /// Invoke this when the sub-menu has been deactivated.
     /// </summary>
-    public void OnDeactivated()
+    public virtual void OnDeactivated()
     {
         SetActiveParts(false);
+        deactivated?.Invoke();
     }
     #endregion Public Functions
 

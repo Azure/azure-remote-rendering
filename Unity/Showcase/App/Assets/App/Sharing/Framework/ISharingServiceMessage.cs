@@ -17,5 +17,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication
         /// Command to send
         /// </summary>
         string Command { get; }
+
+        /// <summary>
+        /// The message sender
+        /// </summary>
+        string Sender { get; }
     }
 }

@@ -21,15 +21,36 @@ MonoBehaviour:
   autoReconnectRate: 15
   alwaysIncludeDefaultModels: 0
   remoteRenderingDomains:
-  - westus2.mixedreality.azure.com
-  - eastus.mixedreality.azure.com
-  - westeurope.mixedreality.azure.com
-  - southeastasia.mixedreality.azure.com
-  remoteRenderingDomainLabels:
-  - West US 2
-  - East US
-  - West Europe
-  - Southeast Asia
+  - Label: West US 2
+    Value: westus2
+    Domain: westus2.mixedreality.azure.com
+  - Label: Australia East
+    Value: australiaeast
+    Domain: australiaeast.mixedreality.azure.com
+  - Label: East US
+    Value: eastus
+    Domain: eastus.mixedreality.azure.com
+  - Label: East US 2
+    Value: eastus2
+    Domain: eastus2.mixedreality.azure.com
+  - Label: Japan East
+    Value: japaneast
+    Domain: japaneast.mixedreality.azure.com
+  - Label: North Europe
+    Value: northeurope
+    Domain: northeurope.mixedreality.azure.com
+  - Label: South Central US
+    Value: southcentralus
+    Domain: southcentralus.mixedreality.azure.com
+  - Label: Southeast Asia
+    Value: southeastasia
+    Domain: southeastasia.mixedreality.azure.com
+  - Label: UK South
+    Value: uksouth
+    Domain: uksouth.mixedreality.azure.com
+  - Label: West Europe
+    Value: westeurope
+    Domain: westeurope.mixedreality.azure.com
   AccountId: 
   AccountDomain: 
   AccountKey: 

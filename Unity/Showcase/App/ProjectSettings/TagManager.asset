@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - UI
+  - Bullet
   layers:
   - Default
   - TransparentFX
@@ -15,9 +16,9 @@ TagManager:
   - 
   - 
   - IgnoreFocusPlane
-  - 
-  - 
-  - 
+  - SharingServiceAddress
+  - Avatar Point of Interest
+  - Grabbable
   - 
   - 
   - 

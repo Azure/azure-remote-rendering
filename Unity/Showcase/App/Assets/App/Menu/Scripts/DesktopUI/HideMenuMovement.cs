@@ -7,63 +7,108 @@ using UnityEngine;
 /// <summary>
 /// A behavior for hiding the menu while any camera movement is happening.
 /// </summary>
-public class HideMenuMovement:MonoBehaviour
+public class HideMenuMovement : MonoBehaviour
 {
+    private Transform _camera;
+    private Vector3 _lastMeterForward;
+    private float _hideTimeInSeconds = float.MaxValue;
+    private float _reshowTimeInSeconds = float.MaxValue;
+
+    #region Serialized Fields
+    [SerializeField]
+    [Tooltip("The delay before the menu is hidden after camera movement.")]
+    private float hideDelayInSeconds = 0.0f;
+
+    /// <summary>
+    /// The delay before the menu is hidden after camera movement.
+    /// </summary>
+    public float HideDelayInSeconds
+    {
+        get => hideDelayInSeconds;
+        set => hideDelayInSeconds = value;
+    }
+
+    [SerializeField]
+    [Tooltip("The delay before the menu is shown after camera movement.")]
+    private float showDelayInSeconds = 0.3f;
+
+    /// <summary>
+    /// The delay before the menu is shown after camera movement.
+    /// </summary>
+    public float ShowDelayInSeconds
+    {
+        get => showDelayInSeconds;
+        set => showDelayInSeconds = value;
+    }
+
+    [SerializeField]
+    [Tooltip("The target to hide and show.")]
+    private GameObject target = null;
+
+    /// <summary>
+    /// The target to hide and show.
+    /// </summary>
+    public GameObject Target
+    {
+        get => target;
+        set => target = value;
+    }
+    #endregion Serialized Fields
+
+    #region Public Properties
+    /// <summary>
+    /// Get if the menu should be visible.
+    /// </summary>
     public bool IsVisible { get; private set; }
-    
-    private Transform camTransform;
-    private Vector3 prevPos;
-    private Quaternion prevRot;
-    private Quaternion prevMouse;
+    #endregion Public Properties
 
-    private Vector3 lerpPosVel;
-    private float lerpRotVel;
-
+    #region MonoBehavior Functions
     private void Start()
     {
-        camTransform = CameraCache.Main.transform;
-        prevPos = camTransform.position;
-        prevRot = camTransform.rotation;
+        _camera = CameraCache.Main.transform;
+        _lastMeterForward = _camera.position + _camera.forward;
         IsVisible = true;
     }
 
     private void LateUpdate()
     {
-        // Check for any movement input
-        var keyX = Mathf.Abs(Input.GetAxis("Horizontal"));
-        var keyY = Mathf.Abs(Input.GetAxis("Vertical"));
-        var mouseButtons = Input.GetMouseButton(1) || Input.GetMouseButton(2);
-        var mouse = Mathf.Abs(Input.GetAxis("Mouse X")) + Mathf.Abs(Input.GetAxis("Mouse Y"));
-        var panRotateKeys = Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.R) ||
-                            Input.GetKey(KeyCode.F);
-        var movementInput = keyX > 0f || keyY > 0f || panRotateKeys || mouseButtons && mouse > 0f;
-        
-        if(IsVisible)
+        var meterForward = _camera.position + _camera.forward;
+        if (_lastMeterForward != meterForward)
         {
-            if(movementInput)
+            _reshowTimeInSeconds = float.MaxValue;
+            if (_hideTimeInSeconds == float.MaxValue)
             {
-                // Hide
-                transform.localPosition = Vector3.back * 1500f;
-                IsVisible = false;
+                _hideTimeInSeconds = Time.realtimeSinceStartup + hideDelayInSeconds;
             }
         }
-        else
+
+        if (Time.realtimeSinceStartup >= _reshowTimeInSeconds)
         {
-            // Check for the virtual camera positioning settling back
-            if(!movementInput && 
-               Vector3.Distance(prevPos, camTransform.position) < 0.05f &&
-               Quaternion.Angle(prevRot, camTransform.rotation) < 0.001f)
+            _hideTimeInSeconds = float.MaxValue;
+            _reshowTimeInSeconds = float.MaxValue;
+            SetVisible(true);
+        }
+        else if (Time.realtimeSinceStartup >= _hideTimeInSeconds)
+        {
+            SetVisible(false); 
+            if (_reshowTimeInSeconds == float.MaxValue)
             {
-                // Show
-                transform.localPosition = Vector3.zero;
-                IsVisible = true;
+                _reshowTimeInSeconds = Time.realtimeSinceStartup + showDelayInSeconds;
             }
         }
-        
-        // Lerp prev position and rotation to current to imitate the rendering delay
-        prevPos = Vector3.SmoothDamp(prevPos, camTransform.position, ref lerpPosVel, 0.2f);
-        float angle = Quaternion.Angle(prevRot, camTransform.rotation);
-        float lerpAngle = Mathf.SmoothDampAngle(0f, angle, ref lerpRotVel, 0.2f);
-        if(lerpAngle > 0f) prevRot = Quaternion.Lerp(prevRot, camTransform.rotation, lerpAngle / angle);
+
+        _lastMeterForward = meterForward;
     }
+    #endregion MonoBehavior Functions
+
+    #region Private Functions
+    private void SetVisible(bool visible)
+    {
+        IsVisible = visible;
+        if (target != null)
+        {
+            target.SetActive(visible);
+        }
+    }
+    #endregion Private Functions
 }

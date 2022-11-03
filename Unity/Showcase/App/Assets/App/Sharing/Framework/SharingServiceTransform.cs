@@ -4,11 +4,12 @@
 using System;
 using UnityEngine;
 
-namespace Microsoft.MixedReality.Toolkit.Extensions
+namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication
 {
     /// <summary>
     /// A struct holding an array with raw transform data.
     /// </summary>
+    [Serializable]
     public struct SharingServiceTransform
     {
         /// <summary>
@@ -135,12 +136,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         }
 
         /// <summary>
-        /// Copy a transform object to an array of floats.
+        /// Copy a transform's local value to an array of floats.
         /// </summary>
         /// <returns>
         /// True is the raw array was modified.
         /// </returns>
-        public bool Set(Transform source)
+        public bool SetLocal(ref Transform source)
         {
             bool changed = false;
 
@@ -185,6 +186,37 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 Rotation.w = source.localRotation.w;
                 changed = true;
             }
+
+            if (source.localScale.x != Scale.x)
+            {
+                Scale.x = source.localScale.x;
+                changed = true;
+            }
+
+            if (source.localScale.y != Scale.y)
+            {
+                Scale.y = source.localScale.y;
+                changed = true;
+            }
+
+            if (source.localScale.z != Scale.z)
+            {
+                Scale.z = source.localScale.z;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        /// <summary>
+        /// Copy a transform object's local scale to an array of floats.
+        /// </summary>
+        /// <returns>
+        /// True is the raw array was modified.
+        /// </returns>
+        public bool SetScale(ref Transform source)
+        {
+            bool changed = false;
 
             if (source.localScale.x != Scale.x)
             {
@@ -296,4 +328,103 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             return changed;
         }
     }
+
+    public class SharingServiceTransformSerializer : ISharingServiceSerializer
+    {
+        ISharingServiceBasicSerializer _serializer;
+
+        public SharingServiceTransformSerializer(ISharingServiceBasicSerializer byteSerializer)
+        {
+            _serializer = byteSerializer;
+        }
+
+        public int GetByteSize(object value)
+        {
+            if (!(value is SharingServiceTransform))
+            {
+                return 0;
+            }
+
+            // string
+            SharingServiceTransform transform = (SharingServiceTransform)value;
+
+            // vector3 + quaternion + vector3
+            int bytes = (3 + 4 + 3) * sizeof(float);
+
+            // target is a string which is variable
+            bytes += _serializer.GetByteSize(transform.Target);
+
+            return bytes;
+        }
+
+        public void Serialize(object value, byte[] target, ref int offset)
+        {
+            if (!(value is SharingServiceTransform))
+            {
+                throw new InvalidCastException();
+            }
+
+            short sizeOfObject = (short)GetByteSize(value);
+
+            // make sure there is enough room for the amount of data that is required for object
+            if (target.Length < sizeOfObject)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            SharingServiceTransform transform = (SharingServiceTransform)value;
+            _serializer.Serialize(transform.Target, target, ref offset);
+            _serializer.Serialize(transform.Position.x, target, ref offset);
+            _serializer.Serialize(transform.Position.y, target, ref offset);
+            _serializer.Serialize(transform.Position.z, target, ref offset);
+            _serializer.Serialize(transform.Rotation.w, target, ref offset);
+            _serializer.Serialize(transform.Rotation.x, target, ref offset);
+            _serializer.Serialize(transform.Rotation.y, target, ref offset);
+            _serializer.Serialize(transform.Rotation.z, target, ref offset);
+            _serializer.Serialize(transform.Scale.x, target, ref offset);
+            _serializer.Serialize(transform.Scale.y, target, ref offset);
+            _serializer.Serialize(transform.Scale.z, target, ref offset);
+        }
+
+        public void Deserialize(out object value, byte[] source, ref int offset)
+        {
+            // grab the object name and determine if the size is correct
+            SharingServiceTransform transform = SharingServiceTransform.Create();
+            _serializer.Deserialize(out transform.Target, source, ref offset);
+            _serializer.Deserialize(out transform.Position.x, source, ref offset);
+            _serializer.Deserialize(out transform.Position.y, source, ref offset);
+            _serializer.Deserialize(out transform.Position.z, source, ref offset);
+            _serializer.Deserialize(out transform.Rotation.w, source, ref offset);
+            _serializer.Deserialize(out transform.Rotation.x, source, ref offset);
+            _serializer.Deserialize(out transform.Rotation.y, source, ref offset);
+            _serializer.Deserialize(out transform.Rotation.z, source, ref offset);
+            _serializer.Deserialize(out transform.Scale.x, source, ref offset);
+            _serializer.Deserialize(out transform.Scale.y, source, ref offset);
+            _serializer.Deserialize(out transform.Scale.z, source, ref offset);
+
+            value = transform;
+        }
+
+        /// <summary>
+        /// Convert object to string
+        /// </summary>
+        public string ToString(object value)
+        {
+            if (!(value is SharingServiceTransform))
+            {
+                return null;
+            }
+
+            return JsonUtility.ToJson((SharingServiceTransform)value);
+        }
+
+        /// <summary>
+        /// Convert string to object
+        /// </summary>
+        public bool FromString(string value, out object result)
+        {
+            return SharingServiceJsonHelper.DeserializeFromJson<SharingServiceTransform>(value, out result);
+        }
+    }
+
 }

@@ -6,7 +6,6 @@ using Microsoft.Identity.Client;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -19,8 +18,16 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         private string appId;
         private string tenantID;
         private string redirectURI;
+        private string authority;
 
-        public ADStorageAccountData(string storageAccountName, string storageModelContainer, bool modelPathByUsername, string appId, string tenantID = "", string redirectURI = "")
+        public ADStorageAccountData(
+            string storageAccountName, 
+            string storageModelContainer,
+            bool modelPathByUsername,
+            string appId,
+            string authority,
+            string tenantID,
+            string redirectURI)
         {
             this.storageAccountName = storageAccountName;
             this.storageModelContainer = storageModelContainer;
@@ -28,6 +35,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             this.appId = appId;
             this.tenantID = tenantID;
             this.redirectURI = redirectURI;
+            this.authority = authority;
         }
 
         public override string StorageAccountName => storageAccountName;
@@ -40,7 +48,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         public override async Task<string> GetAuthData()
         {
-            var authResult = await AADAuth.TryLogin(appId, AADAuth.Scope.Storage, SelectAccount, ExecuteOnUnityThread.ApplicationToken, tenantID, redirectURI);
+            var authResult = await AADAuth.TryLogin(
+                appId, 
+                AADAuth.Scope.Storage,
+                SelectAccount, 
+                ExecuteOnUnityThread.ApplicationToken,
+                authority,
+                tenantID, 
+                redirectURI);
+
             if (authResult != null)
                 return authResult.AccessToken;
             else

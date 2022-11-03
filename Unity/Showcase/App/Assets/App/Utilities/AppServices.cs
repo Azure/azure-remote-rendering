@@ -76,6 +76,14 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return GetService<IAnchoringService>();
             }
         }
+
+        public static IRemoteObjectStageService RemoteObjectStageService
+        {
+            get
+            {
+                return GetService<IRemoteObjectStageService>();
+            }
+        }
         #endregion Public Properties
 
         #region Private Methods

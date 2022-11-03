@@ -8,10 +8,11 @@ using UnityEngine;
 /// </summary>
 public class ListEventData
 {
-    public ListEventData(GameObject listObject, ListItem listItem = null)
+    public ListEventData(GameObject listObject, ListItem listItem = null, int listItemIndex = -1)
     {
         ListObject = listObject;
         ListItem = listItem;
+        ListItemIndex = listItemIndex;
     }
 
     /// <summary>
@@ -23,4 +24,9 @@ public class ListEventData
     /// The list item related to this event
     /// </summary>
     public ListItem ListItem { get; }
+
+    /// <summary>
+    /// The list item index related to this event
+    /// </summary>
+    public int ListItemIndex { get; }
 }

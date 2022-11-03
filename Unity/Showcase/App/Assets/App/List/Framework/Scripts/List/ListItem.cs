@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.UI;
 using System;
 using UnityEngine;
@@ -10,7 +11,7 @@ using UnityEngine;
 /// </summary>
 public class ListItem : MonoBehaviour
 {
-    private System.Object _dataSource;
+    private object _dataSource;
     private int _index = -1;
     private bool _visible = true;
     private bool _selected = false;
@@ -18,6 +19,7 @@ public class ListItem : MonoBehaviour
     private Transform _lastSeenParent;
     private float _lastInvoke = float.MinValue;
     private float _invokeDelay = 1f;
+
 
     #region Serialized Fields
     [Header("Item Properties")]
@@ -216,7 +218,7 @@ public class ListItem : MonoBehaviour
     /// <summary>
     /// The data source backing this item
     /// </summary>
-    public System.Object DataSource
+    public object DataSource
     {
         get
         {
@@ -485,13 +487,23 @@ public class ListItem : MonoBehaviour
             }
         }
 
+        if (buttonInteractable != null)
+        {
+            var nearInteractable = buttonInteractable.GetComponent<NearInteractionTouchable>();
+            var nearCollider = buttonInteractable.GetComponent<BoxCollider>();
+            if (nearInteractable != null && nearCollider != null)
+            {
+                nearInteractable.SetTouchableCollider(nearCollider);
+            }
+        }
+
         this.UpdateSelectionSizableTransforms();
 
         if (selectionTransform != null)
         {
             Vector3 selectionSize = new Vector3(
-                this.itemSize.x + this.selectionContainerPadding.x,
-                this.itemSize.y + this.selectionContainerPadding.y,
+                itemSize.x + this.selectionContainerPadding.x,
+                itemSize.y + this.selectionContainerPadding.y,
                 selectionTransform.localScale.z);
 
             selectionTransform.localScale = selectionSize;
@@ -502,10 +514,12 @@ public class ListItem : MonoBehaviour
             Mesh mesh = sizableMeshFilter.sharedMesh;
             if (mesh != null && mesh.bounds.size.x != 0 && mesh.bounds.size.y != 0)
             {
-                sizableMeshFilter.transform.localScale = new Vector3(
+                Vector3 meshSize = new Vector3(
                     itemSize.x / mesh.bounds.size.x,
                     itemSize.y / mesh.bounds.size.y,
                     sizableMeshFilter.transform.localScale.z);
+
+                sizableMeshFilter.transform.localScale = meshSize;
             }
         }
     }

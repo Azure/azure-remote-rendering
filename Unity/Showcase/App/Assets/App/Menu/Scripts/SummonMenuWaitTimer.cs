@@ -13,7 +13,6 @@ public class SummonMenuWaitTimer : MonoBehaviour
 {
     private Coroutine _fillRoutine = null;
     private bool _fillRoutineRunning = false;
-    private Vector3 _startScale;
 
     #region Serialized Fields
     [SerializeField]
@@ -56,8 +55,17 @@ public class SummonMenuWaitTimer : MonoBehaviour
     }
 
     [SerializeField]
+    [Tooltip("Event fired when animation has started.")]
+    public UnityEvent onTimerStarted = new UnityEvent();
+
+    /// <summary>
+    /// Event fired when animation has started.
+    /// </summary>
+    public UnityEvent OnTimerStarted => onTimerStarted;
+
+    [SerializeField]
     [Tooltip("Event fired when animation has completed.")]
-    public UnityEvent onTimerComplete;
+    public UnityEvent onTimerComplete = new UnityEvent();
 
     /// <summary>
     /// Event fired when animation has completed.
@@ -67,6 +75,15 @@ public class SummonMenuWaitTimer : MonoBehaviour
         get => onTimerComplete;
         set => onTimerComplete = value;
     }
+
+    [SerializeField]
+    [Tooltip("Event fired when animation has stopped")]
+    public UnityEvent onTimerStopped = new UnityEvent();
+
+    /// <summary>
+    /// Event fired when animation has stopped.
+    /// </summary>
+    public UnityEvent OnTimerStopped => onTimerStopped;
 
     [SerializeField]
     [Tooltip("The time to wait before fire completed event.")]
@@ -96,39 +113,32 @@ public class SummonMenuWaitTimer : MonoBehaviour
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
-    private void Awake()
-    {
-        _startScale = transform.localScale;
-        circleImage.fillAmount = 0f;
-    }
     #endregion MonoBehavior Functions
 
     #region Public Functions
     public void TriggerTimer()
     {
-        StopTimer();
-
-        if (isActiveAndEnabled)
+        if (!_fillRoutineRunning && isActiveAndEnabled && circleImage != null)
         {
             _fillRoutine = StartCoroutine(FillRoutine());
+            onTimerStarted?.Invoke();
         }
     }
 
     public void StopTimer()
     {
-        if (_fillRoutineRunning && _fillRoutine != null)
+        if (circleImage != null)
         {
-            StopCoroutine(_fillRoutine);
-            _fillRoutine = null;
+            circleImage.fillAmount = 0;
         }
 
         _fillRoutineRunning = false;
-        gameObject.transform.localScale = _startScale;
 
-        if (circleImage != null)
+        if (_fillRoutine != null)
         {
-            circleImage.fillAmount = 0f;
-            circleImage.color = Color.white;
+            StopCoroutine(_fillRoutine);
+            _fillRoutine = null;
+            onTimerStopped?.Invoke();
         }
     }
     #endregion Public Functions
@@ -136,13 +146,20 @@ public class SummonMenuWaitTimer : MonoBehaviour
     #region Private Functions
     private IEnumerator FillRoutine()
     {
+        var currentCircleImage = circleImage;
+        if (currentCircleImage == null)
+        {
+            yield break;
+        }
+
         _fillRoutineRunning = true;
+        currentCircleImage.color = Color.white;
 
         float time = 0f;
         while (time < waitTime)
         {
             time += Time.deltaTime;
-            circleImage.fillAmount = Mathf.Lerp(0f, 1f, fillCurve.Evaluate(time / waitTime));
+            currentCircleImage.fillAmount = Mathf.Lerp(0f, 1f, fillCurve.Evaluate(time / waitTime));
             yield return null;
         }
 
@@ -151,7 +168,7 @@ public class SummonMenuWaitTimer : MonoBehaviour
             yield return new WaitForSeconds(delayAfterFill);
         }
 
-        onTimerComplete.Invoke();
+        onTimerComplete?.Invoke();
 
         if (delayBeforeReset > 0f)
         {

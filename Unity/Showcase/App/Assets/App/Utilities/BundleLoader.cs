@@ -137,7 +137,7 @@ public static class BundleLoader
         try
         {
             await webRequest.SendWebRequest().AsTask();
-            failure = webRequest.isNetworkError || webRequest.isHttpError;
+            failure = webRequest.result != UnityWebRequest.Result.Success;
         }
         catch (Exception ex)
         {

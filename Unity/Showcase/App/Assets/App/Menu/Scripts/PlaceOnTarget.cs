@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
 using System.Collections;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// Used to position the game object's transform ontop of the target. The object's orientation is also changed to "Rotation Euler Default".
+/// Used to position the game object's transform on top of the target. The object's orientation is also changed to "Rotation Euler Default".
 /// </summary>
 public class PlaceOnTarget : MonoBehaviour
 {
@@ -39,6 +39,19 @@ public class PlaceOnTarget : MonoBehaviour
     {
         get => source;
         set => source = value;
+    }
+
+    [SerializeField]
+    [Tooltip("Use the main camera as the component's source, if the source value is null.")]
+    private bool sourceMainCamera = false;
+
+    /// <summary>
+    /// Use the main camera as the component's source, if the source value is null.
+    /// </summary>
+    public bool SourceMainCamera
+    {
+        get => sourceMainCamera;
+        set => sourceMainCamera = value;
     }
 
     [SerializeField]
@@ -96,6 +109,8 @@ public class PlaceOnTarget : MonoBehaviour
         set => scaleDefault = value;
     }
 
+    [Header("Initialization settings")]
+
     [SerializeField]
     [Tooltip("During the creation of this object, delay the initial placement of this object by the given amount of seconds. This is useful for things placed during app launch, if the object is being placed relative to the main camera.")]
     private float initialPlacementDelay = 0;
@@ -103,10 +118,23 @@ public class PlaceOnTarget : MonoBehaviour
     /// <summary>
     /// During the creation of this object, delay the initial placement of this object by the given amount of seconds. This is useful for things placed during app launch, if the object is being placed relative to the main camera.
     /// </summary>
-    public float IniitialPlacementDelay
+    public float InitialPlacementDelay
     {
         get => initialPlacementDelay;
         set => initialPlacementDelay = value;
+    }
+
+    [SerializeField]
+    [Tooltip("Should this place the target transform when this behavior is enabled.")]
+    private bool autoPlace = true;
+
+    /// <summary>
+    /// Should this place the target transform when this behavior is enabled.
+    /// </summary>
+    public bool AutoPlace
+    {
+        get => autoPlace;
+        set => autoPlace = value;
     }
 
     [Header("Events")]
@@ -127,8 +155,13 @@ public class PlaceOnTarget : MonoBehaviour
         if (_placementCoroutine != null)
         {
             StopCoroutine(_placementCoroutine);
+            _placementCoroutine = null; 
         }
-        _placementCoroutine = StartCoroutine(PlacementCoroutine());
+
+        if (autoPlace)
+        {
+            _placementCoroutine = StartCoroutine(PlacementCoroutine());
+        }
     }
     #endregion MonoBehavior Functions
 
@@ -138,7 +171,13 @@ public class PlaceOnTarget : MonoBehaviour
     /// </summary>
     public void Place()
     {
-        if (source == null)
+        var useSource = source;
+        if (useSource == null && sourceMainCamera)
+        {
+            useSource = CameraCache.Main.gameObject;
+        }
+
+        if (useSource == null)
         {
             return;
         }
@@ -148,10 +187,10 @@ public class PlaceOnTarget : MonoBehaviour
             target = this.gameObject;
         }
 
-        target.transform.position = source.transform.position
-            + (source.transform.forward * positionOffSet.z)
-            + (source.transform.up * positionOffSet.y)
-            + (source.transform.right * positionOffSet.x);
+        target.transform.position = useSource.transform.position
+            + (useSource.transform.forward * positionOffSet.z)
+            + (useSource.transform.up * positionOffSet.y)
+            + (useSource.transform.right * positionOffSet.x);
 
         target.transform.localScale = scaleDefault;
 
@@ -160,15 +199,15 @@ public class PlaceOnTarget : MonoBehaviour
             Vector3 sourceRotation = Vector3.zero;
             if ((rotatationType & RotateFlags.SourcePitch) == RotateFlags.SourcePitch)
             {
-                sourceRotation.x = source.transform.rotation.eulerAngles.x;
+                sourceRotation.x = useSource.transform.rotation.eulerAngles.x;
             }
             if ((rotatationType & RotateFlags.SourceYaw) == RotateFlags.SourceYaw)
             {
-                sourceRotation.y = source.transform.rotation.eulerAngles.y;
+                sourceRotation.y = useSource.transform.rotation.eulerAngles.y;
             }
             if ((rotatationType & RotateFlags.SourceRoll) == RotateFlags.SourceRoll)
             {
-                sourceRotation.z = source.transform.rotation.eulerAngles.z;
+                sourceRotation.z = useSource.transform.rotation.eulerAngles.z;
             }
 
             target.transform.rotation = Quaternion.Euler(sourceRotation) * Quaternion.Euler(rotationEulerDefault);

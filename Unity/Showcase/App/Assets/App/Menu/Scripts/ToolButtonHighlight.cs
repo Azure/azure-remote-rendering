@@ -2,13 +2,17 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit.Extensions;
+using Microsoft.MixedReality.Toolkit.UI;
 using UnityEngine;
 
 /// <summary>
 /// A tool's menu button within the application's tool menu.
 /// </summary>
+[RequireComponent(typeof(Interactable))]
 public class ToolButtonHighlight : MonoBehaviour
 {
+    private Interactable _interactable = null;
+
     #region Serialized Fields
     [SerializeField]
     [Tooltip("The 'pointer mode' of this tool button.")]
@@ -38,6 +42,16 @@ public class ToolButtonHighlight : MonoBehaviour
     #endregion Serialized Fields
 
     #region MonoBehavior Functions
+    private void Start()
+    {
+        _interactable = GetComponent<Interactable>();
+
+        if (_interactable != null)
+        {
+            _interactable.OnClick.AddListener(SetPointerMode);
+        }
+    }
+
     private void Update()
     {
         if (AppServices.PointerStateService.Mode == pointerMode)
@@ -55,5 +69,27 @@ public class ToolButtonHighlight : MonoBehaviour
             }
         }
     }
+
+    private void OnDestroy()
+    {
+        if (_interactable != null)
+        {
+            _interactable.OnClick.RemoveListener(SetPointerMode);
+        }
+    }
     #endregion MonoBehavior Functions
+
+    #region Private Functions
+    private void SetPointerMode()
+    {
+        if (AppServices.PointerStateService.Mode == pointerMode)
+        {
+            AppServices.PointerStateService.Mode = PointerMode.None;
+        }
+        else
+        {
+            AppServices.PointerStateService.Mode = pointerMode;
+        }
+    }
+    #endregion Private Functions
 }

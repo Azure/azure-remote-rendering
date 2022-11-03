@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -51,9 +50,43 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             var sharing = fileData.Sharing;
             if (sharing != null)
             {
+                if (sharing.ShouldSerializeProvider())
+                {
+                    result.Provider = sharing.Provider;
+                }
+
+                if (sharing.ShouldSerializeRoomNameFormat())
+                {
+                    result.RoomNameFormat = sharing.RoomNameFormat;
+                }
+
+                if (sharing.ShouldSerializePrivateRoomNameFormat())
+                {
+                    result.PrivateRoomNameFormat = sharing.PrivateRoomNameFormat;
+                }
+
+                if (sharing.ShouldSerializeVerboseLogging())
+                {
+                    result.VerboseLogging = sharing.VerboseLogging.Value;
+                }
+
                 if (sharing.ShouldSerializePhotonRealtimeId())
                 {
                     result.PhotonRealtimeId = sharing.PhotonRealtimeId;
+                }
+
+                if (sharing.ShouldSerializePhotonVoiceId())
+                {
+                    result.PhotonVoiceId = sharing.PhotonVoiceId;
+                }
+
+                if (sharing.ShouldSerializePhotonAvatarPrefabName())
+                {
+                    var prefabObject = Resources.Load(sharing.PhotonAvatarPrefabName) as GameObject;
+                    if (prefabObject != null)
+                    {
+                        result.PhotonAvatarPrefab = prefabObject;
+                    }
                 }
             }
 

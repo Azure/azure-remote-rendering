@@ -6,12 +6,11 @@ Param(
 
 . "$PSScriptRoot\ARRUtils.ps1" #include ARRUtils for Logging
 
-### Globals ###
-$success = $True
-
 ### Functions ###
-function NormalizePath([string] $path) {
-    if (-not [System.IO.Path]::IsPathRooted($path)) {
+function NormalizePath([string] $path)
+{
+    if (-not [System.IO.Path]::IsPathRooted($path))
+    {
         $wd = Get-Location
         $joined = Join-Path $wd $path
         $path = ([System.IO.Path]::GetFullPath($joined))
@@ -19,10 +18,23 @@ function NormalizePath([string] $path) {
     return $path
 }
 
-function GetPackageDownloadDetails([string] $registry, [string] $package, [string] $version = "latest") {
+$DownloadPackage = {
+    param(
+        [string] $root,
+        [string] $DownloadDestDir,
+        [string] $registry,
+        [string] $package,
+        [string] $version = "latest",
+        [switch] $verbose
+    )
+
+    . "$root\ARRUtils.ps1" #include ARRUtils for Logging
+
+    #region GetDetails
     $details = $null
     $uri = "$registry/$package"
-    try {
+    try 
+    {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $uri
         $json = $response | ConvertFrom-Json
 
@@ -36,60 +48,113 @@ function GetPackageDownloadDetails([string] $registry, [string] $package, [strin
         }
         $details = $json.versions.($version).dist
     }
-    catch {
+    catch
+    {
         WriteError "Web request to $uri failed."
         WriteError $_
+        throw
     }
-    return $details
-}
 
-$DownloadFile = {
-    param([string] $url, [string] $dest, [bool] $verbose)
+    if ($null -eq $details) 
+    {
+        WriteError "Failed to get details for $($package.name)@$($package.version) from $($package.registry)."
+        throw
+    }
+    
+    $packageUrl = $details.tarball
+    $fileName = [System.IO.Path]::GetFileName($packageUrl)
+    $downloadPath = Join-Path $DownloadDestDir $fileName
+    $downloadPath = [System.IO.Path]::GetFullPath($downloadPath)
+
+    $packageDetails = [PSCustomObject]@{
+        Name         = $package
+        Version      = $version
+        Registry     = $registry
+        Url          = $packageUrl
+        Sha1sum      = $details.shasum
+        DownloadPath = $downloadPath
+    }
+    #endregion
+
+    #region CheckLocalPackages
+    if ((Test-Path $packageDetails.DownloadPath -PathType Leaf))
+    {
+        $packageShasum = $packageDetails.Sha1sum.ToLower()
+        $localShasum = (Get-FileHash -Algorithm SHA1 $packageDetails.DownloadPath).Hash.ToLower()
+        if ($packageShasum -like $localShasum)
+        {
+            WriteInformation "$($packageDetails.DownloadPath) already exists. Skipping download."
+            return
+        }
+
+        WriteError "SHA1 hashes for $($packageDetails.Name)@$($packageDetails.Version) and $($packageDetails.DownloadPath) do not match."
+        WriteError "$packageShasum != $localShasum"
+        WriteError "Deleting file and re-downloading."
+        Remove-Item $packageDetails.DownloadPath -Force
+    }
+    #endregion
+
+    #region Download
+    WriteInformation "Downloading $($packageDetails.Name)@$($packageDetails.Version) from $($packageDetails.Url)."
     $retries = 1
-    while ($retries -le 3) {
-        try {
+    while ($retries -le 3)
+    {
+        try
+        {
             $responseStream = $null
             $destStream = $null
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            $uri = New-Object "System.Uri" "$url"
+            $uri = New-Object "System.Uri" "$($packageDetails.Url)"
             $request = [System.Net.HttpWebRequest]::Create($uri)
         
             $response = $request.GetResponse()
             $responseStream = $response.GetResponseStream()
             $contentLength = $response.get_ContentLength()
         
-            $destStream = New-Object -TypeName System.IO.FileStream -ArgumentList $dest, Create
+            $destStream = New-Object -TypeName System.IO.FileStream -ArgumentList $packageDetails.DownloadPath, Create
             $buf = new-object byte[] 16KB
         
-            $srcFileName = [System.IO.Path]::GetFileName($url)
+            $srcFileName = [System.IO.Path]::GetFileName($packageDetails.Url)
             
             $lastLogPercentage = 0
-            $readBytesTotal = $readBytes = $responseStream.Read($buf, 0, $buf.length)
-            while ($readBytes -gt 0) {
-                if ( $($sw.Elapsed.TotalMinutes) -gt 5) {
+
+            do
+            {
+                if ($($sw.Elapsed.TotalMinutes) -gt 5)
+                {
                     throw "Timeout"
                 }
+
                 $destStream.Write($buf, 0, $readBytes)
                 $readBytes = $responseStream.Read($buf, 0, $buf.length)
                 $readBytesTotal = $readBytesTotal + $readBytes
-                $percentComplete = (($readBytesTotal / $contentLength) * 100)
-                $status = "Downloaded {0:N2} MB of  {1:N2} MB (Attempt $retries)" -f ($readBytesTotal / 1MB), ($contentLength / 1MB)
-                Write-Progress -Activity "Downloading '$($srcFileName)'" -Status $status -PercentComplete $percentComplete
                 
-                if ($verbose -and ($percentComplete - $lastLogPercentage -gt 5)) {
+                $percentComplete = (($readBytesTotal / $contentLength) * 100)
+                if (($percentComplete - $lastLogPercentage) -gt 5)
+                {
                     $lastLogPercentage = $percentComplete
-                    Write-Host "DL (Attempt $retries) `"$($srcFileName)`" at $([math]::round($percentComplete,2))%"
+                    $status = "Downloaded {0:N2} MB of {1:N2} MB (Attempt $retries)" -f ($readBytesTotal / 1MB), ($contentLength / 1MB)
+                    Write-Progress -Activity "Downloading '$($srcFileName)'" -Status $status -PercentComplete $percentComplete
+
+                    if ($verbose)
+                    {
+                        Write-Host "DL (Attempt $retries) `"$($srcFileName)`" at $([math]::round($percentComplete,2))%"
+                    }
                 }
             }
+            while ($readBytes -gt 0)
+
             Write-Progress -Completed -Activity "Finished downloading '$($srcFileName)'"
             return
         }
-        catch {
-            Write-Host "Error downloading $url to $dest"
+        catch
+        {
+            Write-Host "Error downloading $($packageDetails.Url) to $($packageDetails.DownloadPath)"
             Write-Host "$_"
             $retries += 1
         }
-        finally {
+        finally
+        {
             if ($null -ne $destStream) {
                 $destStream.Flush()
                 $destStream.Close()
@@ -102,163 +167,117 @@ $DownloadFile = {
             }
         }
     }
-}
+    #endregion
 
-function WriteJobProgress {
-    param($job)
-    # Make sure the first child job exists
-    if ($null -ne $job.ChildJobs[0]) {
-        # Extracts the latest progress of the job and writes the progress
-        $jobProgressHistory = $job.ChildJobs[0].Progress;
-
-        if ($jobProgressHistory.count -gt 0) {
-            $latest = $jobProgressHistory | select-object -last 1
-            $latestActivity = $latest | Select-Object -expand Activity;
-            $latestStatus = $latest | Select-Object -expand StatusDescription;
-            $latestPercentComplete = $latest | Select-Object -expand PercentComplete;
-
-            if ($latest.RecordType -eq 'Completed') {
-                Write-Progress -ParentId 0 -Completed -Id $job.Id -Activity $latestActivity
-            }
-            else {
-                Write-Progress -ParentId 0 -Id $job.Id -Activity $latestActivity -Status $latestStatus -PercentComplete $latestPercentComplete;
-            }
+    #region Verify
+    $packageShasum = $packageDetails.Sha1sum.ToLower()
+    if (Test-Path $packageDetails.DownloadPath -PathType Leaf)
+    {
+        $localShasum = (Get-FileHash -Algorithm SHA1 $packageDetails.DownloadPath).Hash.ToLower()
+        if (-not ($packageShasum -like $localShasum))
+        {
+            WriteError "SHA1 hashes for $($packageDetails.Name)@$($packageDetails.Version) and $($packageDetails.DownloadPath) do not match."
+            WriteError "$packageShasum != $localShasum"
+            throw
         }
     }
+    else
+    {
+        WriteError "Download failed for $($packageDetails.Name)@$($packageDetails.Version). File not found: $($packageDetails.DownloadPath)."
+        throw
+    }
+    #endregion
 }
 
 ### Main script ###
 $DownloadDestDir = NormalizePath($DownloadDestDir)
 $DependenciesJson = NormalizePath($DependenciesJson)
 
-if (-not (Test-Path $DownloadDestDir -PathType Container)) {
+if (-not (Test-Path $DownloadDestDir -PathType Container))
+{
     New-Item -Path $DownloadDestDir -ItemType Directory | Out-Null
 }
 
-# supress progress bar for API requests
-$oldProgressPreference = $ProgressPreference
-$ProgressPreference = 'SilentlyContinue'
+$downloads = @()
+foreach ($package in ((Get-Content $DependenciesJson) | ConvertFrom-Json).packages)
+{
+    $download = Start-Job -ScriptBlock $DownloadPackage -ArgumentList $PSScriptRoot, $DownloadDestDir, $package.registry, $package.name, $package.version, $Verbose
 
-
-$packages = ((Get-Content $DependenciesJson) | ConvertFrom-Json).packages | ForEach-Object {
-    $package = $_
-
-    $details = GetPackageDownloadDetails $package.registry $package.name $package.version
-    if ($null -eq $details) {
-        WriteError "Failed to get details for $($package.name)@$($package.version) from $($package.registry)."
-        $success = $False
-        return
-    }
-    
-    $packageUrl = $details.tarball
-    $fileName = [System.IO.Path]::GetFileName($packageUrl)
-    $downloadPath = Join-Path $DownloadDestDir $fileName
-    $downloadPath = [System.IO.Path]::GetFullPath($downloadPath)
-
-    [PSCustomObject]@{
-        Name         = $package.name
-        Version      = $package.version
-        Registry     = $package.registry
-        Url          = $packageUrl
-        Sha1sum      = $details.shasum
-        DownloadPath = $downloadPath
+    $downloads += [PSCustomObject]@{
+        JobObject = $download
+        Completed = $false
     }
 }
 
-# restore progress preference
-$ProgressPreference = $oldProgressPreference
+$failed = $false
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-# Create jobs for missing or broken files
-$jobs = @()
-foreach ($package in $packages) {
-
-    if ((Test-Path $package.DownloadPath -PathType Leaf)) {
-        $packageShasum = $package.Sha1sum.ToLower()
-        $localShasum = (Get-FileHash -Algorithm SHA1 $package.DownloadPath).Hash.ToLower()
-        if ($packageShasum -like $localShasum) {
-            WriteInformation "$($package.DownloadPath) already exists. Skipping download."
+while (-not $failed -and $completedJobCount -lt $downloads.Count)
+{
+    $completedJobCount = 0
+    foreach ($download in $downloads)
+    {
+        if ($download.Completed)
+        {
+            $completedJobCount++
             continue
         }
 
-        WriteError "SHA1 hashes for $($package.Name)@$($package.Version) and $($package.DownloadPath) do not match."
-        WriteError "$packageShasum != $localShasum"
-        WriteError "Deleting file and re-downloading."
-        Remove-Item $package.DownloadPath -Force
-    }
+        if ($download.JobObject.State -eq "Completed")
+        {
+            $download.Completed = $true
+            $download.JobObject.ChildJobs[0].Output | Write-Host
+            $download.JobObject.ChildJobs[0].Information | Write-Host
 
-    WriteInformation "Downloading $($package.Name)@$($package.Version) from $($package.Url)."
-    $jobs += Start-Job -ScriptBlock $DownloadFile -ArgumentList @($package.Url, $package.DownloadPath, $Verbose) -Name $($package.Name)
-    $progressId++
-}
+            if ($download.JobObject.ChildJobs[0].Error.Count -ne 0)
+            {
+                $failed = $true
+                $download.JobObject.ChildJobs[0].Error | Write-Error
+                break
+            }
+        }
 
-# Start jobs
-if ($jobs.Count -gt 0) {
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    do {
-        Start-Sleep -milliseconds 250
-    
-        $jobsProgress = $jobs | Select-Object Id, State, @{ N = 'RecordType'; E = { $_.ChildJobs[0].Progress | Select-Object -Last 1 -Exp RecordType } }
-        $running = @( $jobsProgress | Where-Object { $_.State -eq 'Running' -or $_.RecordType -ne 'Completed' } )
-        $completedCount = ($jobs.Count - $running.Count)
-    
-        $complete = (($completedCount / $jobs.Count) * 100)
-        $status = "$($completedCount) / $($jobs.Count) Completed"
-        Write-Progress -Id 0 -Activity "Downloading Packages" -Status $status -PercentComplete $complete
-
-        if ($Verbose -and $($sw.Elapsed.TotalSeconds) -gt 30) {
-            Write-Host "Periodic job status:"
-            $jobs | Format-Table -AutoSize
-            $jobs | Receive-Job
-            $sw.Restart()
-        } 
-
-        $jobs | ForEach-Object { WriteJobProgress($_) }
-    }
-    while ( $completedCount -lt $jobs.Count )
-    $jobs | Receive-Job
-    Write-Progress -Completed -Id 0 -Activity "Downloading Packages"
-    
-    foreach ($job in $jobs) {
-        #Propagate messages and errors
-        if ($null -ne $job.ChildJobs[0]) {
-            $Job.ChildJobs[0].Information | Foreach-Object { WriteInformation $_ }
-            $Job.ChildJobs[0].Error | Foreach-Object { WriteError $_ }
+        $latestProgress = $download.JobObject.ChildJobs[0].Progress[-1]
+        if ($null -ne $latestProgress -and $null -ne $latestProgress.Activity)
+        {
+            if ($latestProgress.RecordType -eq "Completed")
+            {
+                Write-Progress -ParentId 0 -Completed -Id $download.JobObject.Id -Activity $latestProgress
+            }
+            else
+            {
+                Write-Progress -ParentId 0 -Id $download.JobObject.Id -Activity $latestProgress.Activity -Status $latestProgress.StatusDescription -PercentComplete $latestProgress.PercentComplete
+            }
         }
     }
 
-    $jobs | Remove-Job
+    $status = "$completedJobCount of $($downloads.Count) Downloads completed"
+    Write-Progress -Id 0 -Activity "Downloading Packages" -Status $status -PercentComplete (($completedJobCount / $downloads.Count) * 100)
+
+    if ($Verbose -and $($sw.Elapsed.TotalSeconds) -gt 30)
+    {
+        Write-Host "Periodic job status:"
+        $downloads.JobObject | Format-Table -AutoSize
+        $downloads.JobObject | Receive-Job
+        $sw.Restart()
+    } 
 }
 
-# Verify download integrity
-foreach ($package in $packages) {        
-    $packageShasum = $package.Sha1sum.ToLower()
-    if (Test-Path $package.DownloadPath -PathType Leaf) {
-        $localShasum = (Get-FileHash -Algorithm SHA1 $package.DownloadPath).Hash.ToLower()
-        if (-not ($packageShasum -like $localShasum)) {
-            WriteError "SHA1 hashes for $($package.Name)@$($package.Version) and $($package.DownloadPath) do not match."
-            WriteError "$packageShasum != $localShasum"
-            $success = $False
-        }
-    }
-    else {
-        WriteError "Download failed for $($package.Name)@$($package.Version). File not found: $($package.DownloadPath)."
-        $success = $False
-    }
-}
-
-if ($success) {
+if (-not $failed)
+{
     WriteSuccess "Downloading dependency packages succeeded."
 }
-else {
+else
+{
     WriteError "Downloading dependency packages failed."
     exit 1
 }
 
 # SIG # Begin signature block
-# MIIrWwYJKoZIhvcNAQcCoIIrTDCCK0gCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIrWgYJKoZIhvcNAQcCoIIrSzCCK0cCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBmJjInk+EC+y1D
-# 6SiqSDioNAuEjjHCTuF7ZI+Y2dLErqCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCD6AHIScEBzrmXg
+# OHUSI5WlHV0HFBphzBzmtNcb4ahb2aCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
 # MGZD2x+CAAIAAAGpMA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMjA2MTAxODI3MDRaFw0yMzA2MTAxODI3MDRaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -351,140 +370,140 @@ else {
 # 4Nb3EfXSCtpnNKY+OKXOlF9F27bT/1RCYLt5U9niPVY1rWio8d/MRPcKEjMnpD0b
 # c08IH7srBfQ5CYrK/sgOKaPxT8aWwcPXP4QX99gx/xhcbXktqZo4CiGzD/LA7pJh
 # Kt5Vb7ljSbMm62cEL0Kb2jOPX7/iSqSyuWFmBH8JLGEUfcFPB4fyA/YUQhJG1KEN
-# lu5jKbKdjW6f5HJ+Ir36JVMt0PWH9LHLEOlky2KZvgKAlCUxghk4MIIZNAIBATBY
+# lu5jKbKdjW6f5HJ+Ir36JVMt0PWH9LHLEOlky2KZvgKAlCUxghk3MIIZMwIBATBY
 # MEExEzARBgoJkiaJk/IsZAEZFgNHQkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTAT
 # BgNVBAMTDEFNRSBDUyBDQSAwMQITNgAAAanWkDBmQ9sfggACAAABqTANBglghkgB
 # ZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3
-# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgHx8cZVQVbj1U7K3e
-# emSzPOQmmZwe+0kZbDTJgbDHWMswQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
+# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgadGTfydr6Hhgdfrx
+# uDLEdqkV3peZgcE/Sv18LaUB8MkwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
 # AHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTANBgkqhkiG
-# 9w0BAQEFAASCAQBQGW0fH/kLDf9UtarXK3HIUpDd5pGBZOnHNox6ooEjiHFrHk7r
-# qE6jSF0leF6R6XobSTX9n+t02AH6COQSwKUQa62TNpB6HfTr5H1RfIgaaBBIPPpC
-# j/OiDWNj8k0N9aNpRrNoj2hXUB4x/wmPa6CvmACqCHRHxX9mt3WMAYGlfqwsDZBB
-# PwyNYWlBHdK0y0l1EAQRWwcTOaFopdree4O0oO9We4TvTAyEBkzHP577wtUM8mSO
-# 3R3I3J+hj38XtzRA9ovrduvUSfzWzUtfkGDT1xi3kGsQDoQS4mWPg5Xg+qxY/22X
-# LRza2Y9GKnsPIS8KzCUdtbWumI8uo1Hbd+wGoYIXADCCFvwGCisGAQQBgjcDAwEx
-# ghbsMIIW6AYJKoZIhvcNAQcCoIIW2TCCFtUCAQMxDzANBglghkgBZQMEAgEFADCC
-# AVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMBMDEwDQYJ
-# YIZIAWUDBAIBBQAEIHSjqO8pJbS6UcOV8MMSgk+AgUcAn57jfG6hIdehS1FwAgZj
-# SEpQceMYEzIwMjIxMDI2MTc0OTI0LjIwMVowBIACAfSggdCkgc0wgcoxCzAJBgNV
-# BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
-# HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29m
-# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjQ5
-# QkMtRTM3QS0yMzNDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
-# aWNloIIRVzCCBwwwggT0oAMCAQICEzMAAAGXA89ZnGuJeD8AAQAAAZcwDQYJKoZI
-# hvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAO
-# BgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEm
-# MCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcNMjExMjAy
-# MTkwNTE0WhcNMjMwMjI4MTkwNTE0WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
-# Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
-# dCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0
-# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046NDlCQy1FMzdBLTIzM0MxJTAj
-# BgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggIiMA0GCSqGSIb3
-# DQEBAQUAA4ICDwAwggIKAoICAQDtAErqSkFN8/Ce/csrHVWcv1iSjNTArPKEMqKP
-# UTpYJX8TBZl88LNrpw4bEpPimO+Etcli5RBoZEieo+SzYUnb0+nKEWaEYgubgp+H
-# TFZiD85Lld7mk2Xg91KMDE2yMeOIH2DHpTsn5p0Lf0CDlfPE5HOwpP5/vsUxNeDW
-# MW6zsSuKU69aL7Ocyk36VMyCKjHNML67VmZMJBO7bX1vYVShOvQqZUkxCpCR3szm
-# xHT09s6nhwLeNCz7nMnU7PEiNGVxSYu+V0ETppFpK7THcGYAMa3SYZjQxGyDOc7J
-# 20kEud6tz5ArSRzG47qscDfPYqv1+akex81w395E+1kc4uukfn0CeKtADum7PqRr
-# bRMD7wyFnX2FvyaytGj0uaKuMXFJsZ+wfdk0RsuPeWHtVz4MRCEwfYr1c+JTkmS3
-# n/pvHr/b853do28LoPHezk3dSxbniQojW3BTYJLmrUei/n4BHK5mTT8NuxG6zoP3
-# t8HVmhCW//i2sFwxVHPsyQ6sdrxs/hapsPR5sti2ITG/Hge4SeH7Sne942OHeA/T
-# 7sOSJXAhhx9VyUiEUUax+dKIV7Gu67rjq5SVr5VNS4bduOpLsWEjeGHpMei//3xd
-# 8dxZ42G/EDkr5+L7UFxIuBAq+r8diP/D8yR/du7vc4RGKw1ppxpo4JH9MnYfd+zU
-# DuUgcQIDAQABo4IBNjCCATIwHQYDVR0OBBYEFG3PAc8o6zBullUL0bG+3X69FQBg
-# MB8GA1UdIwQYMBaAFJ+nFV0AXmJdg/Tl0mWnG1M1GelyMF8GA1UdHwRYMFYwVKBS
-# oFCGTmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29m
-# dCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAyMDEwKDEpLmNybDBsBggrBgEFBQcBAQRg
-# MF4wXAYIKwYBBQUHMAKGUGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMv
-# Y2VydHMvTWljcm9zb2Z0JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3J0
-# MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQEL
-# BQADggIBAARI2GHSJO0zHnshct+Hgu4dsPU0b0yUsDXBhAdAGdH1T+uDeq3c3Hp7
-# v5C4QowSEqp0t/eDlFHhH+hkvm8QlVZR8hIf+hJZ3OqtKGpyZPg7HNzYIGzRS2fK
-# ilUObhbYK6ajeq7KRg+kGgZ16Ku8N13XncDCwmQgyCb/yzEkpsgF5Pza2etSeA2Y
-# 2jy7uXW4TSGwwCrVuK9Drd9Aiev5Wpgm9hPRb/Q9bukDeqHihw2OJfpnx32SPHwv
-# u4E8j8ezGJ8KP/yYVG+lUFg7Ko/tjl2LlkCeNMNIcxk1QU8e36eEVdRweNc9FEcI
-# yqomDgPrdfpvRXRHztD3eKnAYhcEzM4xA0i0k5F6Qe0eUuLduDouemOzRoKjn9GU
-# cKM2RIOD7FXuph5rfsv84pM2OqYfek0BrcG8/+sNCIYRi+ABtUcQhDPtYxZJixZ5
-# Q8VkjfqYKOBRjpXnfwKRC0PAzwEOIBzL6q47x6nKSI/QffbKrAOHznYF5abV60X4
-# +TD+3xc7dD52IW7saCKqN16aPhV+lGyba1M30ecB7CutvRfBjxATa2nSFF03ZvRS
-# JLEyYHiE3IopdVoMs4UJ2Iuex+kPSuM4fyNsQJk5tpZYuf14S8Ov5A1A+9Livjsv
-# 0BrwuvUevjtXAnkTaAISe9jAhEPOkmExGLQqKNg3jfJPpdIZHg32MIIHcTCCBVmg
-# AwIBAgITMwAAABXF52ueAptJmQAAAAAAFTANBgkqhkiG9w0BAQsFADCBiDELMAkG
-# A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
-# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWljcm9z
-# b2Z0IFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IDIwMTAwHhcNMjEwOTMwMTgy
-# MjI1WhcNMzAwOTMwMTgzMjI1WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
-# aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
-# cnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAx
-# MDCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAOThpkzntHIhC3miy9ck
-# eb0O1YLT/e6cBwfSqWxOdcjKNVf2AX9sSuDivbk+F2Az/1xPx2b3lVNxWuJ+Slr+
-# uDZnhUYjDLWNE893MsAQGOhgfWpSg0S3po5GawcU88V29YZQ3MFEyHFcUTE3oAo4
-# bo3t1w/YJlN8OWECesSq/XJprx2rrPY2vjUmZNqYO7oaezOtgFt+jBAcnVL+tuhi
-# JdxqD89d9P6OU8/W7IVWTe/dvI2k45GPsjksUZzpcGkNyjYtcI4xyDUoveO0hyTD
-# 4MmPfrVUj9z6BVWYbWg7mka97aSueik3rMvrg0XnRm7KMtXAhjBcTyziYrLNueKN
-# iOSWrAFKu75xqRdbZ2De+JKRHh09/SDPc31BmkZ1zcRfNN0Sidb9pSB9fvzZnkXf
-# tnIv231fgLrbqn427DZM9ituqBJR6L8FA6PRc6ZNN3SUHDSCD/AQ8rdHGO2n6Jl8
-# P0zbr17C89XYcz1DTsEzOUyOArxCaC4Q6oRRRuLRvWoYWmEBc8pnol7XKHYC4jMY
-# ctenIPDC+hIK12NvDMk2ZItboKaDIV1fMHSRlJTYuVD5C4lh8zYGNRiER9vcG9H9
-# stQcxWv2XFJRXRLbJbqvUAV6bMURHXLvjflSxIUXk8A8FdsaN8cIFRg/eKtFtvUe
-# h17aj54WcmnGrnu3tz5q4i6tAgMBAAGjggHdMIIB2TASBgkrBgEEAYI3FQEEBQID
-# AQABMCMGCSsGAQQBgjcVAgQWBBQqp1L+ZMSavoKRPEY1Kc8Q/y8E7jAdBgNVHQ4E
-# FgQUn6cVXQBeYl2D9OXSZacbUzUZ6XIwXAYDVR0gBFUwUzBRBgwrBgEEAYI3TIN9
-# AQEwQTA/BggrBgEFBQcCARYzaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9w
-# cy9Eb2NzL1JlcG9zaXRvcnkuaHRtMBMGA1UdJQQMMAoGCCsGAQUFBwMIMBkGCSsG
-# AQQBgjcUAgQMHgoAUwB1AGIAQwBBMAsGA1UdDwQEAwIBhjAPBgNVHRMBAf8EBTAD
-# AQH/MB8GA1UdIwQYMBaAFNX2VsuP6KJcYmjRPZSQW9fOmhjEMFYGA1UdHwRPME0w
-# S6BJoEeGRWh0dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kvY3JsL3Byb2R1Y3Rz
-# L01pY1Jvb0NlckF1dF8yMDEwLTA2LTIzLmNybDBaBggrBgEFBQcBAQROMEwwSgYI
-# KwYBBQUHMAKGPmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kvY2VydHMvTWlj
-# Um9vQ2VyQXV0XzIwMTAtMDYtMjMuY3J0MA0GCSqGSIb3DQEBCwUAA4ICAQCdVX38
-# Kq3hLB9nATEkW+Geckv8qW/qXBS2Pk5HZHixBpOXPTEztTnXwnE2P9pkbHzQdTlt
-# uw8x5MKP+2zRoZQYIu7pZmc6U03dmLq2HnjYNi6cqYJWAAOwBb6J6Gngugnue99q
-# b74py27YP0h1AdkY3m2CDPVtI1TkeFN1JFe53Z/zjj3G82jfZfakVqr3lbYoVSfQ
-# JL1AoL8ZthISEV09J+BAljis9/kpicO8F7BUhUKz/AyeixmJ5/ALaoHCgRlCGVJ1
-# ijbCHcNhcy4sa3tuPywJeBTpkbKpW99Jo3QMvOyRgNI95ko+ZjtPu4b6MhrZlvSP
-# 9pEB9s7GdP32THJvEKt1MMU0sHrYUP4KWN1APMdUbZ1jdEgssU5HLcEUBHG/ZPkk
-# vnNtyo4JvbMBV0lUZNlz138eW0QBjloZkWsNn6Qo3GcZKCS6OEuabvshVGtqRRFH
-# qfG3rsjoiV5PndLQTHa1V1QJsWkBRH58oWFsc/4Ku+xBZj1p/cvBQUl+fpO+y/g7
-# 5LcVv7TOPqUxUYS8vwLBgqJ7Fx0ViY1w/ue10CgaiQuPNtq6TPmb/wrpNPgkNWcr
-# 4A245oyZ1uEi6vAnQj0llOZ0dFtq0Z4+7X6gMTN9vMvpe784cETRkPHIqzqKOghi
-# f9lwY1NNje6CbaUFEMFxBmoQtB1VM1izoXBm8qGCAs4wggI3AgEBMIH4oYHQpIHN
-# MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
-# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
-# ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjo0OUJDLUUzN0EtMjMzQzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAYUDSsI2YSTTNTXYNg0YxTcHW
-# Y9GggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
-# MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
-# MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
-# 9w0BAQUFAAIFAOcD66AwIhgPMjAyMjEwMjcwMTIzNDRaGA8yMDIyMTAyODAxMjM0
-# NFowdzA9BgorBgEEAYRZCgQBMS8wLTAKAgUA5wProAIBADAKAgEAAgIJmAIB/zAH
-# AgEAAgISjjAKAgUA5wU9IAIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZ
-# CgMCoAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAGG3
-# trf5N4UwOhSFGuaffYV9cowJct9CdlUPqUhpcifA+kWN0WuHaGqpENkrcM1lJRT3
-# U17WEpfRh2hYxxxVW0AJuMl/6hr1AQFXy167yaGDGPxsuYvQgXbcYhxzi5CpvWVx
-# D7yXQ3hgEnbY0G4VoCT7iUt9/u4Cu8J6SjpxeMnCMYIEDTCCBAkCAQEwgZMwfDEL
-# MAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1v
-# bmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWlj
-# cm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAGXA89ZnGuJeD8AAQAAAZcw
-# DQYJYIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAv
-# BgkqhkiG9w0BCQQxIgQg/0fXshRvCyX4XUo0zDlmvB1P3w88DJRz7vxwDyf51MIw
-# gfoGCyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCBbe9obEJV6OP4EDMVJ8zF8dD5v
-# HGSoLDwuQxj9BnimvzCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpX
-# YXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQg
-# Q29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAy
-# MDEwAhMzAAABlwPPWZxriXg/AAEAAAGXMCIEIPFaagACuFroYrd1btmoNE7hR5Ws
-# aQ6zn5otj5XgVfIKMA0GCSqGSIb3DQEBCwUABIICAEpX1AGsSDAB/8nrNSo81XHR
-# iMaMQUKtPiejRUumN0tjo4g1NE9LZb7OErt8ey22jYL/3KWdMbVC/njrsceybpkM
-# R+DVWHZHNM6s2QphVHZbwlS7VqEpvvVUglQKh0IHunuEhsVQgWB0HKXzimWAID4b
-# JS3KwPcxMPdZIKd9SCgejk8qG/mlhpLVKC9999RGlge6HpVJdvTjW9ZjsUPoWmEA
-# t/T+qTCYRgQnnSU8ggb2C5WNURU1u+cqXcdvxRi9pqTzfwe9G56vrMcTXN/lFnkB
-# 7AvLKQjS4iFKOc0EO5jm6+iPuDqy4Tk0utsclIHEzKyzmxAjq3qktDkDK8cRCAG8
-# ncLhil4p6M/ExRLi3Ge3YaSSt+zn+dC+dh19BOb7lLpK9l0FxMMIg8vRec0fR8PV
-# /iNkHPa35wuWuenyClMazVRCaHmL/pHpFHcxE+41KHhxfW6CI+AKeP3bBAAagYa+
-# VLYSNAcZ7AOfsxoATUyeCLTfvacYSg2/wCi4SLpvMouqxBx4Amr3VtCnQ4fPWImt
-# 4g25gn31+WvSQNwcXB76MJzTaQ81fyVq+uPV6d81cIBUXzJxj+tE28StIgbFTtX0
-# Y/ceHWsGbU4cFv96deZq1MQ9Hl7E/jIexT+/bRODmzCo4d11hcL1divfjXex3mic
-# RYN840UuU6hkwnIQZoD+
+# 9w0BAQEFAASCAQAMjmw40C5Q5tTv0Ybbnjrru2SHXYCF6253/d0ClrBGAX0e/YoI
+# E6OpqMUTORSqgBHV4mzEOaVhwyJZ4EIhrQNdJrNbuF8t0wuBi1F0/Ck4ra7UsYj5
+# rLpWSc2nu4XEhsb4XDK0GDip5hoTRRJDfc/zV60G4YyqSLCUYO4EjJ3OkUV6a4VS
+# dUneWPp3xpLDmkd7RKGyHE5n/bc93/vpnqmI+Kv4AIUugulYkWxx68eWO82+QEbU
+# bnrbDzokeOTw1DQcNKewQXOlwobQlCTIxiTwIJM3Z7YhHR714XZAa+y+HY7sJ+S5
+# 1cMrYSRWGhiHkb1QxOjmN9mnnQBUXo0jLpzNoYIW/zCCFvsGCisGAQQBgjcDAwEx
+# ghbrMIIW5wYJKoZIhvcNAQcCoIIW2DCCFtQCAQMxDzANBglghkgBZQMEAgEFADCC
+# AVAGCyqGSIb3DQEJEAEEoIIBPwSCATswggE3AgEBBgorBgEEAYRZCgMBMDEwDQYJ
+# YIZIAWUDBAIBBQAEIK7SvHFnMZ9syrTcepE2s1o6xsCPMjb9bFuCWRT+hNffAgZj
+# Yqx20wgYEjIwMjIxMTAzMTA1MDIzLjQ0WjAEgAIB9KCB0KSBzTCByjELMAkGA1UE
+# BhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAc
+# BgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0
+# IEFtZXJpY2EgT3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046RTVB
+# Ni1FMjdDLTU5MkUxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZp
+# Y2WgghFXMIIHDDCCBPSgAwIBAgITMwAAAZW3/A3W4zcxJQABAAABlTANBgkqhkiG
+# 9w0BAQsFADB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4G
+# A1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYw
+# JAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDAeFw0yMTEyMDIx
+# OTA1MTJaFw0yMzAyMjgxOTA1MTJaMIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
+# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
+# IENvcnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRp
+# b25zMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjpFNUE2LUUyN0MtNTkyRTElMCMG
+# A1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZTCCAiIwDQYJKoZIhvcN
+# AQEBBQADggIPADCCAgoCggIBAJ9tQQxntks7P1qhEJ4kviGFP1DwlkHbFpWUw0K3
+# dvCFxMjkYs+u3Z73cMCyaWo7PDVwWI8+DpLmwsJfPstttRCkuFrxLi/apxwy1OiQ
+# RoNBL5AkSucCyXpVKZG8DLSeWP4L89pm4tvc7NjQBHDtR4JkunJY88f6Tkx1iPo1
+# QNM2hepvNAcK4+z5+AiiujnLcMeg7TvuDoivZMcjHXJ9UUS3nMNwU85gyDjIGLgD
+# pdzeGb21nrDzj2cG9UrCblgAt8ffL9/efguc3rVvXDMDHdkJmN/XdQpukTunoNgm
+# sdEH/6nAWMb31PAcfq5fMN5lPr+vqofsAAHCfx+lhzVOaV4VjxhG5XPOOn1WQ8dX
+# xXO/MsvtAraS155csv9jiW+MvqHPI6YT7UtUPeURtiGjXMK34XttT4WmPIF9MLiL
+# /Aeym1vbXxiVuRC3WLUHqWWYnBUXAItfuDFDjxAgZRpwzLySnX7NzNj5LGWloSA2
+# ZCR9zWto+H3Lmwxrpfjz7HQrsHw6oOhdxOIQIiMl63HC24GVCx4nTkdF+Kx+AWbT
+# 2Qbu90cSjc1tS4wwEWKRzhug31R+bSJSGr8m2pXQrCu/0K/drIOB03ARaIvZrrki
+# cRZKlFNh+wJDTd6oSHkDevBX8p9QVyK34Os/71VwOmNZGwKiRm/i2CfmoBc0y0dr
+# w2KpAgMBAAGjggE2MIIBMjAdBgNVHQ4EFgQUq5fTYgIUV1eCtwIGYMl8fm/8qRcw
+# HwYDVR0jBBgwFoAUn6cVXQBeYl2D9OXSZacbUzUZ6XIwXwYDVR0fBFgwVjBUoFKg
+# UIZOaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9jcmwvTWljcm9zb2Z0
+# JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3JsMGwGCCsGAQUFBwEBBGAw
+# XjBcBggrBgEFBQcwAoZQaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9j
+# ZXJ0cy9NaWNyb3NvZnQlMjBUaW1lLVN0YW1wJTIwUENBJTIwMjAxMCgxKS5jcnQw
+# DAYDVR0TAQH/BAIwADATBgNVHSUEDDAKBggrBgEFBQcDCDANBgkqhkiG9w0BAQsF
+# AAOCAgEA4LM23h8n6M69C6rQi2ffshmtg0EazACL4gAUzdgYr/AZCUSdyCOY0G5p
+# z3lbZ8AvrG0VV8x+R6pIswuqiJ1WxT0GbgMQGNpY05P25f+1xiIlJ8VAzSsNuuXx
+# XiczzxFkXnob+olb2Dl0io5KiKbMpS39DtYfpUHJbSxqvnAa+Ci8reoVp3ApKHNF
+# hwSpOQcfbOKnl7veN7M8fHb61piokbnEnN0MStnWcyLFGNoezcqlyyZli7GwhF8F
+# g4m8AUbKZMZG/k+7Cw2mz0RyHUBqyrzgf9j/zE3cZCPg/cyIOfyLNQEMK5ch8diT
+# f1uqdoCYVtSIJvL5Zam7N2TigMrP+xbCueyhDva4QZUQ3v6TLD34dKjmLyXxmDVi
+# aP21SAOlVQaMB26gvIdDteqScqZL2QlIEqTiiQQODQh3ot4otDAfV7hpV5PJRjBw
+# FffCDukslBa9HudrZIau2X/bdgZBO52ZY6vKHH2WdTsoEZX9o2/PS1Olyy5ywr5x
+# kUoMSRYH+hQVWu3K6fo0Pmlhk2PQKBG6nmCtUAKr8CBv4Q4YsIP7MS0Y2ini18q+
+# xhvrjbns0n1esweCkKJvvpZPfhE+YIEHLEtSQfEernMLJg27QgVcC3UBWJzDXgz5
+# zMtghUzs07JWkV1wHUH0yImKTul5KKLRdNF2Xn9X8qxxNoIEXPcwggdxMIIFWaAD
+# AgECAhMzAAAAFcXna54Cm0mZAAAAAAAVMA0GCSqGSIb3DQEBCwUAMIGIMQswCQYD
+# VQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEe
+# MBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQDEylNaWNyb3Nv
+# ZnQgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAxMDAeFw0yMTA5MzAxODIy
+# MjVaFw0zMDA5MzAxODMyMjVaMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
+# cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
+# MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA5OGmTOe0ciELeaLL1yR5
+# vQ7VgtP97pwHB9KpbE51yMo1V/YBf2xK4OK9uT4XYDP/XE/HZveVU3Fa4n5KWv64
+# NmeFRiMMtY0Tz3cywBAY6GB9alKDRLemjkZrBxTzxXb1hlDcwUTIcVxRMTegCjhu
+# je3XD9gmU3w5YQJ6xKr9cmmvHaus9ja+NSZk2pg7uhp7M62AW36MEBydUv626GIl
+# 3GoPz130/o5Tz9bshVZN7928jaTjkY+yOSxRnOlwaQ3KNi1wjjHINSi947SHJMPg
+# yY9+tVSP3PoFVZhtaDuaRr3tpK56KTesy+uDRedGbsoy1cCGMFxPLOJiss254o2I
+# 5JasAUq7vnGpF1tnYN74kpEeHT39IM9zfUGaRnXNxF803RKJ1v2lIH1+/NmeRd+2
+# ci/bfV+AutuqfjbsNkz2K26oElHovwUDo9Fzpk03dJQcNIIP8BDyt0cY7afomXw/
+# TNuvXsLz1dhzPUNOwTM5TI4CvEJoLhDqhFFG4tG9ahhaYQFzymeiXtcodgLiMxhy
+# 16cg8ML6EgrXY28MyTZki1ugpoMhXV8wdJGUlNi5UPkLiWHzNgY1GIRH29wb0f2y
+# 1BzFa/ZcUlFdEtsluq9QBXpsxREdcu+N+VLEhReTwDwV2xo3xwgVGD94q0W29R6H
+# XtqPnhZyacaue7e3PmriLq0CAwEAAaOCAd0wggHZMBIGCSsGAQQBgjcVAQQFAgMB
+# AAEwIwYJKwYBBAGCNxUCBBYEFCqnUv5kxJq+gpE8RjUpzxD/LwTuMB0GA1UdDgQW
+# BBSfpxVdAF5iXYP05dJlpxtTNRnpcjBcBgNVHSAEVTBTMFEGDCsGAQQBgjdMg30B
+# ATBBMD8GCCsGAQUFBwIBFjNodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3Bz
+# L0RvY3MvUmVwb3NpdG9yeS5odG0wEwYDVR0lBAwwCgYIKwYBBQUHAwgwGQYJKwYB
+# BAGCNxQCBAweCgBTAHUAYgBDAEEwCwYDVR0PBAQDAgGGMA8GA1UdEwEB/wQFMAMB
+# Af8wHwYDVR0jBBgwFoAU1fZWy4/oolxiaNE9lJBb186aGMQwVgYDVR0fBE8wTTBL
+# oEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMv
+# TWljUm9vQ2VyQXV0XzIwMTAtMDYtMjMuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggr
+# BgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNS
+# b29DZXJBdXRfMjAxMC0wNi0yMy5jcnQwDQYJKoZIhvcNAQELBQADggIBAJ1Vffwq
+# reEsH2cBMSRb4Z5yS/ypb+pcFLY+TkdkeLEGk5c9MTO1OdfCcTY/2mRsfNB1OW27
+# DzHkwo/7bNGhlBgi7ulmZzpTTd2YurYeeNg2LpypglYAA7AFvonoaeC6Ce5732pv
+# vinLbtg/SHUB2RjebYIM9W0jVOR4U3UkV7ndn/OOPcbzaN9l9qRWqveVtihVJ9Ak
+# vUCgvxm2EhIRXT0n4ECWOKz3+SmJw7wXsFSFQrP8DJ6LGYnn8AtqgcKBGUIZUnWK
+# NsIdw2FzLixre24/LAl4FOmRsqlb30mjdAy87JGA0j3mSj5mO0+7hvoyGtmW9I/2
+# kQH2zsZ0/fZMcm8Qq3UwxTSwethQ/gpY3UA8x1RtnWN0SCyxTkctwRQEcb9k+SS+
+# c23Kjgm9swFXSVRk2XPXfx5bRAGOWhmRaw2fpCjcZxkoJLo4S5pu+yFUa2pFEUep
+# 8beuyOiJXk+d0tBMdrVXVAmxaQFEfnyhYWxz/gq77EFmPWn9y8FBSX5+k77L+Dvk
+# txW/tM4+pTFRhLy/AsGConsXHRWJjXD+57XQKBqJC4822rpM+Zv/Cuk0+CQ1Zyvg
+# DbjmjJnW4SLq8CdCPSWU5nR0W2rRnj7tfqAxM328y+l7vzhwRNGQ8cirOoo6CGJ/
+# 2XBjU02N7oJtpQUQwXEGahC0HVUzWLOhcGbyoYICzjCCAjcCAQEwgfihgdCkgc0w
+# gcoxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
+# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsT
+# HE1pY3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBU
+# U1MgRVNOOkU1QTYtRTI3Qy01OTJFMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1T
+# dGFtcCBTZXJ2aWNloiMKAQEwBwYFKw4DAhoDFQDRj4LIt7MaBUdYU2YojUu4T+Fj
+# q6CBgzCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAw
+# DgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
+# JjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwMA0GCSqGSIb3
+# DQEBBQUAAgUA5w3TrTAiGA8yMDIyMTEwMzEzNDQxM1oYDzIwMjIxMTA0MTM0NDEz
+# WjB3MD0GCisGAQQBhFkKBAExLzAtMAoCBQDnDdOtAgEAMAoCAQACAhViAgH/MAcC
+# AQACAhO7MAoCBQDnDyUtAgEAMDYGCisGAQQBhFkKBAIxKDAmMAwGCisGAQQBhFkK
+# AwKgCjAIAgEAAgMHoSChCjAIAgEAAgMBhqAwDQYJKoZIhvcNAQEFBQADgYEAfItQ
+# 6cmZRiRJBlT3q++gkWxdCkf+GvUtb8h24pQ1BscmmzmJiPB1DbtOQ8xdFaqWNLzY
+# pcEhd6T1mhCGI90UJFcECcjjQipco+HgkmRA24/LRYfrIea1ewJIShSDlCshpgmu
+# tT4/wiOJA5GniizI+KYlCYPNP9S/43y7etUs94wxggQNMIIECQIBATCBkzB8MQsw
+# CQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9u
+# ZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNy
+# b3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMAITMwAAAZW3/A3W4zcxJQABAAABlTAN
+# BglghkgBZQMEAgEFAKCCAUowGgYJKoZIhvcNAQkDMQ0GCyqGSIb3DQEJEAEEMC8G
+# CSqGSIb3DQEJBDEiBCB8i1O1M+fNlicXs/e23gZakR/yUpqL2XgohO7t7k7JSDCB
+# +gYLKoZIhvcNAQkQAi8xgeowgecwgeQwgb0EIFzmS+GNkAt7aaEjP9B3uR5U6YD9
+# wLV3MplPjJssSQLHMIGYMIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldh
+# c2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBD
+# b3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIw
+# MTACEzMAAAGVt/wN1uM3MSUAAQAAAZUwIgQgTrUNZ/ILgLZOyKYF4LOoBSJ1Px9j
+# jKFEEgS6cKzw7F8wDQYJKoZIhvcNAQELBQAEggIAMWiMlZ8zdfN5QKCuBWGRuuf+
+# 3k/efaKHLwWMISTClEHMoUCghxLcre9o0h5+0CtkiuZ4j6A7swGLIX/gtce14zp5
+# QrOgZP6rGXL6hROu/JncV8UbOr152TE6b/gEKAy6tjpofSLa0fXwmgQJ2CfrHNph
+# GX5QvkN/rOxomhWpd8nyiAH5FSFqxXecsYLGFEsCa0NL416TXJ4Mlj6hALLN2M4/
+# GpAhDUQfsAcy7trfvkGGAtbmLTX4zjMnYpcthGOioWwBxGmu7D9XK92Z4v4AwAHK
+# 0IL9Hsn+aDO4sa16ZPgSdjrPfwfO/0/J/UuL2mbxDRjLviA65cR+E7W5K/c8kvpn
+# /pU20wixR8wYQp5eJs+GzOTPNgnKstCnvWBAlAoFFd1tzNcnuyketLiVX8zTMalr
+# zqCCZcIemA95ffrNbL6+eG093DonakrKDpS65wa+KNE5aqPrfP6gJKn887o+qr4U
+# zJQnf/H3gxfx+vGE4wi4K94ZAOneViZiBRUYfB0o93rJtFG3Hqskax6Likvpafid
+# 9IRfryTUVGO0p3LliQa1/Ypn6COAaEorclah8CIZiatOWZYVRDm0klq2qnQqMw+e
+# DTtsGAeraHCG2PIPCeAvcQhDrKn3fLLFrveI69Rkva6nc2tmHxtUiQPtso96/jS5
+# /TMwsBgC7V1su1NOPYY=
 # SIG # End signature block

@@ -53,6 +53,11 @@ public enum PointerMode
     /// </summary>
     Material = 8,
 
+    /// <summary>
+    /// Turn on the draw tool
+    /// </summary>
+    Draw = 9,
+
     //
     // Add new values above "Count" and "Invalid"
     //

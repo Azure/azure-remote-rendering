@@ -174,7 +174,7 @@ public enum RemotePbrMaterialFlags
     AlphaClipped = 16,
 
     /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
-    /// on see-through devices like Hololens but has less GPU cost associated with it.
+    /// on see-through devices like HoloLens but has less GPU cost associated with it.
     FadeToBlack = 32
 };
 
@@ -188,7 +188,7 @@ public enum RemoteColorMaterialFlags
     DoubleSided = 2,
 
     /// If enabled, this material fades to black as opposed to fading to transparent when used with SetFadeOut. Fading to black has the same effect
-    /// on see-through devices like Hololens but has less GPU cost associated with it.
+    /// on see-through devices like HoloLens but has less GPU cost associated with it.
     FadeToBlack = 4,
 
     /// Enables hard cut-outs on a per-pixel basis based on the alpha value being below a threshold. This works for opaque materials as well.

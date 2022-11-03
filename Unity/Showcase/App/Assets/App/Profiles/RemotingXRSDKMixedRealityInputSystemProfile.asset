@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b71cb900fa9dec5488df2deb180db58f, type: 3}
+  m_Name: RemotingXRSDKMixedRealityInputSystemProfile
+  m_EditorClassIdentifier: 
+  isCustomProfile: 1
+  dataProviderConfigurations:
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Windows.Input.WindowsSpeechInputProvider,
+        Microsoft.MixedReality.Toolkit.Providers.WindowsVoiceInput
+    componentName: Windows Speech Input
+    priority: 0
+    runtimePlatform: 25
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Input.HandJointService, Microsoft.MixedReality.Toolkit
+    componentName: Hand Joint Service
+    priority: 0
+    runtimePlatform: -1
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Input.InputSimulationService, Microsoft.MixedReality.Toolkit.Services.InputSimulation
+    componentName: Input Simulation Service
+    priority: 0
+    runtimePlatform: 208
+    deviceManagerProfile: {fileID: 11400000, guid: 60951a9061d12cf4b95b690e28597fa1,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Input.UnityMouseDeviceManager, Assembly-CSharp
+    componentName: Unity Mouse Device Manager
+    priority: 0
+    runtimePlatform: -1
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.XRSDK.OpenXR.OpenXRDeviceManager,
+        Microsoft.MixedReality.Toolkit.Providers.OpenXR
+    componentName: OpenXR XRSDK Device Manager
+    priority: 0
+    runtimePlatform: -1
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.Input.UnityInput.MouseDeviceManager,
+        Microsoft.MixedReality.Toolkit
+    componentName: Unity Mouse Device Manager
+    priority: 0
+    runtimePlatform: -1
+    deviceManagerProfile: {fileID: 11400000, guid: cc2a0fa97d2f9f14996ffd20776bab57,
+      type: 2}
+  focusProviderType:
+    reference: Microsoft.MixedReality.Toolkit.Input.RemoteFocusProviderNoCollider,
+      Assembly-CSharp
+  raycastProviderType:
+    reference: Microsoft.MixedReality.Toolkit.Input.DefaultRaycastProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
+  focusQueryBufferSize: 128
+  shouldUseGraphicsRaycast: 1
+  focusIndividualCompoundCollider: 0
+  inputActionsProfile: {fileID: 11400000, guid: 723eb97b02944311b92861f473eee53e,
+    type: 2}
+  inputActionRulesProfile: {fileID: 11400000, guid: 03945385d89102f41855bc8f5116b199,
+    type: 2}
+  pointerProfile: {fileID: 11400000, guid: 7675c9e1a16189e4a8112f3dbe7845ef, type: 2}
+  gesturesProfile: {fileID: 11400000, guid: bd7829a9b29409045a745b5a18299291, type: 2}
+  speechCommandsProfile: {fileID: 11400000, guid: f91cc56052923bd49814bb7937153cb4,
+    type: 2}
+  enableControllerMapping: 1
+  controllerMappingProfile: {fileID: 11400000, guid: fcc231b18dbb80c48b5fa36781513e1e,
+    type: 2}
+  controllerVisualizationProfile: {fileID: 11400000, guid: f80366d87b2556f4c933ed84e2f31d86,
+    type: 2}
+  handTrackingProfile: {fileID: 11400000, guid: a00bc5590b88d854d959006e1da7d27d,
+    type: 2}

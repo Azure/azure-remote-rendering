@@ -91,4 +91,59 @@ public class RedirectManipulationTarget : MonoBehaviour, IMixedRealityPointerHan
         }
     }
     #endregion IMixedRealityPointerHandler Functions
+
+    #region Private Classes
+    /// <summary>
+    // Handle forwarding events to proxy object late in the frame. During OnPointerDown Start()
+    // for the ObjectManipulator component on the proxy object hasn't been called in all cases.
+    // So we wait with event forwarding to prevent jumpy behavior of the moved pieces.
+    /// </summary>
+    private class DelayPointerDown : MonoBehaviour
+    {
+        private MixedRealityPointerEventData _pendingPointerDown = null;
+        private bool _started = false;
+        private Action _pendingFired = null;
+
+        public void Start()
+        {
+            _started = true;
+            if (_pendingPointerDown != null)
+            {
+                Fire(_pendingPointerDown, _pendingFired);
+                _pendingPointerDown = null;
+                _pendingFired = null;
+            }
+        }
+
+        public void Fire(MixedRealityPointerEventData pointerDownEventData, Action fired = null)
+        {
+            if (_started)
+            {
+                RouteEventToCurrentObject(pointerDownEventData, OnPointerDownEventHandler);
+                _pendingPointerDown = null;
+                fired?.Invoke();
+            }
+            else
+            {
+                _pendingPointerDown = pointerDownEventData;
+                _pendingFired = fired;
+            }
+        }
+
+        private static readonly ExecuteEvents.EventFunction<IMixedRealityPointerHandler> OnPointerDownEventHandler =
+            delegate (IMixedRealityPointerHandler handler, BaseEventData eventData)
+            {
+                if (eventData != null)
+                {
+                    var casted = ExecuteEvents.ValidateEventData<MixedRealityPointerEventData>(eventData);
+                    handler.OnPointerDown(casted);
+                }
+            };
+
+        private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
+        {
+            ExecuteEvents.Execute(gameObject, eventData, eventFunction);
+        }
+    }
+    #endregion Private Classes
 }

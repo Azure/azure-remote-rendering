@@ -1,0 +1,245 @@
+<?xml version="1.0"?>
+<Models
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../.schemas/models.schema.xsd">
+    <Containers>
+        <Container>
+            <Name>Built In Engine</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/built-in.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Built In Engine</Name>
+                    <Url>builtin://Engine</Url>
+                </Model>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Remote Asset</Name>
+            <Transform>
+                <Position>
+                    <x>0</x>
+                    <y>-1.0</y>
+                    <z>0</z>
+                </Position>
+                <Rotation>
+                    <x>0</x>
+                    <y>0</y>
+                    <z>0</z>
+                </Rotation>
+                <Scale>
+                    <x>1.0</x>
+                    <y>1.0</y>
+                    <z>1.0</z>
+                </Scale>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Remote Asset</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset.arrAsset</Url>
+                </Model>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Local Asset</Name>
+            <Transform>
+                <Center>true</Center>
+                <MaxSize>
+                    <x>2.0</x>
+                    <y>2.0</y>
+                    <z>2.0</z>
+                </MaxSize>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/local-asset-image.png</ImageUrl>
+            <Items>
+                <Placeholder>
+                    <Name>Local Asset</Name>
+                    <Transform>
+                        <Rotation>
+                            <x>0</x>
+                            <y>90</y>
+                            <z>0</z>
+                        </Rotation>
+                    </Transform>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/local-asset-bundle</Url>
+                    <AssetName>Assets/local-asset.prefab</AssetName>
+                </Placeholder>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Remote Asset with Local Placeholder</Name>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-local-asset-image.png</ImageUrl>
+            <Items>
+                <Placeholder>
+                    <Name>Placeholder Asset</Name>
+                    <Transform>
+                        <Scale>
+                            <x>1.1</x>
+                            <y>1.1</y>
+                            <z>1.1</z>
+                        </Scale>
+                    </Transform>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/placeholder-asset-bundle</Url>
+                    <AssetName>Assets/placeholder-asset.prefab</AssetName>
+                </Placeholder>
+                <Model>
+                    <Name>Remote Asset</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/another-remote-asset.arrAsset</Url>
+                </Model>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Point Light</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/point-light-image.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Floor Lamp</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/floor.lamp.arrAsset</Url>
+                </Model>
+                <PointLight>
+                    <Name>Point Light Source</Name>
+                    <Transform>
+                        <Position>
+                            <x>0.0</x>
+                            <y>0.75</y>
+                            <z>0.0</z>
+                        </Position>
+                    </Transform>
+                    <Color>
+                        <a>1.0</a>
+                        <r>0.98</r>
+                        <g>1.0</g>
+                        <b>0.43</b>
+                    </Color>
+                    <Intensity>4</Intensity>
+                    <Radius>0.5</Radius>
+                </PointLight>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Spotlight</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/spotlight-image.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Flash Light</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/flash.light.arrAsset</Url>
+                </Model>
+               <Spotlight>
+                <Name>Spotlight Source</Name>
+                    <Transform>
+                        <Position>
+                            <x>0.025</x>
+                            <y>0.0</y>
+                            <z>-0.2560001</z>
+                        </Position>
+                        <Rotation>
+                            <x>0</x>
+                            <y>90</y>
+                            <z>0</z>
+                        </Rotation>
+                    </Transform>
+                    <Color>
+                        <a>1.0</a>
+                        <r>0.66</r>
+                        <g>0.64</g>
+                        <b>0.38</b>
+                    </Color>
+                    <Intensity>50</Intensity>
+                    <Radius>0.5</Radius>
+                    <AttenuationCutoff>
+                        <x>0.0</x>
+                        <y>0.0</y>
+                    </AttenuationCutoff>
+                    <Angle>
+                        <x>10.0</x>
+                        <y>35.0</y>
+                    </Angle>
+                    <Falloff>0.8</Falloff>
+                </Spotlight>
+            </Items> 
+        </Container>
+        <Container>
+            <Name>Directional Light</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/directional-image.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Sun</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/sun.arrAsset</Url>
+                </Model>
+                <DirectionalLight>
+                    <Name>Directional Light Source</Name>
+                    <Color>
+                        <a>1.0</a>
+                        <r>0.8</r>
+                        <g>0.26</g>
+                        <b>0.0</b>
+                    </Color>
+                    <Intensity>100</Intensity>
+                </DirectionalLight>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Many Remote Assets</Name>
+            <Transform>
+                <Scale>
+                    <x>0.01</x>
+                    <y>0.01</y>
+                    <z>0.01</z>
+                </Scale>
+                <Rotation>
+                    <x>90</x>
+                    <y>0</y>
+                    <z>0</z>
+                </Rotation>
+                <Center>true</Center>
+            </Transform>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/many-remote-assets-image.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Remote Asset 1</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-1.arrAsset</Url>
+                </Model>
+                <Model>
+                    <Name>Remote Asset 2</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-2.arrAsset</Url>
+                </Model>
+                <Model>
+                    <Name>Remote Asset 3</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-3.arrAsset</Url>
+                </Model>
+                <Model>
+                    <Name>Remote Asset 4</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-4.arrAsset</Url>
+                </Model>
+                <Model>
+                    <Name>Remote Asset 5</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-5.arrAsset</Url>
+                </Model>
+            </Items>
+        </Container>
+        <Container>
+            <Name>Remote Asset without Remote Colliders</Name>
+            <HasColliders>false</HasColliders>
+            <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-without-remote-collider.png</ImageUrl>
+            <Items>
+                <Model>
+                    <Name>Remote Asset</Name>
+                    <Url>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-without-remote-collider.arrAsset</Url>
+                </Model>
+            </Items>
+        </Container>
+    </Containers>
+</Models>

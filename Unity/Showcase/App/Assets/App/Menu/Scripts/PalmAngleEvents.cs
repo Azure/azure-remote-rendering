@@ -4,6 +4,7 @@
 using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Utilities;
+using System;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -14,7 +15,7 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
 {
     private float _minPalmUpAngle = 150f;
     private float _maxPalmUpAngle = 210f;
-    private bool _wasPalmUp = false;
+    private Handedness _upHand = Handedness.None;
     private Handedness _pointerDown = Handedness.None;
 
     #region Serialized Fields
@@ -37,22 +38,51 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
 
     [SerializeField]
     [Tooltip("The event raised when the palm is put into the up position.")]
-    private UnityEvent onPalmUp = new UnityEvent();
+    private HandEvent onPalmUp = new HandEvent();
 
     /// <summary>
     /// The event raised when the palm is put into the up position.
     /// </summary>
-    public UnityEvent OnPalmUp => onPalmUp;
+    public HandEvent OnPalmUp => onPalmUp;
 
     [SerializeField]
     [Tooltip("The event raised when the palm is put into the down position.")]
-    private UnityEvent onPalmDown = new UnityEvent();
+    private HandEvent onPalmDown = new HandEvent();
 
     /// <summary>
     /// The event raised when the palm is put into the down position.
     /// </summary>
-    public UnityEvent OnPalmDown => onPalmDown;
+    public HandEvent OnPalmDown => onPalmDown;
     #endregion Serialized Fields
+
+    #region Public Properties
+    /// <summary>
+    /// Get the hand that are up.
+    /// </summary>
+    public Handedness UpHand
+    {
+        get => _upHand;
+
+        private set
+        {
+            if (_upHand != value)
+            {
+                var oldHand = _upHand;
+                _upHand = value;
+
+                if (oldHand != Handedness.None)
+                {
+                    onPalmDown?.Invoke(oldHand);
+                }
+
+                if (_upHand != Handedness.None)
+                {
+                    onPalmUp?.Invoke(_upHand);
+                }
+            }
+        }
+    }
+    #endregion Public Properties
 
     #region MonoBehavior Functions
     /// <summary>
@@ -66,44 +96,52 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
             _pointerDown = Handedness.None;
         }
 
-        if (_pointerDown != Handedness.None)
+        if (_pointerDown == Handedness.None)
         {
-            return;
-        }
+            Handedness upHands;
+            TryGetPalms(out upHands);
 
-        Handedness upHand;
-        if (TryGetPalm(out upHand))
-        {
-            if (!_wasPalmUp && onPalmUp != null)
+            // Perfer existing up hand, if still up
+            if ((UpHand == Handedness.None) ||
+                (upHands & UpHand) != UpHand)
             {
-                onPalmUp.Invoke();
+                if ((upHands & Handedness.Left) == Handedness.Left)
+                {
+                    UpHand = Handedness.Left;
+                }
+                else if ((upHands & Handedness.Right) == Handedness.Right)
+                {
+                    UpHand = Handedness.Right;
+                }
+                else
+                {
+                    UpHand = Handedness.None;
+                }
             }
-            _wasPalmUp = true;
         }
-        else
-        {
-            if (_wasPalmUp && onPalmDown != null)
-            {
-                onPalmDown.Invoke();
-            }
-            _wasPalmUp = false;
-        }
+    }
+
+    protected override void OnDisable()
+    {
+        base.OnDisable();
+        UpHand = Handedness.None;
     }
     #endregion MonoBehavior Functions
 
     #region Public Functions
-    public bool TryGetPalm(out Handedness upHand)
+    public bool TryGetPalms(out Handedness upHand)
     { 
         upHand = Handedness.None;
         if (hand == Handedness.Both || hand == Handedness.Any)
         {
             if (LeftOrRightPalmUp(Handedness.Left))
             {
-                upHand = Handedness.Left;
+                upHand |= Handedness.Left;
             }
-            else if (LeftOrRightPalmUp(Handedness.Right))
+
+            if (LeftOrRightPalmUp(Handedness.Right))
             {
-                upHand = Handedness.Right;
+                upHand |= Handedness.Right;
             }
         }
         else if (LeftOrRightPalmUp(hand))
@@ -111,24 +149,6 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
             upHand = hand;
         }
         return upHand != Handedness.None;
-    }
-
-    public bool TryGetPalmRotation(Handedness hand, out Vector3 eulerAngles)
-    {
-        bool leftOrRight = hand == Handedness.Left || hand == Handedness.Right;
-        MixedRealityPose palmPose;
-
-        if (leftOrRight &&
-            HandJointUtils.TryGetJointPose(TrackedHandJoint.Palm, hand, out palmPose))
-        {
-            eulerAngles = palmPose.Rotation.eulerAngles;
-            return true;
-        }
-        else
-        {
-            eulerAngles = Vector3.zero;
-            return false;
-        }
     }
     #endregion Public Functions
 
@@ -190,12 +210,10 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
             return false;
         }
 
-        var handObject = HandJointUtils.FindHand(hand);
         MixedRealityPose handJoint;
         bool isPalmUp = false;
 
-        if (handObject != null &&
-            HandJointUtils.TryGetJointPose(TrackedHandJoint.Palm, hand, out handJoint) &&
+        if (HandJointUtils.TryGetJointPose(TrackedHandJoint.Palm, hand, out handJoint) &&
             handJoint.Rotation.eulerAngles.z >= _minPalmUpAngle &&
             handJoint.Rotation.eulerAngles.z <= _maxPalmUpAngle)
         {
@@ -210,4 +228,9 @@ public class PalmAngleEvents : InputSystemGlobalHandlerListener, IMixedRealityPo
         return (HandJointUtils.FindHand(hand) != null);
     }
     #endregion Private Functions
+}
+
+[Serializable]
+public class HandEvent : UnityEvent<Handedness>
+{
 }

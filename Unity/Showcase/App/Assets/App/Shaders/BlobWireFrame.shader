@@ -137,5 +137,5 @@ Shader "BlobWireFrame"
             ENDCG
         }
     }
-    FallBack "Unlit"
+    FallBack "Unlit/Texture"
 }

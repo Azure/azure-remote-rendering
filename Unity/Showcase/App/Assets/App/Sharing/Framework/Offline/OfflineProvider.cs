@@ -87,6 +87,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Offlin
         #endregion Public Properties
 
         #region ISharingProvider Events
+#pragma warning disable 0067
         /// <summary>
         /// Event fired when client is connected to a session/room
         /// </summary>
@@ -186,6 +187,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Offlin
         /// Event fired when avatar settings changed.
         /// </summary>
         public event Action<ISharingProvider, SharingServiceAvatarSettings> AvatarSettingsChanged;
+#pragma warning restore 0067
         #endregion ISharingProvider Events
 
         #region ISharingProvider Properties

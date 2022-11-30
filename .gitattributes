@@ -1,0 +1,10 @@
+# Enable automatic line ending normalization for all text files
+* text=auto
+
+# Windows specific scripts
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Unix specific scripts
+*.sh text eol=lf

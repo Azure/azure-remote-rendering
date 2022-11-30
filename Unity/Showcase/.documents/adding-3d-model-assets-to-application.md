@@ -179,6 +179,9 @@ This sample shows how to handle remote rendered model assets without remote coll
     <Containers>
         <Container>
             <Name>Remote Asset without Remote Colliders</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
             <HasColliders>false</HasColliders>
             <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-without-remote-collider.png</ImageUrl>
             <Items>
@@ -215,6 +218,9 @@ This sample shows how to add a [`Placeholder`](#placeholder-type) asset that is 
     <Containers>
         <Container>
             <Name>Remote Asset with Local Placeholder</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
             <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-local-asset-image.png</ImageUrl>
             <Items>
                 <Placeholder>

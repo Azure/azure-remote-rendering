@@ -13,7 +13,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
     public class MovableAnchor : MovableObject
     {
         private IAppAnchor _anchor = null;
-        private bool _started = false;
         private float _maxAnchorDistanceSquared;
         private LogHelper<MovableAnchor> _log = new LogHelper<MovableAnchor>();
 
@@ -71,7 +70,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         protected void Start()
         {
             _log.LogVerbose($"Start() ENTER (name: {name})");
-            _started = true;
             _maxAnchorDistanceSquared = maxAnchorDistance * maxAnchorDistance;
             CreateAnchorIfEmpty();
         }

@@ -20,9 +20,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
     /// </summary>
     public class PhotonViewExtended : MonoBehaviour
     {
+#pragma warning disable 0414
         [SerializeField]
         [HideInInspector]
         private int sceneViewId = 0;
+#pragma warning restore 0414
     }
 }
 #endif // PHOTON_INSTALLED

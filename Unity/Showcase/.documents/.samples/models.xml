@@ -72,6 +72,9 @@
         </Container>
         <Container>
             <Name>Remote Asset with Local Placeholder</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
             <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-local-asset-image.png</ImageUrl>
             <Items>
                 <Placeholder>
@@ -232,6 +235,9 @@
         </Container>
         <Container>
             <Name>Remote Asset without Remote Colliders</Name>
+            <Transform>
+                <Center>true</Center>
+            </Transform>
             <HasColliders>false</HasColliders>
             <ImageUrl>https://contosostorage.blob.core.windows.net/app-blob-container/remote-asset-without-remote-collider.png</ImageUrl>
             <Items>

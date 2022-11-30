@@ -600,9 +600,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 PrimaryMachineAction = MakePrimaryMachine
             };
 
-            // Try using the local pose mode. The `machine` will avoid applying this state, if the app state doesn't support it.
-            machine.PoseMode = PoseMode.Local;
-
             lock (_machines)
             {
                 _machines.Add(machine);
@@ -687,10 +684,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             if (Application.isPlaying)
             {
-                // In the scope of this sample, use local projection mode, which means that distortion artifacts on local content get mitigated.
-                // This quality improvement comes with a bit of runtime performance cost compared to default mode 'Remote'.
-                // This value is configurable by the user, see usage of `RemoteRenderingMachine::PoseMode::set` for more details.
-                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main, PoseMode.Local));
+                RemoteManagerUnity.InitializeManager(new RemoteUnityClientInit(CameraCache.Main));
             }
             else
             {

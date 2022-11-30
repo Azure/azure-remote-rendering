@@ -21,7 +21,6 @@ public class RemoteObject : MonoBehaviour
     private bool _visibleModel = true;
     private bool _enabled = true;
     private bool _started = false;
-    private bool _destroyed = false;
     private List<EntitySnapshot> _transformSnapshot = null;
 
     #region Serialized Fields
@@ -272,8 +271,6 @@ public class RemoteObject : MonoBehaviour
             AppServices.RemoteRendering.StatusChanged -=
                 RemoteRendering_StatusChanged;
         }
-
-        _destroyed = true;
 
         var oldLoadTaskSource = _loadingTaskSource;
         _loadingTaskSource = null;

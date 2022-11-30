@@ -21,10 +21,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication
         /// </summary>
         public string Name => "Offline";
 
+#pragma warning disable 0067
         /// <summary>
         /// Event invoked when the participants changed at the given address
         /// </summary>
         public event Action<ISharingServiceRoomAddresses, ParticipantsChangedArgs> ParticipantsChanged;
+#pragma warning restore 0067
 
         /// <summary>
         /// Set the address for the current participant

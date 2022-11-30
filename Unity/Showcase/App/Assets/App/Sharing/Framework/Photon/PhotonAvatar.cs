@@ -393,9 +393,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
     }
 #else
     public abstract class PhotonAvatarBase : MonoBehaviour
-    { 
-        SharingServicePlayerData _player = default;
-
+    {
         #region Public Properties
         public SharingServicePlayerData Player { get; } = default;
         #endregion Public Properties

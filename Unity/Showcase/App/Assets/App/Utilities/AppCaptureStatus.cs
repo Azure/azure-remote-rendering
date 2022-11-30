@@ -17,10 +17,12 @@ public class AppCaptureStatus : IDisposable
     #endregion
 
     #region Public Events
+#pragma warning disable 0067
     /// <summary>
     /// Event raised when capturing changes
     /// </summary>
     public event Action<AppCaptureStatus, bool> IsCapturingChanged;
+#pragma warning restore 0067
     #endregion Public Events
 
     #region Public Constructors

@@ -927,7 +927,9 @@ namespace {
 
             // 2. Create Client
             {
-                // Users need to fill out the following with their account data and model
+                // Users need to fill out the following with their account data and model. For sake of simplicity, credentials are hardcoded in this sample. This is not
+                // recommended practice for production though. See https://learn.microsoft.com/azure/remote-rendering/tutorials/unity/commercial-ready/commercial-ready
+                // for additional hints on best practices.
                 RR::SessionConfiguration init;
                 init.AccountId = "00000000-0000-0000-0000-000000000000";
                 init.AccountKey = "<account key>";

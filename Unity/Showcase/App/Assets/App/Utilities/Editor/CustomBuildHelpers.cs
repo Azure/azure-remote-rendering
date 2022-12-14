@@ -62,7 +62,7 @@ public class CustomBuildInfo
 }
 
 
-public class CustomBuilder
+public static class CustomBuilder
 { 
     private static readonly IEnumerable<string> Scenes_Default = new string[] { "Assets/Scenes/SampleScene.unity" };
     private static readonly IEnumerable<string>  Scenes_DefaultPC = new string[] { "Assets/Scenes/SampleSceneDesktop.unity" }; 
@@ -71,8 +71,7 @@ public class CustomBuilder
     private const string CustomBuildPref_HoloLens2BuildDir_ARM64 = "_CustomBuild_HoloLens2BuildDir_ARM64";
     private const string CustomBuildPref_PCBuildDir = "_CustomBuild_PCBuildDir";
 
-    private static CustomBuilder s_instance = new CustomBuilder();
-    private bool m_building = false;
+    private static bool s_isBuilding = false;
 
     /// <summary>
     /// The default directory where the HoloLens 1 build will be placed.
@@ -110,32 +109,28 @@ public class CustomBuilder
         set { SetUserSetting(CustomBuildPref_PCBuildDir, value); }
     }
 
-    private CustomBuilder()
-    {
-    }
-
     [MenuItem("Builder/Build HoloLens 1 Client", false, 0)]
     public static async void BuildHoloLens1Project()
     {
-        await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens1);
+        await BuildUnityPlayer(CustomBuildType.HoloLens1);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm)", false, 0)]
     public static async void BuildHoloLens2Project_ARM32()
     {
-        await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM32);
+        await BuildUnityPlayer(CustomBuildType.HoloLens2_ARM32);
     }
 
     [MenuItem("Builder/Build HoloLens 2 Client (arm64)", false, 0)]
     public static async void BuildHoloLens2Project_ARM64()
     {
-        await s_instance.BuildUnityPlayer(CustomBuildType.HoloLens2_ARM64);
+        await BuildUnityPlayer(CustomBuildType.HoloLens2_ARM64);
     }
 
     [MenuItem("Builder/Build PC Client", false, 1)]
     public static async void BuildDesktopProject()
     {
-        await s_instance.BuildUnityPlayer(CustomBuildType.PC);
+        await BuildUnityPlayer(CustomBuildType.PC);
     }
 
     [MenuItem("Builder/Build Asset Bundles", isValidateFunction: false, priority = 111)]
@@ -181,7 +176,7 @@ public class CustomBuilder
         bool success = false;
         try
         {
-            success = await s_instance.BuildUnityPlayer(customBuildInfo);
+            success = await BuildUnityPlayer(customBuildInfo);
         }
         catch (Exception e)
         {
@@ -262,7 +257,7 @@ public class CustomBuilder
         }
     }
 
-    private CustomBuildPlatform ToBuildPlatform(CustomBuildType type)
+    private static CustomBuildPlatform ToBuildPlatform(CustomBuildType type)
     {
         CustomBuildPlatform result = CustomBuildPlatform.x86;
         switch (type)
@@ -290,7 +285,7 @@ public class CustomBuilder
         return result;
     }
 
-    private Task<bool> BuildUnityPlayer(CustomBuildType type)
+    private static Task<bool> BuildUnityPlayer(CustomBuildType type)
     {
         return BuildUnityPlayer(new CustomBuildInfo()
         {
@@ -301,9 +296,9 @@ public class CustomBuilder
         });
     }
 
-    private async Task<bool> BuildUnityPlayer(CustomBuildInfo info)
+    private static async Task<bool> BuildUnityPlayer(CustomBuildInfo info)
     {
-        if (m_building)
+        if (s_isBuilding)
         {
             return false;
         }
@@ -311,17 +306,17 @@ public class CustomBuilder
         bool success = false;
         try
         {
-            m_building = true;
+            s_isBuilding = true;
             success = await ExecuteBuild(info);
         }
         finally
         {
-            m_building = false;
+            s_isBuilding = false;
         }
         return success;
     }
 
-    private bool ValidateSceneCount(IEnumerable<string> scenes)
+    private static bool ValidateSceneCount(IEnumerable<string> scenes)
     {
         if (scenes == null || scenes.Count() == 0)
         {
@@ -448,7 +443,7 @@ public class CustomBuilder
         return buildDirectory;
     }
 
-    private Task<bool> ExecuteBuild(CustomBuildInfo customBuildInfo)
+    private static Task<bool> ExecuteBuild(CustomBuildInfo customBuildInfo)
     {
         var scenes = SelectScenes(customBuildInfo);
         if (!ValidateSceneCount(scenes))
@@ -527,7 +522,7 @@ public class CustomBuilder
         });
     }
 
-    private IEnumerable<string> SelectScenes(CustomBuildInfo customBuildInfo)
+    private static IEnumerable<string> SelectScenes(CustomBuildInfo customBuildInfo)
     {
         var scenes = customBuildInfo.Scenes;
         if (scenes == null || scenes.Count() == 0)
@@ -550,7 +545,7 @@ public class CustomBuilder
         return scenes;
     }
 
-    private Task<bool> BuildPlayer(CustomBuildInfo customBuildInfo)
+    private static Task<bool> BuildPlayer(CustomBuildInfo customBuildInfo)
     {
         return UwpPlayerBuildTools.BuildPlayer(new UwpBuildInfo
         {
@@ -567,7 +562,7 @@ public class CustomBuilder
         });
     }    
 
-    private async void BuildAppx(CustomBuildInfo customAppxBuildInfo)
+    private static async void BuildAppx(CustomBuildInfo customAppxBuildInfo)
     {
         bool appxSuccess = false;
         try

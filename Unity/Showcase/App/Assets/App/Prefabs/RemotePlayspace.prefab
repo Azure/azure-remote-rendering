@@ -204,6 +204,11 @@ PrefabInstance:
       propertyPath: audioSource
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 2287213335841166252, guid: 266f13c02d843b541964666531978301,
+        type: 3}
+      propertyPath: OnInputActionStarted.m_PersistentCalls.m_Calls.Array.data[1].m_Target
+      value: 
+      objectReference: {fileID: 3865926235179853848}
     - target: {fileID: 6763522879285382489, guid: 266f13c02d843b541964666531978301,
         type: 3}
       propertyPath: pointerModes.Array.data[0].enabled.m_PersistentCalls.m_Calls.Array.size

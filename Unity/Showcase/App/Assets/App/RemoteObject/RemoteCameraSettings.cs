@@ -82,6 +82,11 @@ public class RemoteCameraSettings : MonoBehaviour
 
     private void UpdateCameraSettings()
     {
+        if (CameraCache.Main == null)
+        {
+            return;
+        }
+
         _overrideSettingsInLateUpdate = null;
         _nearClipPlane = CameraCache.Main.nearClipPlane;
         _farClipPlane = CameraCache.Main.farClipPlane;

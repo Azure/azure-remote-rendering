@@ -186,6 +186,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     case PointerType.HandRay:
                         PointerUtils.SetHandRayPointerBehavior(pointerBehavior);
+                        PointerUtils.SetMotionControllerRayPointerBehavior(pointerBehavior);
                         break;
 
                     default:

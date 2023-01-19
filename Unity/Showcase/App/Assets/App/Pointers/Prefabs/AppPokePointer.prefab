@@ -66,5 +66,10 @@ PrefabInstance:
       propertyPath: ignoreCollidersNotInFOV
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 114559408797139306, guid: 38b548c6a2c270545a383296ad2bc4d5,
+        type: 3}
+      propertyPath: pokeLayerMasks.Array.data[0].m_Bits
+      value: 2147486515
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 38b548c6a2c270545a383296ad2bc4d5, type: 3}

@@ -36,16 +36,17 @@
 # individual settings in the config file can be overridden on the command line:
 
 Param(
-    [switch] $Upload, #if set the local asset directory will be uploaded to the inputcontainer and the script exits
+    [switch] $Upload, # if set the local asset directory will be uploaded to the inputcontainer and the script exits
     [switch] $ConvertAsset,
     [switch] $GetConversionStatus,
     [switch] $Poll,
-    [switch] $UseContainerSas, #If provided the script will generate container SAS tokens to be used with the conversions/createWithSharedAccessSignature REST API
+    [switch] $UseContainerSas, # If provided the script will generate container SAS tokens to be used with the conversions/createWithSharedAccessSignature REST API
     [string] $ConfigFile,
-    [string] $Id, #optional ConversionId used with GetConversionStatus
-    [string] $ArrAccountId, #optional override for arrAccountId of accountSettings in config file
-    [string] $ArrAccountKey, #optional override for arrAccountKey of accountSettings in config file
-    [string] $Region, #optional override for region of accountSettings in config file
+    [string] $Id, # optional ConversionId used with GetConversionStatus
+    [string] $ArrAccountId, # optional override for arrAccountId of accountSettings in config file
+    [string] $ArrAccountKey, # optional override for arrAccountKey of accountSettings in config file
+    [string] $ArrAccountDomain, # optional override for region where the ARR account is located
+    [string] $Region, # deprecated, please use explicit RemoteRenderingDomain and ArrAccountDomain
     [string] $ResourceGroup, # optional override for resourceGroup of assetConversionSettings in config file
     [string] $StorageAccountName, # optional override for storageAccountName of assetConversionSettings in config file
     [string] $BlobInputContainerName, # optional override for blobInputContainer of assetConversionSettings in config file
@@ -55,8 +56,7 @@ Param(
     [string] $OutputFolderPath, # optional override for the path in output container, conversion result will be copied there
     [string] $OutputAssetFileName, # optional filename of the outputAssetFileName of assetConversionSettings in config file. needs to end in .arrAsset
     [string] $LocalAssetDirectoryPath, # Path to directory containing all input asset data (e.g. fbx and textures referenced by it)
-    [string] $AuthenticationEndpoint,
-    [string] $ServiceEndpoint,
+    [string] $RemoteRenderingDomain, # optional override for region where conversion is or should be located
     [hashtable] $AdditionalParameters
 )
 
@@ -141,8 +141,8 @@ function UploadAssetDirectory($assetSettings) {
 # Immediately returns a conversion id which can be used to query the status of the conversion process (see below)
 function ConvertAsset(
     $accountSettings,
-    $authenticationEndpoint,
-    $serviceEndpoint,
+    $arrAccountDomain,
+    $remoteRenderingDomain,
     $accountId,
     $accountKey,
     $assetConversionSettings,
@@ -190,13 +190,13 @@ function ConvertAsset(
             $conversionId = "Sample-Conversion-$(New-Guid)"
         }
 
-        $url = "$serviceEndpoint/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
 
         $conversionType = if ($useContainerSas) {"container Shared Access Signatures"} else {"linked storage account"}
 
         WriteInformation("Converting Asset using $conversionType ...")
-        WriteInformation("  authentication endpoint: $authenticationEndpoint")
-        WriteInformation("  service endpoint: $serviceEndpoint")
+        WriteInformation("  arrAccountDomain: $arrAccountDomain")
+        WriteInformation("  remoteRenderingDomain: $remoteRenderingDomain")
         WriteInformation("  accountId: $accountId")
         WriteInformation("Input:")
         WriteInformation("    storageContainerUri: $inputContainerUri")
@@ -209,7 +209,7 @@ function ConvertAsset(
         WriteInformation("    blobPrefix: $($assetConversionSettings.outputFolderPath)")
         WriteInformation("    outputAssetFilename: $($assetConversionSettings.outputAssetFileName)")
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PUT -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
         WriteSuccess("Successfully started the conversion with Id: $conversionId")
         WriteSuccessResponse($response.RawContent)
@@ -225,11 +225,11 @@ function ConvertAsset(
 
 # calls the conversion status ARR REST API "<endPoint>/accounts/<accountId>/conversions/<conversionId>"
 # returns the conversion process state
-function GetConversionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $conversionId) {
+function GetConversionStatus($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey, $conversionId) {
     try {
-        $url = "$serviceEndpoint/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)
@@ -243,7 +243,7 @@ function GetConversionStatus($authenticationEndpoint, $serviceEndpoint, $account
 }
 
 # repeatedly poll the conversion status ARR REST API until success of failure
-function PollConversionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $conversionId) {
+function PollConversionStatus($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey, $conversionId) {
     $conversionStatus = "Running"
     $startTime = Get-Date
 
@@ -254,7 +254,7 @@ function PollConversionStatus($authenticationEndpoint, $serviceEndpoint, $accoun
         Start-Sleep -Seconds 10
         WriteProgress  -activity "Ongoing asset conversion with conversion id: '$conversionId'" -status "Since $([int]((Get-Date) - $startTime).TotalSeconds) seconds"
 
-        $response = GetConversionStatus $authenticationEndpoint $serviceEndpoint $accountId $accountKey $conversionId
+        $response = GetConversionStatus $arrAccountDomain $remoteRenderingDomain $accountId $accountKey $conversionId
         $responseJson = ($response.Content | ConvertFrom-Json)
 
         $conversionStatus = $responseJson.status
@@ -298,9 +298,9 @@ $config = LoadConfig `
     -fileLocation $ConfigFile `
     -ArrAccountId $ArrAccountId `
     -ArrAccountKey $ArrAccountKey `
+    -ArrAccountDomain $ArrAccountDomain `
     -Region $Region `
-    -AuthenticationEndpoint $AuthenticationEndpoint `
-    -ServiceEndpoint $ServiceEndpoint `
+    -RemoteRenderingDomain $RemoteRenderingDomain `
     -StorageAccountName $StorageAccountName `
     -ResourceGroup $ResourceGroup `
     -BlobInputContainerName $BlobInputContainerName `
@@ -316,12 +316,6 @@ if ($null -eq $config) {
 }
 
 $defaultConfig = GetDefaultConfig
-
-$accountOkay = VerifyAccountSettings $config $defaultConfig $ServiceEndpoint
-if ($false -eq $accountOkay) {
-    WriteError("Error reading accountSettings in $ConfigFile - Exiting.")
-    exit 1
-}
 
 if ($ConvertAsset -or $Upload -or $UseContainerSas) {
     $storageSettingsOkay = VerifyStorageSettings $config $defaultConfig
@@ -364,11 +358,11 @@ if ($ConvertAsset) {
         $outputContainerSAS = GenerateOutputContainerSAS -blobEndPoint $config.assetConversionSettings.storageContext.blobEndPoint  -blobContainerName $config.assetConversionSettings.blobOutputContainerName -storageContext $config.assetConversionSettings.storageContext
         $config.assetConversionSettings.outputContainerSAS = $outputContainerSAS
 
-        $Id = ConvertAsset -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings -useContainerSas -conversionId $Id -AdditionalParameters $AdditionalParameters 
+        $Id = ConvertAsset -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings -useContainerSas -conversionId $Id -AdditionalParameters $AdditionalParameters 
     }
     else {
         # The ARR account has read/write access to the blob containers of the storage account - so we do not need to generate SAS tokens for access
-        $Id = ConvertAsset -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings  -conversionId $Id -AdditionalParameters $AdditionalParameters
+        $Id = ConvertAsset -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -assetConversionSettings $config.assetConversionSettings  -conversionId $Id -AdditionalParameters $AdditionalParameters
     }
 }
 
@@ -379,10 +373,10 @@ if ($GetConversionStatus) {
     }
 
     if ($Poll) {
-        $conversionResponse = PollConversionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
+        $conversionResponse = PollConversionStatus -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
     }
     else {
-        $response = GetConversionStatus -serviceEndpoint $config.accountSettings.serviceEndpoint -authenticationEndpoint $config.accountSettings.authenticationEndpoint -accountId  $config.accountSettings.arrAccountId  -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
+        $response = GetConversionStatus -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -arrAccountDomain $config.accountSettings.arrAccountDomain -accountId  $config.accountSettings.arrAccountId  -accountKey $config.accountSettings.arrAccountKey -conversionId $Id
         $responseJson = ($response.Content | ConvertFrom-Json)
         $conversionStatus = $responseJson.status
 
@@ -407,8 +401,8 @@ if ($null -ne $conversionResponse) {
 # SIG # Begin signature block
 # MIIrWAYJKoZIhvcNAQcCoIIrSTCCK0UCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCC1ZyZYo1o4XWd0
-# fxOQhu8EE5FfF4oC8GXpp6d0/4BHTKCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAhLbotTHKHV5fk
+# IXbbMkBQeO6YzhPapyIKasPNiAyKfaCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
 # MGZD2x+CAAIAAAGpMA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMjA2MTAxODI3MDRaFw0yMzA2MTAxODI3MDRaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -505,61 +499,61 @@ if ($null -ne $conversionResponse) {
 # MEExEzARBgoJkiaJk/IsZAEZFgNHQkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTAT
 # BgNVBAMTDEFNRSBDUyBDQSAwMQITNgAAAanWkDBmQ9sfggACAAABqTANBglghkgB
 # ZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3
-# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgCmkg7fufFinmWD5d
-# xpfon+i7SbRoY/Wo41KAKOvO+OQwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
+# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgcM4F9ypj9jZM7C9+
+# 93i4PkFuwGJv4RXyqjigpZ3ty3YwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
 # AHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTANBgkqhkiG
-# 9w0BAQEFAASCAQAv7Lp4MDhJjFY4fNQS0ad81veDnpBw1mvv7rV29hAJf+gBl04V
-# Dc3tk6RVJe8I/UBfQgiPQyAf/UIGc0naSJg1Ri4om9GFAFp8Ny6li7bS8KwugRh+
-# ApGBFgmttPxiYlFarWMUA3c3Dnw3rQRqH/qaGXz+z/E/hhdqco/vjFHp1jFmpda0
-# fLI8HKiMtr2AkLjmv9rMtbqf8eMYdiz3fhMoYQSUfWKohxmmtmhEaRCQaCSOGakr
-# DTL7BKbkXp2AG3BpJvp9TuDUDGhJlrPBdzQBYtDKMQJEG7k9AIwZ4XU+FiiKDyzv
-# mrUkp+QXfJ8zjxy4/IL+F7l77eHI3/WkK82SoYIW/TCCFvkGCisGAQQBgjcDAwEx
+# 9w0BAQEFAASCAQBV4o3+1HoZcUg0ts/A7hZwzv1607QVjs1nblfG+dITOIfjLFQI
+# 5xaZuyPj6H1DM899WPe01BYqa6lG8QVp0sPZiEsXSBGeJqV1HUueKkH/qw1E3arj
+# rWLQ2KNhd6UjaA3+D662CCvbsXKFo/6mxSNewhfnTQ5rr6IgKmt1wwZvPKdenzq5
+# N4hZRFtkqefzbR8ISDQcMgVzxyZyGBVilMeSlifXlT0SQr5mzPP8ysCOCuCWqB5V
+# 3Njkaf9nU/suAENoDvailvhTzjEJi+5ZuclGA8sJ3i88LbPQl5UEib7M7yHIHFNq
+# gcA/tGMI4dBCDLosHBjdjb9wZvgRAny0V7HRoYIW/TCCFvkGCisGAQQBgjcDAwEx
 # ghbpMIIW5QYJKoZIhvcNAQcCoIIW1jCCFtICAQMxDzANBglghkgBZQMEAgEFADCC
 # AVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMBMDEwDQYJ
-# YIZIAWUDBAIBBQAEIPahvhrx3kpA9Ij1l3LFg3FvzzpUZYfwID4VXFlbgSKEAgZj
-# bORLUU8YEzIwMjIxMjE0MTIzMDQzLjY4MlowBIACAfSggdCkgc0wgcoxCzAJBgNV
+# YIZIAWUDBAIBBQAEIOomDdcUZKDLZhegm2U0WwVJ3+vpzy32Cl4l1RQdQS+XAgZj
+# mwnRunoYEzIwMjMwMTExMTMxNTUyLjk1NlowBIACAfSggdCkgc0wgcoxCzAJBgNV
 # BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
 # HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29m
-# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOkRE
-# OEMtRTMzNy0yRkFFMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
-# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJKoZI
+# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjQ5
+# QkMtRTM3QS0yMzNDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
+# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJKoZI
 # hvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAO
 # BgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEm
 # MCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcNMjIxMTA0
-# MTkwMTMyWhcNMjQwMjAyMTkwMTMyWjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+# MTkwMTI1WhcNMjQwMjAyMTkwMTI1WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
 # Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
 # dCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0
-# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046REQ4Qy1FMzM3LTJGQUUxJTAj
+# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046NDlCQy1FMzdBLTIzM0MxJTAj
 # BgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggIiMA0GCSqGSIb3
-# DQEBAQUAA4ICDwAwggIKAoICAQCrSF2zvR5fbcnulqmlopdGHP5NPsknc69V/f43
-# x82nFGzmNjiES/cFX/DkRZdtl07ibfGPTWVMj/EOSr7K2O6I97zEZexnEOe2/svU
-# TMx3mMhKon55i7ySBXTnqaqzx0GjnnFk889zF/m7X3OfThoxAXk9dX8LhktKMVr0
-# gU1yuJt06beUZbWtBEVraNSy6nqC/rfirlTAfT1YYa7TPz1Fu1vIznm+YGBZXx53
-# ptkJmtyhgiMwvwVFO8aXOeqboe3Bl1czAodPdr+QtRI+IYCysiATPPs2kGl46yCz
-# 1OvDJZNkE1sHDIgAKZDfiP65Hh63aFmT40fj0qEQnJgPb504hoMYHYRQ0VJhzLUy
-# SC1m3V5GoEHSb5g9jPseOhw/KQpg1BntO/7OCU598KJrHWM5vS7ohgLlfUmvwDBN
-# yxoPK7eoCHHxwVA30MOCJVnD5REVnyjKgOTqwhXWfHnNkvL6E21qR49f1LtjyfWp
-# Z8COhc8TorT91tPDzsQ4kv8GUkZwqgVPK2vTM+D8w0lJvp/Zr/AORegYIZYmJCsZ
-# PGM4/5H3r+cggbTl4TUumTLYU51gw8HgOFbu0F1lq616lNO5KGaCf4YoRHwCgDWB
-# JKTUQLllfhymlWeAmluUwG7yv+0KF8dV1e+JjqENKEfBAKZmpl5uBJgeceXi6sT7
-# grpkLwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFFTquzi/WbE1gb+u2kvCtXB6TQVr
+# DQEBAQUAA4ICDwAwggIKAoICAQC87WD7Y2GGYFC+UaUJM4xoXDeNsiFR0NOqRpCF
+# Gl0dVv6G5T/Qc2EuahFi+unvPm8igvUw8CRUEVYkiStwbuxKt52fJnCt5jbTsL2f
+# xeK8v1kE5B6JR4v9MyUnpWKetxp9uF2eQ07kkOU+jML10bJKK5uvJ2zkYq27r0PX
+# A1q30MhCXpqUU7qmdxkrhEjN+/4rOQztGRje8emFXQLwQVSkX6XKxoYlcV/1CxRQ
+# fCP1cpYd9z0F+EugJF5dTO+Cuyl0WZWcD0BNheaJ1KOuyF/wD4TT8WlN2Fc8j1de
+# qxkMcGqvsOVihIJTeW+tUNG7Wnmkcd/uzeQzXoekrpqsO1jdqLWygBKYSm/cLY3/
+# LkwMECkN3hKlKQsxrv7p6z91p5LvN0fWp0JrZGgk8zoSH/piYF+h+F8tCh8o8mXf
+# gAuVlYrkDNW0VE05dpyiPowAbZ1PxFzl+koIfUTeftmN7R0rbhBV9K/9g7HDnYQJ
+# owuVbk+EdPdkg01oKZGBwcJMKU4rMLYU6vTdgFzbM85bpshV1eWg+YExVoT62Feo
+# +YA0HDRiydxo6RWCCMNvk7lWo6n3wySUekmgkjqmTnMCXHz860LsW62t21g1QLrK
+# RfMwA8W5iRYaDH9bsDSK0pbxbNjPA7dsCGmvDOei4ZmZGLDaTyl6fzQHOrN3I+9v
+# NPFCwwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFABExnjzSPCkrc/qq5VZQQnRzfSF
 # MB8GA1UdIwQYMBaAFJ+nFV0AXmJdg/Tl0mWnG1M1GelyMF8GA1UdHwRYMFYwVKBS
 # oFCGTmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29m
 # dCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAyMDEwKDEpLmNybDBsBggrBgEFBQcBAQRg
 # MF4wXAYIKwYBBQUHMAKGUGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMv
 # Y2VydHMvTWljcm9zb2Z0JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3J0
 # MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQEL
-# BQADggIBAIyo3nx+swc5JxyIr4J2evp0rx9OyBAN5n1u9CMK7E0glkn3b7Gl4pEJ
-# /derjup1HKSQpSdkLp0eEvC3V+HDKLL8t91VD3J/WFhn9GlNL7PSGdqgr4/8gMCJ
-# Q2bfY1cuEMG7Q/hJv+4JXiM641RyYmGmkFCBBWEXH/nsliTUsJ2Mh57/8atx9uRC
-# 2Jihv05r3cNKNuwPWOpqJwSeRyVQ3+YSb1mycKcDX785AOn/xDhw98f3gszgnpfQ
-# 200F5XLC9YfTC4xo4nMeAMsJ4lSQUT0cTywENV52aPrM8kAj7ujMuNirDuLhEVuJ
-# K19ZlIaPC36UslBlFZQJxPdodi9OjVhYNmySiFaDvvD18XZBuI70N+eqhntCjMeL
-# tGI+luOCQkwCGuGl5N/9q3Z734diQo5tSaA8CsfVaOK/CbV3s9haxqsvu7mpm6Tf
-# oZvWYRNLWgDZdff4LeuC3NGiE/z2plV/v2VW+OaDfg20gIr+kyT31IG62CG2KkVI
-# xB1tdSdLah4u31wq6/Uwm76AnzepdM2RDZCqHG01G9sT1CqaolDDlVb/hJnN7Wk9
-# fHI5M7nIOr6JEhS5up5DOZRwKSLI24IsdaHw4sIjmYg4LWIu1UN/aXD15auinC7l
-# IMm1P9nCohTWpvZT42OQ1yPWFs4MFEQtpNNZ33VEmJQj2dwmQaD+MIIHcTCCBVmg
+# BQADggIBAK1OHQRCfXqQpDIJ5WT1VzXSbovQTAtGjcBNGi4/th3aFZ4QHZjhkXgI
+# kp72p9dYYkrNXu0xSboMCwEpgf+dP7zJsjy4mIcad+dWLpKHuAWOdOl+HWPVP3Qf
+# +4t6gWOk6f/56gKgmaitbkZvZ7OVOWjkjSQ0C5vG0LGpsuLO480+hvyREApCC/7j
+# 8ILUmaJQUbS4og2UqP1KwdytZ4EFAdfrac2DOIjBPjgmoesDTYjpyZACL0Flyx/n
+# s44ulFiXOg8ffH/6V1LJJcCbIura5Jta1C4Pzgj/RmBL8Hkvd7CpN2ITUpspfz0x
+# bkmoIr/Ij+YAhBqaYCUc+pT15llMw84dCzReukKKOWT6rKjYloeLJLDDqe4+pfNT
+# ewSPdVbTRiJVJrIoS7UitHPNfctryp7o6otO8r/qC7ld0qrtNPznacHog/RAz4G5
+# 22vgVvHj+y+kocakr3/MG5occNdfkChKSyH+RINgp959AiEh9AknOgTdf4yKYwmu
+# CvBleW1vqPUgvQdjeoKlrTcaGCLQhPOp+TDcxqfcbyQHVCX5J41yI9SPvcqfa94l
+# 6cYu1PwmRQz1FSLTCg7SK5ji0mdi5L5J6pq9dQ5apRhVjX0UivU8uqmZaRus7nEq
+# OTI4egCYvGM1sqM6eQDB+37UbTSS6UqrOo9ub5Kf7jsmwZAWE0ZtMIIHcTCCBVmg
 # AwIBAgITMwAAABXF52ueAptJmQAAAAAAFTANBgkqhkiG9w0BAQsFADCBiDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWljcm9z
@@ -603,38 +597,38 @@ if ($null -ne $conversionResponse) {
 # MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
 # UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
 # ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjpERDhDLUUzMzctMkZBRTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAIQAa9hdkkrtxSjrb4u8RhATH
-# v+eggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
+# VFNTIEVTTjo0OUJDLUUzN0EtMjMzQzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAEBDsTEXX0qTBUvUTcB3yTQ95
+# vp2ggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
 # MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
 # MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
-# 9w0BAQUFAAIFAOdEM20wIhgPMjAyMjEyMTQxOTM1MDlaGA8yMDIyMTIxNTE5MzUw
-# OVowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA50QzbQIBADAHAgEAAgIo0zAHAgEA
-# AgJO5DAKAgUA50WE7QIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
-# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBANp8jvwV
-# aPZ6xjcrOrS/KLHujAcCugIjeSYxCzVCgn8rGAnxXOpXoRVsKkQShLHprM/eKeaV
-# 89mBY3HhYrVUdADNOiwt3KFAlwM0YMxK2Xw0IW5SHr/7KiYNSPmsZSPAJuR1jznL
-# +tcPL+MzNVEZH6T66hnhZD7OItoFy+eqWcDVMYIEDTCCBAkCAQEwgZMwfDELMAkG
+# 9w0BAQUFAAIFAOdpHSAwIhgPMjAyMzAxMTExOTMzNTJaGA8yMDIzMDExMjE5MzM1
+# MlowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA52kdIAIBADAHAgEAAgICmjAHAgEA
+# AgIS4jAKAgUA52puoAIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
+# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAEW3HCtB
+# AiwpHIIOtJbXs92UjyxHVk4Mwic/RaK3qyuXmXiHbSgctYG7X/2GrJJyIP+oH5m1
+# C0jIVD7K7YwHYcdrAuXFOIh8rzbYwq4fy7/c0OeFbTVPcnkmIcLU00Uup9sOy/IN
+# 7HTR/L8wDxVUKui+mJrCiPSyGHBsuNUvPoghMYIEDTCCBAkCAQEwgZMwfDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9z
-# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJ
+# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJ
 # YIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkq
-# hkiG9w0BCQQxIgQg6elV3RQh37iVmiLMf9kMntExdVIZZ0053aBWWyY8pPcwgfoG
-# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCAZAbGR9iR3TAr5XT3A7Sw76ybyAAzK
-# PkS4o+q81D98sTCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# hkiG9w0BCQQxIgQgSNqdIDeYa/sqOC2U+5ILc+300XFY449jnVFr+J6kvSEwgfoG
+# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCBa8ViiUghcwTTMr9bpewKSRhfuVg1v
+# 3IDwnHBjTg+TTzCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
 # aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
 # cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
-# AhMzAAABxQPNzSGh9O85AAEAAAHFMCIEIMYcMxxz0yEbZoRYPE1kRdxiKeyjRHpS
-# On+c+OiaxZJsMA0GCSqGSIb3DQEBCwUABIICABr2hBeFq2nlJgApsIihBNqZbSTm
-# YUjrMi8I02gSNydD9x4jwlx6/vucmCwKgLqXSg5L1gRAEg2sneumrXOouw+Wpcuq
-# cjiHFUqGuzyUJnwIwChcDIZF+5KfdJp9q4F+Z4DSzQ/wWAWdNymNwyI2ZIiZZdzs
-# WOCAjoS3hhw41SKRXPg2tLHD5OGaRsYTmyeJOWNWQMAdsQVsmv0T11jQZ+DMtGol
-# HfLV6rfRdJ7rHcvvCCc9kkH6//ZPrnGjeSnVGvO4oi+8wPfjM+gx3QK+jmZdf9uM
-# ZsUO6IfwgagA5eytyRbsGkHcXcKHE+pX0XWyIa7X3dUKX7uNbQ6/Y2IMTgtuqK9k
-# Nkpn1xRczgG98MmFIaveOH0BvNU8Rf7syVUM+mcbTqNsj1cC9zFAqsBch8/cdKcE
-# wLsLZSOczZ0y5Y7zgv4vlRV91RiKHA72PcMhG3zqNqAALy1TGWOGr/UDPPZKAXt8
-# i9RrDuEo+Nno9JyY0/h2KZyfnfAKozykTeeAd+zbpnid4jIyKXnileoSUJ4l5AMr
-# ew1wBDz+z0r3lxy+gvwDcHsKaq+RpP3TE0y1jZeQs7GxURwSV434BjCs4zWtsvVL
-# EAKLB8FDUGi4gHG8Ty5mXaMYRQVRgsaN0XZYbZqJuNdTRTuWZ1++1VrkP0CGRnYA
-# B97shIS6l7QpjghL
+# AhMzAAABwFWkjcNkFcVLAAEAAAHAMCIEIPTLMEyFZzKnPJbKxtX+is5pY4qz0SSV
+# oIz9SZFadFLeMA0GCSqGSIb3DQEBCwUABIICACr0R/LJaxpOs4xWK+BESRn4GFrq
+# bMowB5KrWTMIt14Ixw2c8sW2D5PK73JvwU4T8btYmNr9rqeYyQo3A14N02TUWSzf
+# cMmz46vBELvvOJUy7ZRl/6iQ+dGqy/Wj0ENPbfAcbep52WjW+4+oo+++yUES7YfF
+# +1SgrrRp6qAlEcj8+YIFPsp9U/FZgH5A7Aa9lhgdVCn+HWnhmvVCFoVfjs+97jge
+# gFLTHbbcwTcCpM42gvh2OQX4CS7xQ/6CCLcTvMGB35iY9Tr8WkB2SvdUui2eYp5P
+# r6hAK4h3t5JrHqGYkZdtqs/xqfgH18eXX2fGt/ab+Tg6oY/Y2EQ5fw7shSEv72+5
+# ZucgSVaBDhsi87vyplhpfEfDqbgl6XnjdnDgoUEDEFxazTPYnr4n1sHBV6Xv8Wfh
+# w4bEXQrYVhIDDkZlddBCDs8U4W893uLBpr822I0jPovDhrdY9dBdIzQDV5ht3tND
+# EeZlZY0llXWefAvmmZ8e17KipJX+qy5o9mZocTz/EZ1sF3s2ErfRmbiVc3XkBjh7
+# SNlIubCdLCYO6LeENTx8wwqKLJ13ARNC8IBfptD87FkbRK3BHNRkgx06GWMNPobu
+# 3086QRS4CvXhNnXQt2W14JYyRv37117WUebpxJCqbgUocet/VTn+TaB5M2tTb05J
+# LEr/7N6xIDZqR8Iv
 # SIG # End signature block

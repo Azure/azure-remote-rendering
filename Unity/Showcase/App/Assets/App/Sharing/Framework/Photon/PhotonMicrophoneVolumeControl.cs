@@ -63,7 +63,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             get
             {
                 var recorder = GetRecorder();
-                return recorder != null && recorder.IsRecording;
+                return recorder != null && recorder.RecordingEnabled;
             }
         }
 
@@ -98,7 +98,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         public async Task<bool> Calibrate()
         {
             var recorder = GetRecorder();
-            if (recorder == null || !recorder.IsRecording)
+            if (recorder == null || !recorder.RecordingEnabled)
             {
                 return false;
             }

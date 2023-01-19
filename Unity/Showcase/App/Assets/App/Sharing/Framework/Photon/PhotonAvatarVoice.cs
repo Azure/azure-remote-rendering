@@ -23,17 +23,15 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         private void Initialize()
         {
 #if PHOTON_INSTALLED
-            var voice = gameObject.EnsureComponent<PhotonVoiceView>();
-            var recorder = PhotonVoiceNetwork.Instance.PrimaryRecorder;
-            if (!voice.UsePrimaryRecorder && voice.RecorderInUse == null && recorder != null)
-            {
-                voice.RecorderInUse = recorder;
-            }
-
+            gameObject.EnsureComponent<PhotonVoiceView>();
             var audioSource = GetComponentInChildren<AudioSource>(includeInactive: true);
-            if (voice.SpeakerInUse == null && audioSource != null)
+            if (audioSource != null)
             {
-                voice.SpeakerInUse = audioSource.EnsureComponent<Speaker>();
+                audioSource.EnsureComponent<SpeakerExtended>();
+            }
+            else
+            {
+                gameObject.EnsureComponent<SpeakerExtended>();
             }
 #endif // PHOTON_INSTALLED
         }

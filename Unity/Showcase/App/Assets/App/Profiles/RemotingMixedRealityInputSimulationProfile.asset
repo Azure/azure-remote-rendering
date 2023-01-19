@@ -22,7 +22,7 @@ MonoBehaviour:
     bindingType: 1
     code: 0
   doublePressTime: 0.4
-  isHandsFreeInputEnabled: 0
+  isHandsFreeInputEnabled: 1
   isCameraControlEnabled: 1
   mouseLookSpeed: 3
   mouseLookButton:
@@ -42,7 +42,7 @@ MonoBehaviour:
   moveUpDown: UpDown
   lookHorizontal: AXIS_4
   lookVertical: AXIS_5
-  defaultEyeGazeSimulationMode: 2
+  defaultEyeGazeSimulationMode: 0
   defaultControllerSimulationMode: 2
   toggleLeftControllerKey:
     bindingType: 2

@@ -17,13 +17,6 @@ MonoBehaviour:
   recognitionConfidenceLevel: 1
   speechCommands:
   - localizationKey: 
-    keyword: Menu
-    keyCode: 109
-    action:
-      id: 2
-      description: Menu
-      axisConstraint: 2
-  - localizationKey: 
     keyword: Select
     keyCode: 13
     action:

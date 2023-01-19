@@ -114,9 +114,9 @@ The schema for [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml
 
 ### Using Photon Voice 2 for Collaboration
 
-The application can be configured to share app state and voice using [Photon Voice 2](https://www.photonengine.com/en-US/Voice) from Exit Games. Photon Voice version 2.31.0 has been verified to work with this application, however it is possible that later versions will also work. 
+The application can be configured to share app state and voice using [Photon Voice 2](https://www.photonengine.com/en-US/Voice) from Exit Games. The application has been upgraded to work with Photon Voice 2 version 2.50.
 
-The Photon Voice 2 asset package is not included by default. To install the Photon Voice 2 assets, go to the Unity Asset Store and search for *Photon Voice 2*.  Once Photon Voice 2 is found, click through to download and add the assets to your application. At the time of writing this document, this involved selecting *Add To My Assets*, signing in with a Unity Account, selecting *Open in Unity*, and importing assets into the Azure Remote Rendering Showcase Unity project. After adding Photon Voice to the project, there might be compile errors. Photon contains Android components that will not compile if the application is missing some dependencies. The Android components can be removed safely, with no impact to the HoloLens or Window PC application. 
+The Photon Voice 2 asset package is not included by default. To install the Photon Voice 2 assets, go to the Unity Asset Store and search for *Photon Voice 2*.  Once Photon Voice 2 is found, click through to download and add the assets to your application. At the time of writing this document, this involved selecting *Add To My Assets*, signing in with a Unity Account, selecting *Open in Unity*, and importing assets into the Azure Remote Rendering Showcase Unity project.
 
 > The Photon Voice 2 binaries from the Unity Asset Store do not support ARM64. If Photon voice communications on ARM64 is needed, contact [Exit Games](https://www.photonengine.com/) for an ARM64 version of Photon Voice.
 > 

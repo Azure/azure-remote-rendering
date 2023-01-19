@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering.Unity;
@@ -179,8 +179,6 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 }
                 else
                 {
-                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", "The RemoteSphere pointer couldn't use hand joints. The results of this pointer may not be accurate.");
-
                     // Could improve this if "RayStep" had an update function that took a position and direction.
                     var end = pointerPosition + (Vector3.up * distance);
                     Rays[currentRay++].UpdateRayStep(ref pointerPosition, ref end);

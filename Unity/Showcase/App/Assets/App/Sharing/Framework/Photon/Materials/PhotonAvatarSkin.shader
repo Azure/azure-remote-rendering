@@ -97,6 +97,8 @@ Shader "Photon Avatar Skin"
 
             float4 frag(v2f i) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+
 #if defined(_CLIP)
                 // Fade out when too close
 

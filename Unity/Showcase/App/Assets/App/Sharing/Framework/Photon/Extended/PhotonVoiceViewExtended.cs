@@ -27,7 +27,7 @@ using UnityEngine;
 namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
 {
     /// <summary>
-    /// A PhotonVoiceView that is available is Photon is not installed.
+    /// A PhotonVoiceView that is available if Photon is not installed.
     /// </summary>
     public class PhotonVoiceViewExtended : MonoBehaviour
     {

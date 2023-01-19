@@ -12,6 +12,10 @@ PrefabInstance:
       value: AppDefaultControllerPointer
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -24,6 +28,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
@@ -33,14 +41,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
-      propertyPath: m_RootOrder
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: d5b94136462644c9873bb3347169ae7e, type: 3}
@@ -63,13 +63,13 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 120690711267243118, guid: d5b94136462644c9873bb3347169ae7e,
         type: 3}
-      propertyPath: m_Positions.Array.size
-      value: 36
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 120690711267243118, guid: d5b94136462644c9873bb3347169ae7e,
         type: 3}
-      propertyPath: m_Enabled
-      value: 1
+      propertyPath: m_Positions.Array.size
+      value: 36
       objectReference: {fileID: 0}
     - target: {fileID: 120690711267243118, guid: d5b94136462644c9873bb3347169ae7e,
         type: 3}

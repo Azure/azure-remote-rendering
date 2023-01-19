@@ -67,6 +67,7 @@
 
             "roughness": { "type": "number" },
             "metalness": { "type": "number" },
+            "normalMapScale": { "type": "number" },
 
             "albedoColor": { "$ref": "#/definitions/colorOrAlpha" },
 

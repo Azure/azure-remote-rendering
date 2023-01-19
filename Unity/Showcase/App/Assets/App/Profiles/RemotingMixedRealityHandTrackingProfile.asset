@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: RemotingMixedRealityHandTrackingProfile
   m_EditorClassIdentifier: 
   isCustomProfile: 1
-  jointPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
+  jointPrefab: {fileID: 1955475817299902, guid: 6a3f88d2571cd234a86d95ee5856b9ec,
     type: 3}
-  palmPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
+  palmPrefab: {fileID: 6797406804172968804, guid: 750bdc3344567a447960aae3eda2b462,
     type: 3}
-  fingertipPrefab: {fileID: 3792927933189981875, guid: 42bfeeeadbbd84c45931006f9aa7f968,
+  fingertipPrefab: {fileID: 7094064642998883381, guid: b37dde41a983d664c8a09a91313733e7,
     type: 3}
   systemHandMeshMaterial: {fileID: 2100000, guid: 45082b98567b3d44ca3bdbe39f46041a,
     type: 2}

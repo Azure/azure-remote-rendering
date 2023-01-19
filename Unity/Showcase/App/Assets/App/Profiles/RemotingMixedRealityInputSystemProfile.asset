@@ -80,21 +80,37 @@ MonoBehaviour:
       reference: Microsoft.MixedReality.Toolkit.Input.InputPlaybackService, Microsoft.MixedReality.Toolkit.Services.InputSimulation
     componentName: Input Playback Service
     priority: 0
+    runtimePlatform: 208
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.XRSDK.WindowsMixedReality.WindowsMixedRealityDeviceManager,
+        Microsoft.MixedReality.Toolkit.Providers.XRSDK.WindowsMixedReality
+    componentName: XR SDK Windows Mixed Reality Device Manager
+    priority: 0
+    runtimePlatform: 9
+    deviceManagerProfile: {fileID: 0}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.XRSDK.Oculus.Input.OculusXRSDKDeviceManager,
+        Microsoft.MixedReality.Toolkit.Providers.XRSDK.Oculus
+    componentName: XR SDK Oculus Device Manager
+    priority: 0
+    runtimePlatform: 33
+    deviceManagerProfile: {fileID: 11400000, guid: 8f48cb9c26fb518499c65c9f9e8bb4ed,
+      type: 2}
+  - componentType:
+      reference: Microsoft.MixedReality.Toolkit.XRSDK.OpenXR.OpenXRDeviceManager,
+        Microsoft.MixedReality.Toolkit.Providers.OpenXR
+    componentName: OpenXR XRSDK Device Manager
+    priority: 0
     runtimePlatform: -1
     deviceManagerProfile: {fileID: 0}
   - componentType:
-      reference: Microsoft.MixedReality.Toolkit.Input.UnityMouseDeviceManager, Assembly-CSharp
+      reference: Microsoft.MixedReality.Toolkit.Input.UnityInput.MouseDeviceManager,
+        Microsoft.MixedReality.Toolkit
     componentName: Unity Mouse Device Manager
     priority: 0
     runtimePlatform: -1
-    deviceManagerProfile: {fileID: 0}
-  - componentType:
-      reference: Microsoft.MixedReality.Toolkit.WindowsMixedReality.Input.WindowsMixedRealityEyeGazeDataProvider,
-        Microsoft.MixedReality.Toolkit.Providers.WindowsMixedReality
-    componentName: Windows Mixed Reality Eye Gaze Provider
-    priority: 0
-    runtimePlatform: 8
-    deviceManagerProfile: {fileID: 11400000, guid: 2d87dd11b18f700449c9dab320d19b99,
+    deviceManagerProfile: {fileID: 11400000, guid: cc2a0fa97d2f9f14996ffd20776bab57,
       type: 2}
   focusProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.RemoteFocusProviderNoCollider,
@@ -102,6 +118,7 @@ MonoBehaviour:
   raycastProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.DefaultRaycastProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   focusQueryBufferSize: 128
+  shouldUseGraphicsRaycast: 1
   focusIndividualCompoundCollider: 0
   inputActionsProfile: {fileID: 11400000, guid: 723eb97b02944311b92861f473eee53e,
     type: 2}
@@ -112,7 +129,7 @@ MonoBehaviour:
   speechCommandsProfile: {fileID: 11400000, guid: f91cc56052923bd49814bb7937153cb4,
     type: 2}
   enableControllerMapping: 1
-  controllerMappingProfile: {fileID: 11400000, guid: 467b83e170d647c4fa02aad97af5a606,
+  controllerMappingProfile: {fileID: 11400000, guid: 8237c848ef7592341960b70cb43d05b6,
     type: 2}
   controllerVisualizationProfile: {fileID: 11400000, guid: 345c06fdf3732db46b96299bd3cba653,
     type: 2}

@@ -19,7 +19,7 @@ MonoBehaviour:
         Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
     componentName: Remote Object Factory Service
     priority: 101
-    runtimePlatform: 25
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: 36f1c3dc4da94694187069a2bcd5ca1c,
       type: 2}
   - componentType:
@@ -27,14 +27,14 @@ MonoBehaviour:
         Assembly-CSharp
     componentName: Remote Rendering Service
     priority: 0
-    runtimePlatform: 25
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: bc784e4f1c1a2d74eb629957bfefdc4b,
       type: 2}
   - componentType:
       reference: Microsoft.MixedReality.Toolkit.Extensions.PointerStateService, Assembly-CSharp
     componentName: Pointer State Service
     priority: 10
-    runtimePlatform: 15
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: 01e1828813b910245bee82d9c066f1fd,
       type: 2}
   - componentType:
@@ -49,21 +49,21 @@ MonoBehaviour:
         Assembly-CSharp
     componentName: AppNotificationService
     priority: 10
-    runtimePlatform: 15
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: e76c7e7a50fe65947bd79ed19d2b7f02,
       type: 2}
   - componentType:
       reference: Microsoft.MixedReality.Toolkit.Extensions.SharingService, Assembly-CSharp
     componentName: SharingService
     priority: 12
-    runtimePlatform: 25
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: 2ab461f7a68284844a0259348e57ee39,
       type: 2}
   - componentType:
       reference: Microsoft.MixedReality.Toolkit.Extensions.AnchoringService, Assembly-CSharp
     componentName: AnchoringService
     priority: 11
-    runtimePlatform: 25
+    runtimePlatform: 223
     configurationProfile: {fileID: 11400000, guid: aa4fd0bf413fea24bb88f20ba593c279,
       type: 2}
   - componentType:

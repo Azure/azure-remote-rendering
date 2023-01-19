@@ -3,6 +3,7 @@
 
 #if PHOTON_INSTALLED
 using ExitGames.Client.Photon;
+using Photon.Voice;
 using Photon.Voice.PUN;
 using Photon.Voice.Unity;
 using UnityEngine;
@@ -13,7 +14,7 @@ using static Photon.Voice.Unity.Recorder;
 namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
 {
     /// <summary>
-    /// Ensures that all the required mesh componets are available in the scene.
+    /// Ensures that all the required mesh components are available in the scene.
     /// </summary>
     public class PhotonComponents
     {
@@ -83,9 +84,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         }
 
         /// <summary>
-        /// Get Photon's VoiceNetwork component
+        /// Get Photon's VoiceClient component
         /// </summary>
-        public PhotonVoiceNetwork VoiceNetwork { get; private set; }
+        public PunVoiceClient VoiceClient { get; private set; }
 
         /// <summary>
         /// Get Photon's recorder
@@ -163,34 +164,32 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
         {
             if (PhotonFeatureSupport.HasVoice)
             {
-                VoiceNetwork = EnsureComponent<PhotonVoiceNetwork>(RootComponents);
+                VoiceClient = EnsureComponent<PunVoiceClient>(RootComponents);
                 VoiceRecorder = EnsureComponent<Recorder>(Components);
                 VoiceRecorder.MicrophoneType = MicType.Photon;
-                VoiceRecorder.RecordOnlyWhenEnabled = true;
                 VoiceRecorder.SourceType = InputSourceType.Microphone;
                 VoiceRecorder.MicrophoneType = Application.isEditor ? MicType.Unity : MicType.Photon;
                 VoiceRecorder.TransmitEnabled = true;
                 VoiceRecorder.SamplingRate = GetSamplingRate(fallback: VoiceRecorder.SamplingRate);
                 VoiceRecorder.VoiceDetection = true;
                 VoiceRecorder.VoiceDetectionThreshold = 0.015f;
-                VoiceRecorder.LogLevel = _logger.Verbose == LogHelperState.Always ? DebugLevel.ALL : DebugLevel.WARNING;
                 InitializeMicrophoneDevice();
 
                 VolumeControl = EnsureComponent<PhotonMicrophoneVolumeControl>(Components);
                 VolumeControl.VerboseLogging = _logger.Verbose == LogHelperState.Always;
                 VolumeControl.Volume = _audioSettings.MicrophoneAdjustment;
 
-                VoiceNetwork.PrimaryRecorder = VoiceRecorder;
+                VoiceClient.PrimaryRecorder = VoiceRecorder;
             }
             else
             {
-                DeleteComponent<PhotonVoiceNetwork>();
+                DeleteComponent<PunVoiceClient>();
                 DeleteComponent<Recorder>();
             }
         }
 
         /// <summary>
-        /// Get teh systems sample plyback rate.
+        /// Get the systems sample playback rate.
         /// </summary>
         private POpusCodec.Enums.SamplingRate GetSamplingRate(POpusCodec.Enums.SamplingRate fallback)
         {
@@ -263,7 +262,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
 
         private void InitializeMicrophoneDevice()
         {
-            var devices = VoiceRecorder.MicrophonesEnumerator;
+            var devices = Platform.CreateAudioInEnumerator(VoiceRecorder.VoiceLogger as global::Photon.Voice.ILogger);
             if (devices == null || !devices.IsSupported)
             {
                 _logger.LogError("No microphone devices found.");

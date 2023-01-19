@@ -165,7 +165,18 @@ void HolographicAppMain::SetHolographicSpace(HolographicSpace const& holographic
                 }
                 else
                 {
-                    SetNewState(AppConnectionStatus::ConnectionFailed, ctx.ErrorMessage.c_str());
+                    std::stringstream err;
+                    const char* resultStr = RR::ResultToString(ctx.Result);
+                    if (ctx.ErrorMessage.empty())
+                    {
+                        err << resultStr;
+                    }
+                    else
+                    {
+                        err << ctx.ErrorMessage.c_str() << " (" << resultStr << ")";
+                    }
+                    std::string errStr = err.str();
+                    SetNewState(AppConnectionStatus::ConnectionFailed, errStr.c_str());
                 }
             }
             else

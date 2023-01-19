@@ -31,11 +31,12 @@
 #   Will list all currently running sessions and their properties
 
 #The following individual parameters can be used to override values in the config file to create a session
-# -VmSize <size>
-# -Region <region>
-# -ArrAccountId
-# -ArrAccountKey
-# -MaxLeaseTime <MaxLeaseTime>
+# -VmSize <standard/premium>
+# -RemoteRenderingDomain <remoteRenderingDomain e.g. westeurope or https://remoterendering.japaneast.mixedreality.azure.com>
+# -ArrAccountId <id as guid>
+# -ArrAccountKey <key in plain text>
+# -ArrAccountDomain <arrAccountDomain e.g. australiaeast or https://sts.eastus.mixedreality.azure.com>
+# -MaxLeaseTime <MaxLeaseTime as hh:mm:ss>
 
 Param(
     [switch] $CreateSession,
@@ -45,13 +46,13 @@ Param(
     [switch] $StopSession,
     [switch] $Poll,
     [string] $Id,
-    [string] $ArrAccountId, #optional override for arrAccountId of accountSettings in config file
-    [string] $ArrAccountKey, #optional override for arrAccountKey of accountSettings in config file
-    [string] $Region, #optional override for region of accountSettings in config file
-    [string] $VmSize, #optional override for vmSize of renderingSessionSettings in config file
-    [string] $MaxLeaseTime, #optional override for naxLeaseTime of renderingSessionSettings in config file
-    [string] $AuthenticationEndpoint,
-    [string] $ServiceEndpoint,
+    [string] $ArrAccountId, # optional override for arrAccountId of accountSettings in config file
+    [string] $ArrAccountKey, # optional override for arrAccountKey of accountSettings in config file
+    [string] $ArrAccountDomain, # optional override for region where the ARR account is located
+    [string] $VmSize, # optional override for vmSize of renderingSessionSettings in config file
+    [string] $MaxLeaseTime, # optional override for maxLeaseTime of renderingSessionSettings in config file
+    [string] $RemoteRenderingDomain, # optional override for region where rendering session is or should be located
+    [string] $Region, # deprecated, please use explicit RemoteRenderingDomain and ArrAccountDomain
     [string] $ConfigFile,
     [hashtable] $AdditionalParameters
 )
@@ -65,11 +66,6 @@ if (-Not $PrerequisitesInstalled) {
     exit 1
 }
 
-$LoggedIn = CheckLogin
-if (-Not $LoggedIn) {
-    WriteError("User not logged in - Exiting.")
-    exit 1
-}
 function WriteSessionProperties($session) {
     WriteInformation("    sessionId:                  $($session.id)")
     WriteInformation("    elapsedTimeMinutes:         $($session.elapsedTimeMinutes)")
@@ -91,11 +87,11 @@ function WriteSessionProperties($session) {
 }
 
 #call REST API <endpoint>/accounts/<accountId>/sessions/
-function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey) {
+function GetSessions($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey) {
     try {
-        $url = "$serviceEndpoint/accounts/$accountId/sessions?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/sessions?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
 
         if ($response.StatusCode -eq 200) {
@@ -123,15 +119,15 @@ function GetSessions($authenticationEndpoint, $serviceEndpoint, $accountId, $acc
 #call REST API <endpoint>/accounts/<accountId>/sessions/<SessionId> with PATCH to update a session
 # currently only updates the leaseTime
 # $MaxLeaseTime has to be strictly larger than the existing lease time of the session
-function UpdateSession($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId, [timespan] $maxLeaseTime) {
+function UpdateSession($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey, $sessionId, [timespan] $maxLeaseTime) {
     try {
         $body =
         @{
             maxLeaseTimeMinutes = $maxLeaseTime.TotalMinutes -as [int];
         } | ConvertTo-Json
-        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -authenticationEndpoint $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PATCH -ContentType "application/json" -Body $body -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)
@@ -151,7 +147,7 @@ function UpdateSession($authenticationEndpoint, $serviceEndpoint, $accountId, $a
 }
 
 # retrieves GetSessionProperties until error or ready status of rendering session are achieved
-function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId, $accountKey, $sessionId) {
+function PollSessionStatus($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey, $sessionId) {
     $sessionStatus = "Starting"
 
     WriteInformation("Provisioning a VM for rendering session '$sessionId' ...")
@@ -169,7 +165,7 @@ function PollSessionStatus($authenticationEndpoint, $serviceEndpoint, $accountId
 
         WriteProgress -Activity "Preparing VM for rendering session '$sessionId' ..." -Status: "Preparing for $duration"
 
-        $response = GetSessionProperties $authenticationEndpoint $serviceEndpoint $accountId $accountKey $sessionId
+        $response = GetSessionProperties $arrAccountDomain $remoteRenderingDomain $accountId $accountKey $sessionId
         $responseContent = $response.Content | ConvertFrom-Json
 
         $sessionStatus = $responseContent.status
@@ -219,8 +215,8 @@ $config = LoadConfig `
     -fileLocation $ConfigFile `
     -ArrAccountId $ArrAccountId `
     -ArrAccountKey $ArrAccountKey `
-    -AuthenticationEndpoint $AuthenticationEndpoint `
-    -ServiceEndpoint $ServiceEndpoint `
+    -ArrAccountDomain $ArrAccountDomain `
+    -RemoteRenderingDomain $RemoteRenderingDomain `
     -Region $Region `
     -VmSize $VmSize `
     -MaxLeaseTime $MaxLeaseTime
@@ -232,20 +228,12 @@ if ($null -eq $config) {
 
 $defaultConfig = GetDefaultConfig
 
-$accountOkay = VerifyAccountSettings $config $defaultConfig $ServiceEndpoint
-if ($false -eq $accountOkay) {
-    WriteError("Error reading accountSettings in $ConfigFile - Exiting.")
+#to get session properties etc we do not need to have full renderingsessionsettings
+$skipVmSettingsCheck = $GetSessionProperties -or $GetSessions -or $StopSession -or ($UpdateSession -and -Not $MaxLeaseTime)
+$vmSettingsOkay = VerifyRenderingSessionSettings $config $defaultConfig $skipVmSettingsCheck
+if (-Not $vmSettingsOkay) {
+    WriteError("renderSessionSettings not valid. please ensure valid renderSessionSettings in $ConfigFile or commandline parameters - Exiting.")
     exit 1
-}
-
-if (-Not ($GetSessionProperties -or $GetSessions -or $StopSession -or ($UpdateSession -and -Not $MaxLeaseTime))) {
-    #to get session properties etc we do not need to have proper renderingsessionsettings
-    #otherwise we need to check them
-    $vmSettingsOkay = VerifyRenderingSessionSettings $config $defaultConfig
-    if (-Not $vmSettingsOkay) {
-        WriteError("renderSessionSettings not valid. please ensure valid renderSessionSettings in $ConfigFile or commandline parameters - Exiting.")
-        exit 1
-    }
 }
 
 # GetSessionProperties
@@ -255,10 +243,10 @@ if ($GetSessionProperties) {
         $sessionId = Read-Host "Please enter Session Id"
     }
     if ($Poll) {
-        PollSessionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+        PollSessionStatus -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
     }
     else {
-        $response = GetSessionProperties -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+        $response = GetSessionProperties -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
 
         $responseFromJson = ($response | ConvertFrom-Json)
 
@@ -270,7 +258,7 @@ if ($GetSessionProperties) {
 
 # GetSessions
 if ($GetSessions) {
-    GetSessions -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey
+    GetSessions -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey
     exit
 }
 
@@ -281,7 +269,7 @@ if ($StopSession) {
         $sessionId = Read-Host "Please enter Session Id"
     }
 
-    $null = StopSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+    $null = StopSession -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
 
     exit
 }
@@ -292,23 +280,23 @@ if ($UpdateSession) {
     if ([string]::IsNullOrEmpty($Id)) {
         $sessionId = Read-Host "Please enter Session Id"
     }
-    $null = UpdateSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime
+    $null = UpdateSession -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime
 
     exit
 }
 
 # Create a Session and Poll for Completion
-$sessionId = CreateRenderingSession -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -vmSize $config.renderingSessionSettings.vmSize -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime -AdditionalParameters $AdditionalParameters -sessionId $Id
+$sessionId = CreateRenderingSession -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -vmSize $config.renderingSessionSettings.vmSize -maxLeaseTime $config.renderingSessionSettings.maxLeaseTime -AdditionalParameters $AdditionalParameters -sessionId $Id
 if ($CreateSession -and ($false -eq $Poll)) {
     exit #do not poll if we asked to only create the session
 }
-PollSessionStatus -authenticationEndpoint $config.accountSettings.authenticationEndpoint -serviceEndpoint $config.accountSettings.serviceEndpoint -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
+PollSessionStatus -arrAccountDomain $config.accountSettings.arrAccountDomain -remoteRenderingDomain $config.renderingSessionSettings.remoteRenderingDomain -accountId $config.accountSettings.arrAccountId -accountKey $config.accountSettings.arrAccountKey -SessionId $sessionId
 
 # SIG # Begin signature block
 # MIIrWAYJKoZIhvcNAQcCoIIrSTCCK0UCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCD0p0jsj1n5j0gN
-# bNW6Wiy8+gcD/k9jgkOCKhSlelbyb6CCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDSU9FcdsXXNsQI
+# GKNYpaUqscYliALeTTkgeSFuZK5VUqCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
 # MGZD2x+CAAIAAAGpMA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMjA2MTAxODI3MDRaFw0yMzA2MTAxODI3MDRaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -405,61 +393,61 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # MEExEzARBgoJkiaJk/IsZAEZFgNHQkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTAT
 # BgNVBAMTDEFNRSBDUyBDQSAwMQITNgAAAanWkDBmQ9sfggACAAABqTANBglghkgB
 # ZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3
-# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgrr5RvuPY5GJqXVz+
-# WZFT4E5uVN3DMMi/ew4RAxpsAXYwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
+# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgOS47JOC6caFnIo6k
+# fVI1q3KBVeJUn/WBvfLZRrchcCAwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
 # AHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTANBgkqhkiG
-# 9w0BAQEFAASCAQBXR/GCQsm3LzOC5Xbs5ihv4HAh0oVtNrsqO+qCovZ+/3C+Qo9U
-# jsZEho0NQ9n1iKAoiDDQgIW3mT4PJjSzT5pazlclA0tThqMTQ690DsBa7fvwybAX
-# fdDi9sFZrYnTJVOm1m9ldZd9qzCHeGIm9r3ty7V/BrEAj+JvcH6u+9InSr12i9Sw
-# mDU6wCvGcWj5V4DjJoJcDY+fjSlCki8nGxeoFWutTH/w/D4xJ8pn3cylS8Cwet1V
-# 76etttLMqe9QEYxgNBZ1IoGXg/mmYXuN3tuxp2zceC/JbF8IdaDbTlcsTPHhRfnX
-# VHhx6FhPEmzi6ZH6IuUUBvU/q3x0xmOqaHT5oYIW/TCCFvkGCisGAQQBgjcDAwEx
+# 9w0BAQEFAASCAQBPdqe32+QPc0v5Xhyy0PG12LqW98TrOQb4APHN2JnP90BV2KPb
+# rhgnFNOj9vKYMBcOiqsSuznp047TuV0VEQgXaMlt0RySRRglEuhx5pdDsUmcs0Hl
+# PScXZndLJWMSBqeSHyxYjTszCGmMjg8cmiIG/u6TQpgm766jU4uhC68Skhrm7YNb
+# kUt54yzdiyDG3qGxm07zP7u/P0sI/PLS4HU4yYfgfaCRTTN9ObEiOU6Iuae9HTlf
+# +4uYiyHrZxtcfC7LHZzvJZ/Bo72Wq/1Jd81Sk7CvdwEkUfC0xQox1C8Cg1V+9ZC6
+# BeoLHgmvMWl8yZtPoTCIb9/jaKvV9dyGM+9roYIW/TCCFvkGCisGAQQBgjcDAwEx
 # ghbpMIIW5QYJKoZIhvcNAQcCoIIW1jCCFtICAQMxDzANBglghkgBZQMEAgEFADCC
 # AVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMBMDEwDQYJ
-# YIZIAWUDBAIBBQAEINSjy+ryQVOkVCVn5uXVXbNhSXub7KeMz/b9fSTsuZ9hAgZj
-# bORLUe0YEzIwMjIxMjE0MTIzMDUxLjA1M1owBIACAfSggdCkgc0wgcoxCzAJBgNV
+# YIZIAWUDBAIBBQAEIJoiYyy3JpSJZQYJ8uR9VjQw5dB/T++ksm8UYOBeaT0wAgZj
+# mwnRuVMYEzIwMjMwMTExMTMxNTQzLjgzOVowBIACAfSggdCkgc0wgcoxCzAJBgNV
 # BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
 # HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29m
-# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOkRE
-# OEMtRTMzNy0yRkFFMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
-# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJKoZI
+# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjQ5
+# QkMtRTM3QS0yMzNDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
+# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJKoZI
 # hvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAO
 # BgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEm
 # MCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcNMjIxMTA0
-# MTkwMTMyWhcNMjQwMjAyMTkwMTMyWjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+# MTkwMTI1WhcNMjQwMjAyMTkwMTI1WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
 # Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
 # dCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0
-# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046REQ4Qy1FMzM3LTJGQUUxJTAj
+# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046NDlCQy1FMzdBLTIzM0MxJTAj
 # BgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggIiMA0GCSqGSIb3
-# DQEBAQUAA4ICDwAwggIKAoICAQCrSF2zvR5fbcnulqmlopdGHP5NPsknc69V/f43
-# x82nFGzmNjiES/cFX/DkRZdtl07ibfGPTWVMj/EOSr7K2O6I97zEZexnEOe2/svU
-# TMx3mMhKon55i7ySBXTnqaqzx0GjnnFk889zF/m7X3OfThoxAXk9dX8LhktKMVr0
-# gU1yuJt06beUZbWtBEVraNSy6nqC/rfirlTAfT1YYa7TPz1Fu1vIznm+YGBZXx53
-# ptkJmtyhgiMwvwVFO8aXOeqboe3Bl1czAodPdr+QtRI+IYCysiATPPs2kGl46yCz
-# 1OvDJZNkE1sHDIgAKZDfiP65Hh63aFmT40fj0qEQnJgPb504hoMYHYRQ0VJhzLUy
-# SC1m3V5GoEHSb5g9jPseOhw/KQpg1BntO/7OCU598KJrHWM5vS7ohgLlfUmvwDBN
-# yxoPK7eoCHHxwVA30MOCJVnD5REVnyjKgOTqwhXWfHnNkvL6E21qR49f1LtjyfWp
-# Z8COhc8TorT91tPDzsQ4kv8GUkZwqgVPK2vTM+D8w0lJvp/Zr/AORegYIZYmJCsZ
-# PGM4/5H3r+cggbTl4TUumTLYU51gw8HgOFbu0F1lq616lNO5KGaCf4YoRHwCgDWB
-# JKTUQLllfhymlWeAmluUwG7yv+0KF8dV1e+JjqENKEfBAKZmpl5uBJgeceXi6sT7
-# grpkLwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFFTquzi/WbE1gb+u2kvCtXB6TQVr
+# DQEBAQUAA4ICDwAwggIKAoICAQC87WD7Y2GGYFC+UaUJM4xoXDeNsiFR0NOqRpCF
+# Gl0dVv6G5T/Qc2EuahFi+unvPm8igvUw8CRUEVYkiStwbuxKt52fJnCt5jbTsL2f
+# xeK8v1kE5B6JR4v9MyUnpWKetxp9uF2eQ07kkOU+jML10bJKK5uvJ2zkYq27r0PX
+# A1q30MhCXpqUU7qmdxkrhEjN+/4rOQztGRje8emFXQLwQVSkX6XKxoYlcV/1CxRQ
+# fCP1cpYd9z0F+EugJF5dTO+Cuyl0WZWcD0BNheaJ1KOuyF/wD4TT8WlN2Fc8j1de
+# qxkMcGqvsOVihIJTeW+tUNG7Wnmkcd/uzeQzXoekrpqsO1jdqLWygBKYSm/cLY3/
+# LkwMECkN3hKlKQsxrv7p6z91p5LvN0fWp0JrZGgk8zoSH/piYF+h+F8tCh8o8mXf
+# gAuVlYrkDNW0VE05dpyiPowAbZ1PxFzl+koIfUTeftmN7R0rbhBV9K/9g7HDnYQJ
+# owuVbk+EdPdkg01oKZGBwcJMKU4rMLYU6vTdgFzbM85bpshV1eWg+YExVoT62Feo
+# +YA0HDRiydxo6RWCCMNvk7lWo6n3wySUekmgkjqmTnMCXHz860LsW62t21g1QLrK
+# RfMwA8W5iRYaDH9bsDSK0pbxbNjPA7dsCGmvDOei4ZmZGLDaTyl6fzQHOrN3I+9v
+# NPFCwwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFABExnjzSPCkrc/qq5VZQQnRzfSF
 # MB8GA1UdIwQYMBaAFJ+nFV0AXmJdg/Tl0mWnG1M1GelyMF8GA1UdHwRYMFYwVKBS
 # oFCGTmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29m
 # dCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAyMDEwKDEpLmNybDBsBggrBgEFBQcBAQRg
 # MF4wXAYIKwYBBQUHMAKGUGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMv
 # Y2VydHMvTWljcm9zb2Z0JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3J0
 # MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQEL
-# BQADggIBAIyo3nx+swc5JxyIr4J2evp0rx9OyBAN5n1u9CMK7E0glkn3b7Gl4pEJ
-# /derjup1HKSQpSdkLp0eEvC3V+HDKLL8t91VD3J/WFhn9GlNL7PSGdqgr4/8gMCJ
-# Q2bfY1cuEMG7Q/hJv+4JXiM641RyYmGmkFCBBWEXH/nsliTUsJ2Mh57/8atx9uRC
-# 2Jihv05r3cNKNuwPWOpqJwSeRyVQ3+YSb1mycKcDX785AOn/xDhw98f3gszgnpfQ
-# 200F5XLC9YfTC4xo4nMeAMsJ4lSQUT0cTywENV52aPrM8kAj7ujMuNirDuLhEVuJ
-# K19ZlIaPC36UslBlFZQJxPdodi9OjVhYNmySiFaDvvD18XZBuI70N+eqhntCjMeL
-# tGI+luOCQkwCGuGl5N/9q3Z734diQo5tSaA8CsfVaOK/CbV3s9haxqsvu7mpm6Tf
-# oZvWYRNLWgDZdff4LeuC3NGiE/z2plV/v2VW+OaDfg20gIr+kyT31IG62CG2KkVI
-# xB1tdSdLah4u31wq6/Uwm76AnzepdM2RDZCqHG01G9sT1CqaolDDlVb/hJnN7Wk9
-# fHI5M7nIOr6JEhS5up5DOZRwKSLI24IsdaHw4sIjmYg4LWIu1UN/aXD15auinC7l
-# IMm1P9nCohTWpvZT42OQ1yPWFs4MFEQtpNNZ33VEmJQj2dwmQaD+MIIHcTCCBVmg
+# BQADggIBAK1OHQRCfXqQpDIJ5WT1VzXSbovQTAtGjcBNGi4/th3aFZ4QHZjhkXgI
+# kp72p9dYYkrNXu0xSboMCwEpgf+dP7zJsjy4mIcad+dWLpKHuAWOdOl+HWPVP3Qf
+# +4t6gWOk6f/56gKgmaitbkZvZ7OVOWjkjSQ0C5vG0LGpsuLO480+hvyREApCC/7j
+# 8ILUmaJQUbS4og2UqP1KwdytZ4EFAdfrac2DOIjBPjgmoesDTYjpyZACL0Flyx/n
+# s44ulFiXOg8ffH/6V1LJJcCbIura5Jta1C4Pzgj/RmBL8Hkvd7CpN2ITUpspfz0x
+# bkmoIr/Ij+YAhBqaYCUc+pT15llMw84dCzReukKKOWT6rKjYloeLJLDDqe4+pfNT
+# ewSPdVbTRiJVJrIoS7UitHPNfctryp7o6otO8r/qC7ld0qrtNPznacHog/RAz4G5
+# 22vgVvHj+y+kocakr3/MG5occNdfkChKSyH+RINgp959AiEh9AknOgTdf4yKYwmu
+# CvBleW1vqPUgvQdjeoKlrTcaGCLQhPOp+TDcxqfcbyQHVCX5J41yI9SPvcqfa94l
+# 6cYu1PwmRQz1FSLTCg7SK5ji0mdi5L5J6pq9dQ5apRhVjX0UivU8uqmZaRus7nEq
+# OTI4egCYvGM1sqM6eQDB+37UbTSS6UqrOo9ub5Kf7jsmwZAWE0ZtMIIHcTCCBVmg
 # AwIBAgITMwAAABXF52ueAptJmQAAAAAAFTANBgkqhkiG9w0BAQsFADCBiDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWljcm9z
@@ -503,38 +491,38 @@ PollSessionStatus -authenticationEndpoint $config.accountSettings.authentication
 # MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
 # UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
 # ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjpERDhDLUUzMzctMkZBRTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAIQAa9hdkkrtxSjrb4u8RhATH
-# v+eggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
+# VFNTIEVTTjo0OUJDLUUzN0EtMjMzQzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAEBDsTEXX0qTBUvUTcB3yTQ95
+# vp2ggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
 # MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
 # MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
-# 9w0BAQUFAAIFAOdEM20wIhgPMjAyMjEyMTQxOTM1MDlaGA8yMDIyMTIxNTE5MzUw
-# OVowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA50QzbQIBADAHAgEAAgIo0zAHAgEA
-# AgJO5DAKAgUA50WE7QIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
-# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBANp8jvwV
-# aPZ6xjcrOrS/KLHujAcCugIjeSYxCzVCgn8rGAnxXOpXoRVsKkQShLHprM/eKeaV
-# 89mBY3HhYrVUdADNOiwt3KFAlwM0YMxK2Xw0IW5SHr/7KiYNSPmsZSPAJuR1jznL
-# +tcPL+MzNVEZH6T66hnhZD7OItoFy+eqWcDVMYIEDTCCBAkCAQEwgZMwfDELMAkG
+# 9w0BAQUFAAIFAOdpHSAwIhgPMjAyMzAxMTExOTMzNTJaGA8yMDIzMDExMjE5MzM1
+# MlowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA52kdIAIBADAHAgEAAgICmjAHAgEA
+# AgIS4jAKAgUA52puoAIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
+# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAEW3HCtB
+# AiwpHIIOtJbXs92UjyxHVk4Mwic/RaK3qyuXmXiHbSgctYG7X/2GrJJyIP+oH5m1
+# C0jIVD7K7YwHYcdrAuXFOIh8rzbYwq4fy7/c0OeFbTVPcnkmIcLU00Uup9sOy/IN
+# 7HTR/L8wDxVUKui+mJrCiPSyGHBsuNUvPoghMYIEDTCCBAkCAQEwgZMwfDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9z
-# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJ
+# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJ
 # YIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkq
-# hkiG9w0BCQQxIgQgWzgGw9O/yGH0Gq2oxHVbtuT6oacxy76U5MAiEhYZcywwgfoG
-# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCAZAbGR9iR3TAr5XT3A7Sw76ybyAAzK
-# PkS4o+q81D98sTCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# hkiG9w0BCQQxIgQgh/8JgRzmfIJuEsfnt4KCFSgUi9sL7n6ziQ9SvF+epD0wgfoG
+# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCBa8ViiUghcwTTMr9bpewKSRhfuVg1v
+# 3IDwnHBjTg+TTzCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
 # aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
 # cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
-# AhMzAAABxQPNzSGh9O85AAEAAAHFMCIEIMYcMxxz0yEbZoRYPE1kRdxiKeyjRHpS
-# On+c+OiaxZJsMA0GCSqGSIb3DQEBCwUABIICABALuQ+gTTqPhYNvFVPQZlq+figu
-# dHjSHNeYaupC0emGqNObH9MG0t7ktY+yA5EVAcyNwk5oRmmHtXV9k3RvlKbsb1hg
-# +WEMrWYP7OpTOxKkIkI0xN5w3fXw9NmNhsiaWkqeyQXDLIgEjcBPrPrTk2dtaL9L
-# 4ctZl37+ZBC+yyO9t+dkB2uUf13uA4PiOVYtnke21i6V4bkEfLwMP4Mfz3mgaEbT
-# f0Z9jMrnJK9lvikjGo0x9FEdMAqMJw/uwF2talEjuHq8tUKNvPt+Yfg1az7agFDn
-# f0x3ChAYTECuf/oJ8lxOGd3eWFDmtQos2uevXkd2zPLjsb6TM2rdDk9Q+YxpCJk2
-# P9FYXTDPNZ84WRGk7QIU73pk82BqUR3icLRNe52UjbfIiWsA9zEBZlI+Gq+96FGi
-# 6TvgeGq/z9JxXASSIK5Cii+v22Cr6JdF+dIMoFbJ1LAlLgultdppz3M7piKVyKow
-# 6ktKSQSywCQ/SV5xQx+wLxTD6C3s8SnjcoCZmuBJOnA3I9Uk8owa+f2HQRUoCtsE
-# gE0Nl8Ex+8LrfsEk9b9nuoogo8C/6qfaOjKe4Bqtp6XUlZsq+IDUoR02GgX5pwZz
-# 1Ky1OHg0YCzE6LhFD9jcuwgrwQCCy+elVb0S7/pdLxt+5E4t7LqUOOUxAM3RRRE6
-# 3XFQjVOW8MiQTF+a
+# AhMzAAABwFWkjcNkFcVLAAEAAAHAMCIEIPTLMEyFZzKnPJbKxtX+is5pY4qz0SSV
+# oIz9SZFadFLeMA0GCSqGSIb3DQEBCwUABIICAFv8EEHrUPlTjOM14nsMODBXY5xa
+# VnYp6mr8DiMMDJZOzYOUHUHrE/9lExK+ExAnS6WSUDbLEoO57GCXmupYsCRCyg8m
+# Hi3Z7yb4hax/qs/uZUjfocsziilXY2TaLlnhgq6YzWCz2iVNoCHFLSsx1PPS1UA9
+# nS9PVNyAmLQJe2XlHx/Qs/ioZLRS9eZwdFSMajqSnWQ2PUSoYVzRXfYBk6i70p/9
+# vKiCKRvDqXZHto5+l4wN/1y/hwdBf6w6iOjzYU1oQQ7Rpq+D/uNRyz8oTJTEZy49
+# VbmCqldZPmuxb2vi7KVLOI2rAj40x4S67wzMyv+wHW3lYIl98ijbFNM9BwQZK6qc
+# FWcuB2JYz1xtqP1BquHyIxsIOTUKx3Y4eq7xtVecJ/eNb8sqV5pORT3LbdCCsTf7
+# /XuHRaIS7kP0T+2oLslua+Nv405wN1VddlPIk77A6Pr6dTKz2OqEsrPTln8ZjyLH
+# q9ts4e/DncNs9EcZeybhJpyBzwVkwoc60Rnwmn0Bcr56xAIODCLyufnMGAMC40du
+# 19yTa3Hhdqj2/86n4vsgOhfnuEQE+YFTpAHmjsHuIVJXQleefkJkFEZ3NEZ4k/FI
+# QQG8SFvLq0uxPLP8YyuV3VNK/xE9/LdLhB5EAz3QN8tw0ESHj9cetHp+BP051egH
+# f+hzgN34CtmT8G79
 # SIG # End signature block

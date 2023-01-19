@@ -3,19 +3,26 @@
 
 $Global:ARRAuthenticationToken = $null
 
-$ARRAuthenticationEndpoint = "https://sts.mixedreality.azure.com"
+$AllPublicRegions = @("australiaeast", "eastus", "eastus2", "japaneast", "northeurope", "southcentralus", "southeastasia", "uksouth", "westeurope", "westus2")
 
-$ARRServiceEndpoints = @{
-    australiaeast  = "https://remoterendering.australiaeast.mixedreality.azure.com"
-    eastus         = "https://remoterendering.eastus.mixedreality.azure.com"
-    eastus2        = "https://remoterendering.eastus2.mixedreality.azure.com"
-    japaneast      = "https://remoterendering.japaneast.mixedreality.azure.com"
-    northeurope    = "https://remoterendering.northeurope.mixedreality.azure.com"
-    southcentralus = "https://remoterendering.southcentralus.mixedreality.azure.com"
-    southeastasia  = "https://remoterendering.southeastasia.mixedreality.azure.com"
-    uksouth        = "https://remoterendering.uksouth.mixedreality.azure.com"
-    westeurope     = "https://remoterendering.westeurope.mixedreality.azure.com"
-    westus2        = "https://remoterendering.westus2.mixedreality.azure.com"
+function ToDomain {
+    param ([ValidateSet("Rendering", "Account")] $Type, $Region)
+
+    $suffix = ".mixedreality.azure.com"
+
+    $cleanedRegion = $Region -replace $suffix, "" #If someone specifies eastus.mixedreality.azure.com it should still work
+    if ($AllPublicRegions.Contains($cleanedRegion)) {
+        $prefix = if ($Type -eq "Rendering") {
+            "remoterendering"
+        } else {
+            "sts"
+        }
+
+        return "https://$Prefix.$Region.$suffix"
+    }
+
+    # If it is not found it might be a non-public region, so just simply pass it and hope it works
+    return $Region
 }
 
 # depending on the chosen size a more powerful VM will be allocated
@@ -85,14 +92,15 @@ function WriteProgress($activity, $status) {
 }
 
 function HandleException($exception) {
-    if ($null -ne $exception.Response.Headers -and $exception.Response.Headers.Contains("MS-CV")) {
-        $exceptionObject = "Response's MS-CV is '$($exception.Response.Headers.GetValues('MS-CV'))'`r`n"
-    }
-    else {
-        $exceptionObject = ""
+    $exceptionObject = ""
+    if ($null -ne $exception.Response) {
+        if ($null -ne $exception.Response.Headers -and $exception.Response.Headers.Contains("MS-CV")) {
+            $exceptionObject = "Response's MS-CV is '$($exception.Response.Headers.GetValues('MS-CV'))'`r`n"
+        }
+
+        $exceptionObject += $exception.Response | ConvertTo-Json
     }
 
-    $exceptionObject += $exception.Response | ConvertTo-Json
     WriteErrorResponse($exceptionObject)
 }
 
@@ -125,11 +133,10 @@ $defaultConfigContent = '{
     "accountSettings": {
       "arrAccountId": "<fill in the account ID from the Azure Portal>",
       "arrAccountKey": "<fill in the account key from the Azure Portal>",
-      "region": "<select from available regions: australiaeast, eastus, eastus2, japaneast, northeurope, southcentralus, southeastasia, uksouth, westeurope, westus2>",
-      "authenticationEndpoint": null,
-      "serviceEndpoint": null
+      "arrAccountDomain": "<select from available regions: australiaeast, eastus, eastus2, japaneast, northeurope, southcentralus, southeastasia, uksouth, westeurope, westus2 or specify the full url>"
     },
     "renderingSessionSettings": {
+      "remoteRenderingDomain": "<select from available regions: australiaeast, eastus, eastus2, japaneast, northeurope, southcentralus, southeastasia, uksouth, westeurope, westus2 or specify the full url>",
       "vmSize": "<standard or premium>",
       "maxLeaseTime": "<hh:mm:ss>"
     },
@@ -157,11 +164,11 @@ function GetDefaultConfig() {
 # merge config
 function LoadConfig(
     [string] $fileLocation,
-    [string] $AuthenticationEndpoint,
-    [string] $ServiceEndpoint,
     [string] $ArrAccountId,
     [string] $ArrAccountKey,
+    [string] $ArrAccountDomain,
     [string] $Region,
+    [string] $RemoteRenderingDomain,
     [string] $VmSize,
     [string] $MaxLeaseTime,
     [string] $StorageAccountName,
@@ -234,6 +241,10 @@ function LoadConfig(
         $config.renderingSessionSettings.maxLeaseTime = $MaxLeaseTime
     }
 
+    if (-Not [string]::IsNullOrEmpty($RemoteRenderingDomain)) {
+        $config.renderingSessionSettings.remoteRenderingDomain = ToDomain "Rendering" $RemoteRenderingDomain
+    }
+
     if (-Not [string]::IsNullOrEmpty($ResourceGroup)) {
         $config.assetConversionSettings.resourceGroup = $ResourceGroup
     }
@@ -250,10 +261,6 @@ function LoadConfig(
         $config.assetConversionSettings.blobOutputContainerName = $BlobOutputContainerName
     }
 
-    if (-Not [string]::IsNullOrEmpty($Region)) {
-        $config.accountSettings.region = $Region
-    }
-
     if (-Not [string]::IsNullOrEmpty($ArrAccountId)) {
         $config.accountSettings.arrAccountId = $ArrAccountId
     }
@@ -262,34 +269,73 @@ function LoadConfig(
         $config.accountSettings.arrAccountKey = $ArrAccountKey
     }
 
-    if ([string]::IsNullOrEmpty($config.accountSettings.authenticationEndpoint)) {
-        $config.accountSettings.authenticationEndpoint = $ARRAuthenticationEndpoint
+    if (-Not [string]::IsNullOrEmpty($ArrAccountDomain)) {
+        $config.accountSettings.arrAccountDomain = ToDomain "Account" $ArrAccountDomain
+    }
+    
+    if (-Not (VerifyAccountIdAndKeySettings $config (GetDefaultConfig))) {
+        WriteError("Error reading id and key in accountSettings in $ConfigFile - Exiting.")
+        exit 1
     }
 
-    if ($ARRServiceEndpoints.ContainsKey($config.accountSettings.region) -and [string]::IsNullOrEmpty($config.accountSettings.serviceEndpoint)) {
-        $config.accountSettings.serviceEndpoint = $ARRServiceEndpoints[$config.accountSettings.region]
+    if (-Not [string]::IsNullOrEmpty($Region)) {
+        Write-Warning "Parameter -Region is deprecated and should not be used anymore."
+        Write-Warning "Please replace it with the -ArrAccountDomain and -RemoteRenderingDomain parameters."
+        Write-Warning "Using the -Region parameter will in most cases be slower than using the recommended parameters."
+        Write-Warning "For a grace period the -ArrAccountDomain and -RemoteRenderingDomain will be derived from the region parameter if they are empty,"
+        Write-Warning "so any other failure you see (like a not-filled-in failure) related to these parameters might be due to the region parameter being wrong."
+
+        if ([string]::IsNullOrEmpty($ArrAccountDomain)) {
+            $primaryArrAccountDomain = ToDomain "Account" $Region
+
+            $id = $config.accountSettings.arrAccountId
+            $key = $config.accountSettings.arrAccountKey
+
+            # First try the one region specified by the parameter, but we have to try
+            # all other regions if that does not work, because that is what was done in older versions
+            if (TrySetGlobalAuthenticationToken $primaryArrAccountDomain $id $key ) {
+                $config.accountSettings.arrAccountDomain = $primaryArrAccountDomain
+            } else {
+                foreach ($possibleRegion in $AllPublicRegions) {
+                    if ($possibleRegion -eq $ArrAccountDomain) {
+                        # We already checked that with the primary region
+                        continue
+                    }
+
+                    $nextDomain = ToDomain "Account" $possibleRegion
+
+                    if (TrySetGlobalAuthenticationToken $nextDomain $id $key) {
+                        $config.accountSettings.arrAccountDomain = $nextDomain
+                        break
+                    }
+                }
+            }
+        }
     }
 
-    if (-Not [string]::IsNullOrEmpty($AuthenticationEndpoint)) {
-        $config.accountSettings.authenticationEndpoint = $AuthenticationEndpoint
+    if (-Not [string]::IsNullOrEmpty($RemoteRenderingDomain)) {
+        $config.renderingSessionSettings.remoteRenderingDomain = ToDomain "Rendering" $RemoteRenderingDomain
     }
 
-    if (-Not [string]::IsNullOrEmpty($ServiceEndpoint)) {
-        $config.accountSettings.serviceEndpoint = $ServiceEndpoint
+    if (-Not (VerifyAccountDomainSettings $config (GetDefaultConfig))) {
+        WriteError("Error reading account domain in accountSettings in $ConfigFile - Exiting.")
+        exit 1
     }
 
     return $config
 }
 
-function VerifyAccountSettings($config, $defaultConfig, $serviceEndpoint) {
+function VerifyAccountIdAndKeySettings($config, $defaultConfig) {
     $ok = $true
+
+    # Check that account id is set and a valid guid
     if ($config.accountSettings.arrAccountId -eq $defaultConfig.accountSettings.arrAccountId) {
         WriteError("accountSettings.arrAccountId not filled in - fill in the account ID from the Azure Portal")
         $ok = $false
     }
     else {
         try {
-            $guid = [GUID]$config.accountSettings.arrAccountId
+            [GUID]$config.accountSettings.arrAccountId | Out-Null
         }
         catch {
             $guidString = $config.accountSettings.arrAccountId
@@ -297,25 +343,25 @@ function VerifyAccountSettings($config, $defaultConfig, $serviceEndpoint) {
             $ok = $false
         }
     }
+
+    # Check that account key is set
     if ($config.accountSettings.arrAccountKey -eq $defaultConfig.accountSettings.arrAccountKey) {
         WriteError("accountSettings.arrAccountKey not filled in - fill in the account key from the Azure Portal")
         $ok = $false
     }
-    if ([string]::IsNullOrEmpty($serviceEndpoint)) {
-        $regionString = ($ARRServiceEndpoints.keys -join ", ")
-        if ($config.accountSettings.region -eq $defaultConfig.accountSettings.region) {
-            WriteError("accountSettings.region not filled in - select a region out of: $regionString")
-            $ok = $false
-        }
-        elseif (-Not $ARRServiceEndpoints.ContainsKey($config.accountSettings.region)) {
-            $selectedRegion = $config.accountSettings.region
-            WriteError("accountSettings.region '$selectedRegion' not valid - select a region out of: $regionString")
-            $ok = $false
-        }
-
-    }
 
     return $ok
+}
+
+function VerifyAccountDomainSettings($config, $defaultConfig) {
+    # Check that account domain is set
+    if ($config.accountSettings.arrAccountDomain -eq $defaultConfig.accountSettings.arrAccountDomain) {
+        $regionString = ($AllPublicRegions -join ", ")
+        WriteError("accountSettings.arrAccountDomain not filled in - select an account domain out of '$regionString' or specify your complete domain url")
+        return $false
+    }
+
+    return $true
 }
 
 function VerifyStorageSettings($config, $defaultConfig) {
@@ -341,20 +387,29 @@ function VerifyStorageSettings($config, $defaultConfig) {
     return $ok
 }
 
-function VerifyRenderingSessionSettings($config, $defaultConfig) {
+function VerifyRenderingSessionSettings($config, $defaultConfig, $skipVmSettingsCheck) {
     $ok = $true
-    $vmSizesString = ($ARRAvailableVMSizes.keys -join ", ")
-    if ($config.renderingSessionSettings.vmSize -eq $defaultConfig.renderingSessionSettings.vmSize) {
-        WriteError("renderingSessionSettings.vmSize not filled in - select a vmSize out of: $vmSizesString")
-        $ok = $false
+
+    if (-Not $skipVmSettingsCheck) {
+        if ($config.renderingSessionSettings.vmSize -eq $defaultConfig.renderingSessionSettings.vmSize) {
+            $vmSizesString = ($ARRAvailableVMSizes.keys -join ", ")
+            WriteError("renderingSessionSettings.vmSize not filled in - select a vmSize out of: $vmSizesString")
+            $ok = $false
+        }
+    
+        try {
+            [timespan]$config.renderingSessionSettings.maxLeaseTime | Out-Null
+        }
+        catch {
+            $timespan = $config.renderingSessionSettings.maxLeaseTime
+            WriteError("renderingSessionSettings.maxLeaseTime '$timespan' not valid - provide a time in hh:mm:ss format")
+            $ok = $false
+        }
     }
 
-    try {
-        $t = [timespan]$config.renderingSessionSettings.maxLeaseTime
-    }
-    catch {
-        $timespan = $config.renderingSessionSettings.maxLeaseTime
-        WriteError("renderingSessionSettings.maxLeaseTime '$timespan' not valid - provide a time in hh:mm:ss format")
+    if ($config.renderingSessionSettings.remoteRenderingDomain -eq $defaultConfig.renderingSessionSettings.remoteRenderingDomain) {
+        $regionString = ($AllPublicRegions -join ", ")
+        WriteError("renderingSessionSettings.remoteRenderingDomain not filled in - select an rendering domain out of '$regionString' or specify your complete domain url")
         $ok = $false
     }
 
@@ -390,9 +445,6 @@ function ValidateConversionSettings($config, $defaultConfig, $OnlyConvertNoUploa
         WriteError("assetConversionSettings does not have a inputAssetPath value ... specify the inputAssetPath in config.json or via the -InputAssetPath <path to asset under inputContainer/InputFolderPath> command line argument")
         return $false
     }
-    else {
-        $extension = [System.IO.Path]::GetExtension($config.assetConversionSettings.inputAssetPath).ToLower()
-    }
 
     if ($OnlyConvertNoUpload -eq $False) {
         if ($config.assetConversionSettings.localAssetDirectoryPath -eq $defaultConfig.assetConversionSettings.localAssetDirectoryPath) {
@@ -404,7 +456,7 @@ function ValidateConversionSettings($config, $defaultConfig, $OnlyConvertNoUploa
     return $true
 }
 
-# reads config and gets adds azure specific fields to the config
+# reads config and adds azure specific fields to the config
 function AddStorageAccountInformationToConfig($config) {
     # Get Storage Account information
     WriteLine
@@ -494,7 +546,7 @@ function GenerateOutputContainerSAS([string]$blobEndPoint, [string]$blobContaine
     }
 }
 
-function GetAuthenticationToken([string]$authenticationEndpoint, [GUID]$accountId, [string]$accountKey) {
+function GetAuthenticationToken([string]$arrAccountDomain, [GUID]$accountId, [string]$accountKey) {
     if ($Global:ARRAuthenticationToken) {
         return $Global:ARRAuthenticationToken
     }
@@ -502,25 +554,43 @@ function GetAuthenticationToken([string]$authenticationEndpoint, [GUID]$accountI
         WriteLine
         WriteInformation ("Getting an authentication token ...")
 
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12;
-        $webResponse = Invoke-WebRequest -UseBasicParsing -Uri "$authenticationEndpoint/accounts/$accountId/token" -Headers @{ Authorization = "Bearer ${accountId}:$accountKey" }
-
-        if ($webResponse.StatusCode -eq 200) {
-            $response = ConvertFrom-Json -InputObject $webResponse.Content
-            $Global:ARRAuthenticationToken = $response.AccessToken;
-
+        if ((TrySetGlobalAuthenticationToken $arrAccountDomain $accountId $accountKey)) {
             return $Global:ARRAuthenticationToken
-        }
-        else {
+        } else {
             WriteError("Unable to get an authentication token - please check your accountId and accountKey - Exiting.")
             exit 1
         }
     }
 }
 
+function TrySetGlobalAuthenticationToken([string]$arrAccountDomain, [GUID]$accountId, [string]$accountKey) {
+    if ($Global:ARRAuthenticationToken) {
+        return $true
+    }
+    else {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12;
+
+        try {
+            $webResponse = Invoke-WebRequest -UseBasicParsing -Uri "$arrAccountDomain/accounts/$accountId/token" -Headers @{ Authorization = "Bearer ${accountId}:$accountKey" }
+    
+            if ($webResponse.StatusCode -eq 200) {
+                $response = ConvertFrom-Json -InputObject $webResponse.Content
+                $Global:ARRAuthenticationToken = $response.AccessToken;
+    
+                return $true
+            }
+            else {
+                return $false
+            }
+        } catch {
+            return $false
+        }
+    }
+}
+
 # Create a Session by calling REST API <endpoint>/accounts/<accountId>/sessions/<sessionId>/
 # returns a session ID which can be used to retrieve session status
-function CreateRenderingSession([string] $authenticationEndpoint, [string] $serviceEndpoint, [string] $accountId, [string] $accountKey, [string] $vmSize = "standard", [string] $maxLeaseTime = "4:0:0", [hashtable] $additionalParameters, [string] $sessionId) {
+function CreateRenderingSession([string] $arrAccountDomain, [string] $remoteRenderingDomain, [string] $accountId, [string] $accountKey, [string] $vmSize = "standard", [string] $maxLeaseTime = "4:0:0", [hashtable] $additionalParameters, [string] $sessionId) {
     try {
         $maxLeaseTimeInMinutes = ([timespan]$maxLeaseTime).TotalMinutes -as [int]
 
@@ -540,19 +610,19 @@ function CreateRenderingSession([string] $authenticationEndpoint, [string] $serv
             $sessionId = "Sample-Session-$(New-Guid)"
         }
 
-        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         WriteInformation("Creating Rendering Session ...")
-        WriteInformation("  Authentication endpoint: $authenticationEndpoint")
-        WriteInformation("  Service endpoint: $serviceEndpoint")
+        WriteInformation("  arrAccountDomain: $arrAccountDomain")
+        WriteInformation("  remoteRenderingDomain: $remoteRenderingDomain")
         WriteInformation("  sessionId: $sessionId")
         WriteInformation("  maxLeaseTime: $maxLeaseTime")
         WriteInformation("  size: $vmSize")
         WriteInformation("  additionalParameters: $($additionalParameters | ConvertTo-Json)")
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
 
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PUT -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" }
+        Invoke-WebRequest -UseBasicParsing -Uri $url -Method PUT -ContentType "application/json" -Body ($body | ConvertTo-Json) -Headers @{ Authorization = "Bearer $token" } | Out-Null
 
         WriteSuccess("Successfully created the session with Id: $sessionId")
         #WriteSuccessResponse($response.RawContent)
@@ -567,11 +637,11 @@ function CreateRenderingSession([string] $authenticationEndpoint, [string] $serv
 }
 
 # call "<endPoint>/accounts/<accountId>/sessions/<sessionId>/:stop" with Method POST to stop a session
-function StopSession([string] $authenticationEndpoint, [string] $serviceEndpoint, [string] $accountId, [string] $accountKey, [string] $sessionId) {
+function StopSession([string] $arrAccountDomain, [string] $remoteRenderingDomain, [string] $accountId, [string] $accountKey, [string] $sessionId) {
     try {
-        $url = "$serviceEndpoint/accounts/$accountId/sessions/$sessionId/:stop?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/$sessionId/:stop?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method POST -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)
@@ -587,11 +657,11 @@ function StopSession([string] $authenticationEndpoint, [string] $serviceEndpoint
 }
 
 #call REST API <endpoint>/accounts/<accountId>/sessions/<SessionId>
-function GetSessionProperties([string] $authenticationEndpoint, [string] $serviceEndpoint, [string] $accountId, [string] $accountKey, [string] $sessionId) {
+function GetSessionProperties([string] $arrAccountDomain, [string] $remoteRenderingDomain, [string] $accountId, [string] $accountKey, [string] $sessionId) {
     try {
-        $url = "$serviceEndpoint/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
+        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $authenticationEndpoint -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }
 
         #WriteSuccessResponse($response.RawContent)
@@ -648,8 +718,8 @@ function GetExePathInArrOf($root, $exeName) {
 # SIG # Begin signature block
 # MIIrWAYJKoZIhvcNAQcCoIIrSTCCK0UCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCByi+V9i0P2c4GR
-# y8EyVwpX90neAZf251IZfvfoxi8UIKCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBv5ewW2dmpiXzY
+# MeJyPl50Fy24jqwfdGMNoGWxYbDQVqCCEXkwggiJMIIHcaADAgECAhM2AAABqdaQ
 # MGZD2x+CAAIAAAGpMA0GCSqGSIb3DQEBCwUAMEExEzARBgoJkiaJk/IsZAEZFgNH
 # QkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTATBgNVBAMTDEFNRSBDUyBDQSAwMTAe
 # Fw0yMjA2MTAxODI3MDRaFw0yMzA2MTAxODI3MDRaMCQxIjAgBgNVBAMTGU1pY3Jv
@@ -746,61 +816,61 @@ function GetExePathInArrOf($root, $exeName) {
 # MEExEzARBgoJkiaJk/IsZAEZFgNHQkwxEzARBgoJkiaJk/IsZAEZFgNBTUUxFTAT
 # BgNVBAMTDEFNRSBDUyBDQSAwMQITNgAAAanWkDBmQ9sfggACAAABqTANBglghkgB
 # ZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3
-# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQggCqw48NwAfyN4VVQ
-# C/Bv24Ed8pF+oM4RLTCjHJxj9uowQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
+# AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgrBV7xXWz2sOqaqOT
+# WF3e8GmAJKNdoxHWvS8y0Lg5HzUwQgYKKwYBBAGCNwIBDDE0MDKgFIASAE0AaQBj
 # AHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTANBgkqhkiG
-# 9w0BAQEFAASCAQAo2bPWKE57G4FSIMAl+wvYhui3Mn5FIX1+SY99EUW0URHWvSIk
-# cW5TSC+BaO8qqVAhKiu70AnRu4Cz1JTl2MGWUTMnf6fHWGb3TvyytcFhWpUoIb6X
-# GeN6k5JEXsMZteRGiD9knzi3o6uuxZr68RgztE7Nf+birtn5VSLiFhk00QGZc4E1
-# Hor+YIFBG7k3hPu3xTHx/ixwsuhP71iSINTmSOzT5OJ/4+9DGdSvwXrXIxA4SZ4H
-# hYuuE8MbXT18OlCYaXOwg1F2eUpkoph3bwimSwJxLSL1XKCC+K9r4K8cA/LzxWuD
-# 57l3uCqFit5B5itaUgRb/aAcmKxKqQ/JH4HxoYIW/TCCFvkGCisGAQQBgjcDAwEx
+# 9w0BAQEFAASCAQAJwXxgVgSIkI/6T8A99VbVL9ClIi4ydKL9VG8pMCogNxbh89oS
+# ynuxuPWgPsUXxUbOIJn3d/0W1ouXISrwH9hnPI+9kPTkUfK6awY4CrDc+3GWLEIO
+# Rs/nKttRn6+SxfK8blQ+sXiZdKZ70ut2TEv8cyvmzw97Xtu89TRBH10MJHAhbGP9
+# NC9jQiHrTa3Mjg4QMc6U4YSNKfA/M/+cjzz/ArFwzpeNpfIMDMkjzDj49tDP9Bm+
+# zvoHT+autxMzunaX8kSIgFsXrnks9OgsTNT4ccnNxb4QejXhiR0O7EH1/t96PCq4
+# AE6mf4tByUgJS+Sz4z7cnxDhwMRnRUEuDi5koYIW/TCCFvkGCisGAQQBgjcDAwEx
 # ghbpMIIW5QYJKoZIhvcNAQcCoIIW1jCCFtICAQMxDzANBglghkgBZQMEAgEFADCC
 # AVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMBMDEwDQYJ
-# YIZIAWUDBAIBBQAEINpKM4UKLDaH3aA0Sp0vXT2bW9786pzsKzeCqfMn9pK9AgZj
-# bORLUesYEzIwMjIxMjE0MTIzMDUwLjk0M1owBIACAfSggdCkgc0wgcoxCzAJBgNV
+# YIZIAWUDBAIBBQAEIE1H+aRo1V7MjfbQ6KajmSFpPh8pNC2wIMHfr4BW01kBAgZj
+# mwnRuuEYEzIwMjMwMTExMTMxNTU2LjA4MVowBIACAfSggdCkgc0wgcoxCzAJBgNV
 # BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
 # HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1pY3Jvc29m
-# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOkRE
-# OEMtRTMzNy0yRkFFMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
-# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJKoZI
+# dCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjQ5
+# QkMtRTM3QS0yMzNDMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2
+# aWNloIIRVDCCBwwwggT0oAMCAQICEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJKoZI
 # hvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAO
 # BgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEm
 # MCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcNMjIxMTA0
-# MTkwMTMyWhcNMjQwMjAyMTkwMTMyWjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+# MTkwMTI1WhcNMjQwMjAyMTkwMTI1WjCByjELMAkGA1UEBhMCVVMxEzARBgNVBAgT
 # Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
 # dCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2EgT3BlcmF0
-# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046REQ4Qy1FMzM3LTJGQUUxJTAj
+# aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046NDlCQy1FMzdBLTIzM0MxJTAj
 # BgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggIiMA0GCSqGSIb3
-# DQEBAQUAA4ICDwAwggIKAoICAQCrSF2zvR5fbcnulqmlopdGHP5NPsknc69V/f43
-# x82nFGzmNjiES/cFX/DkRZdtl07ibfGPTWVMj/EOSr7K2O6I97zEZexnEOe2/svU
-# TMx3mMhKon55i7ySBXTnqaqzx0GjnnFk889zF/m7X3OfThoxAXk9dX8LhktKMVr0
-# gU1yuJt06beUZbWtBEVraNSy6nqC/rfirlTAfT1YYa7TPz1Fu1vIznm+YGBZXx53
-# ptkJmtyhgiMwvwVFO8aXOeqboe3Bl1czAodPdr+QtRI+IYCysiATPPs2kGl46yCz
-# 1OvDJZNkE1sHDIgAKZDfiP65Hh63aFmT40fj0qEQnJgPb504hoMYHYRQ0VJhzLUy
-# SC1m3V5GoEHSb5g9jPseOhw/KQpg1BntO/7OCU598KJrHWM5vS7ohgLlfUmvwDBN
-# yxoPK7eoCHHxwVA30MOCJVnD5REVnyjKgOTqwhXWfHnNkvL6E21qR49f1LtjyfWp
-# Z8COhc8TorT91tPDzsQ4kv8GUkZwqgVPK2vTM+D8w0lJvp/Zr/AORegYIZYmJCsZ
-# PGM4/5H3r+cggbTl4TUumTLYU51gw8HgOFbu0F1lq616lNO5KGaCf4YoRHwCgDWB
-# JKTUQLllfhymlWeAmluUwG7yv+0KF8dV1e+JjqENKEfBAKZmpl5uBJgeceXi6sT7
-# grpkLwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFFTquzi/WbE1gb+u2kvCtXB6TQVr
+# DQEBAQUAA4ICDwAwggIKAoICAQC87WD7Y2GGYFC+UaUJM4xoXDeNsiFR0NOqRpCF
+# Gl0dVv6G5T/Qc2EuahFi+unvPm8igvUw8CRUEVYkiStwbuxKt52fJnCt5jbTsL2f
+# xeK8v1kE5B6JR4v9MyUnpWKetxp9uF2eQ07kkOU+jML10bJKK5uvJ2zkYq27r0PX
+# A1q30MhCXpqUU7qmdxkrhEjN+/4rOQztGRje8emFXQLwQVSkX6XKxoYlcV/1CxRQ
+# fCP1cpYd9z0F+EugJF5dTO+Cuyl0WZWcD0BNheaJ1KOuyF/wD4TT8WlN2Fc8j1de
+# qxkMcGqvsOVihIJTeW+tUNG7Wnmkcd/uzeQzXoekrpqsO1jdqLWygBKYSm/cLY3/
+# LkwMECkN3hKlKQsxrv7p6z91p5LvN0fWp0JrZGgk8zoSH/piYF+h+F8tCh8o8mXf
+# gAuVlYrkDNW0VE05dpyiPowAbZ1PxFzl+koIfUTeftmN7R0rbhBV9K/9g7HDnYQJ
+# owuVbk+EdPdkg01oKZGBwcJMKU4rMLYU6vTdgFzbM85bpshV1eWg+YExVoT62Feo
+# +YA0HDRiydxo6RWCCMNvk7lWo6n3wySUekmgkjqmTnMCXHz860LsW62t21g1QLrK
+# RfMwA8W5iRYaDH9bsDSK0pbxbNjPA7dsCGmvDOei4ZmZGLDaTyl6fzQHOrN3I+9v
+# NPFCwwIDAQABo4IBNjCCATIwHQYDVR0OBBYEFABExnjzSPCkrc/qq5VZQQnRzfSF
 # MB8GA1UdIwQYMBaAFJ+nFV0AXmJdg/Tl0mWnG1M1GelyMF8GA1UdHwRYMFYwVKBS
 # oFCGTmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29m
 # dCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAyMDEwKDEpLmNybDBsBggrBgEFBQcBAQRg
 # MF4wXAYIKwYBBQUHMAKGUGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMv
 # Y2VydHMvTWljcm9zb2Z0JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3J0
 # MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQEL
-# BQADggIBAIyo3nx+swc5JxyIr4J2evp0rx9OyBAN5n1u9CMK7E0glkn3b7Gl4pEJ
-# /derjup1HKSQpSdkLp0eEvC3V+HDKLL8t91VD3J/WFhn9GlNL7PSGdqgr4/8gMCJ
-# Q2bfY1cuEMG7Q/hJv+4JXiM641RyYmGmkFCBBWEXH/nsliTUsJ2Mh57/8atx9uRC
-# 2Jihv05r3cNKNuwPWOpqJwSeRyVQ3+YSb1mycKcDX785AOn/xDhw98f3gszgnpfQ
-# 200F5XLC9YfTC4xo4nMeAMsJ4lSQUT0cTywENV52aPrM8kAj7ujMuNirDuLhEVuJ
-# K19ZlIaPC36UslBlFZQJxPdodi9OjVhYNmySiFaDvvD18XZBuI70N+eqhntCjMeL
-# tGI+luOCQkwCGuGl5N/9q3Z734diQo5tSaA8CsfVaOK/CbV3s9haxqsvu7mpm6Tf
-# oZvWYRNLWgDZdff4LeuC3NGiE/z2plV/v2VW+OaDfg20gIr+kyT31IG62CG2KkVI
-# xB1tdSdLah4u31wq6/Uwm76AnzepdM2RDZCqHG01G9sT1CqaolDDlVb/hJnN7Wk9
-# fHI5M7nIOr6JEhS5up5DOZRwKSLI24IsdaHw4sIjmYg4LWIu1UN/aXD15auinC7l
-# IMm1P9nCohTWpvZT42OQ1yPWFs4MFEQtpNNZ33VEmJQj2dwmQaD+MIIHcTCCBVmg
+# BQADggIBAK1OHQRCfXqQpDIJ5WT1VzXSbovQTAtGjcBNGi4/th3aFZ4QHZjhkXgI
+# kp72p9dYYkrNXu0xSboMCwEpgf+dP7zJsjy4mIcad+dWLpKHuAWOdOl+HWPVP3Qf
+# +4t6gWOk6f/56gKgmaitbkZvZ7OVOWjkjSQ0C5vG0LGpsuLO480+hvyREApCC/7j
+# 8ILUmaJQUbS4og2UqP1KwdytZ4EFAdfrac2DOIjBPjgmoesDTYjpyZACL0Flyx/n
+# s44ulFiXOg8ffH/6V1LJJcCbIura5Jta1C4Pzgj/RmBL8Hkvd7CpN2ITUpspfz0x
+# bkmoIr/Ij+YAhBqaYCUc+pT15llMw84dCzReukKKOWT6rKjYloeLJLDDqe4+pfNT
+# ewSPdVbTRiJVJrIoS7UitHPNfctryp7o6otO8r/qC7ld0qrtNPznacHog/RAz4G5
+# 22vgVvHj+y+kocakr3/MG5occNdfkChKSyH+RINgp959AiEh9AknOgTdf4yKYwmu
+# CvBleW1vqPUgvQdjeoKlrTcaGCLQhPOp+TDcxqfcbyQHVCX5J41yI9SPvcqfa94l
+# 6cYu1PwmRQz1FSLTCg7SK5ji0mdi5L5J6pq9dQ5apRhVjX0UivU8uqmZaRus7nEq
+# OTI4egCYvGM1sqM6eQDB+37UbTSS6UqrOo9ub5Kf7jsmwZAWE0ZtMIIHcTCCBVmg
 # AwIBAgITMwAAABXF52ueAptJmQAAAAAAFTANBgkqhkiG9w0BAQsFADCBiDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWljcm9z
@@ -844,38 +914,38 @@ function GetExePathInArrOf($root, $exeName) {
 # MIHKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
 # UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQL
 # ExxNaWNyb3NvZnQgQW1lcmljYSBPcGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjpERDhDLUUzMzctMkZBRTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAIQAa9hdkkrtxSjrb4u8RhATH
-# v+eggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
+# VFNTIEVTTjo0OUJDLUUzN0EtMjMzQzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgU2VydmljZaIjCgEBMAcGBSsOAwIaAxUAEBDsTEXX0qTBUvUTcB3yTQ95
+# vp2ggYMwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQ
 # MA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9u
 # MSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG
-# 9w0BAQUFAAIFAOdEM20wIhgPMjAyMjEyMTQxOTM1MDlaGA8yMDIyMTIxNTE5MzUw
-# OVowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA50QzbQIBADAHAgEAAgIo0zAHAgEA
-# AgJO5DAKAgUA50WE7QIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
-# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBANp8jvwV
-# aPZ6xjcrOrS/KLHujAcCugIjeSYxCzVCgn8rGAnxXOpXoRVsKkQShLHprM/eKeaV
-# 89mBY3HhYrVUdADNOiwt3KFAlwM0YMxK2Xw0IW5SHr/7KiYNSPmsZSPAJuR1jznL
-# +tcPL+MzNVEZH6T66hnhZD7OItoFy+eqWcDVMYIEDTCCBAkCAQEwgZMwfDELMAkG
+# 9w0BAQUFAAIFAOdpHSAwIhgPMjAyMzAxMTExOTMzNTJaGA8yMDIzMDExMjE5MzM1
+# MlowdDA6BgorBgEEAYRZCgQBMSwwKjAKAgUA52kdIAIBADAHAgEAAgICmjAHAgEA
+# AgIS4jAKAgUA52puoAIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMC
+# oAowCAIBAAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAEW3HCtB
+# AiwpHIIOtJbXs92UjyxHVk4Mwic/RaK3qyuXmXiHbSgctYG7X/2GrJJyIP+oH5m1
+# C0jIVD7K7YwHYcdrAuXFOIh8rzbYwq4fy7/c0OeFbTVPcnkmIcLU00Uup9sOy/IN
+# 7HTR/L8wDxVUKui+mJrCiPSyGHBsuNUvPoghMYIEDTCCBAkCAQEwgZMwfDELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9z
-# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHFA83NIaH07zkAAQAAAcUwDQYJ
+# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAHAVaSNw2QVxUsAAQAAAcAwDQYJ
 # YIZIAWUDBAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkq
-# hkiG9w0BCQQxIgQgLzSBMUhN0k7Lxg2cB4hLGrw7gDJv4nxgB2lOItuAjG8wgfoG
-# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCAZAbGR9iR3TAr5XT3A7Sw76ybyAAzK
-# PkS4o+q81D98sTCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
+# hkiG9w0BCQQxIgQgUibnlrnYtas2U0uDI5v4Y8nPzBNOzNNbkroScqwodiEwgfoG
+# CyqGSIb3DQEJEAIvMYHqMIHnMIHkMIG9BCBa8ViiUghcwTTMr9bpewKSRhfuVg1v
+# 3IDwnHBjTg+TTzCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
 # aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
 # cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
-# AhMzAAABxQPNzSGh9O85AAEAAAHFMCIEIMYcMxxz0yEbZoRYPE1kRdxiKeyjRHpS
-# On+c+OiaxZJsMA0GCSqGSIb3DQEBCwUABIICAJoriL14zcpwpgklK+Dpch9oe8P9
-# YeZjInvLbqA8QKcXLxdz4es8Q/ihF7TC9sNo1zZWlO1V1d6NF1PFGQc71nODnDa0
-# oidP31wnW1doF2h0SOYZkcqFvjlJOPS+VhqgvYeWc6dccPsXTMW0MEl6dX8xRZtx
-# rDEV9Rj7hqlThc5h55UZYqQ3L3mBqTeXgkRvsOPfe2U7KbDsdyASvhf79BoPgo/H
-# OskFE0lUf0UehSKt5mrc+7GYIoygR7HsUaLiej4HjrETBNodfNXNfJU6gVp0XKNT
-# 5ArRW0augJEnKQgNxqwl4HY+K7YjAsAcb2QZfFdjwp8kScQuU23z4cRhCLzmmTOV
-# gSdp3sTx3PF6SP/rlU2J9vWchreV9N58tgxBcjiXf6qSLUTl6/pVO76BbBPt/phy
-# E1pGxI1DhSXo/PXbS4ZDJi4XtifuxF+9Cc+S62VoPplLUo3ykgvcxdxXt3NFwGBA
-# 5CxEQI0t67jFONhdKd4XpGdYDtu5971Z9opTHOmklqcfutX2vpMyhK0JrY8N3RgA
-# hvU9/5brEP6AkL819HH+tNvRuJC2a4h7YhwE4DDhPGCvjz1vy8naaNjpIjYuCbbO
-# aQ/1j/dRSn4hatvvGexrK149/YZBSd2TZWR95gDyVhzOCOwVMsl2pk95kMoHDbEE
-# DG0RvRmLMFCnoLFN
+# AhMzAAABwFWkjcNkFcVLAAEAAAHAMCIEIPTLMEyFZzKnPJbKxtX+is5pY4qz0SSV
+# oIz9SZFadFLeMA0GCSqGSIb3DQEBCwUABIICABcm0ob6GkTWoLZJLAzBbA7XvNye
+# 9fzdPq2PxKqVdAX0a82ZUezKT8t7pl8udx8I5LoF04/qAlh+Cte7Qo4hbXdaVo7Z
+# xPlhh5B+zg1KhEpxYiakiI52nK1768rLWZjVSvd5/ctU4d+9fD6MmhvTKUJWTA7H
+# VDOdMBKWM3obdzEF//7iPwLJC2qLq3LkUF3GXyaLLbig41dytWcYGTzGiOvHxjL9
+# 81epZjOio8gEkKMF2GMeW4IhzBepd8L7BGnx67yezZmRGBcjV1NTRRo+c7aG47ja
+# NcZSIKZd4iQPs39gMNAaXkyp0evMsAI11T/dkGByLtXAzdQaB+MOcSuwyzKakA3B
+# WkKgHmMyCmh0hejcR5r3zpoxDj2Myc5p17Uab5u/n81tkpLyxrmRnO2n1ed3wkZO
+# Gk0Oyxz3XUTn7Bga/d/528U1WsE/mYngNseV3lZnphqIw+sgy9Ljh3qWlfLlQ35J
+# QalPdO/2tjBgYFk/xE8aqpfp/HiVgktAZQMbEZxauDdop25D4dGMsHaGj5osLIve
+# ifroV/a5WQZzC5uA9hqC4Hv0GIHVx3On6Sydkhwc7QYuW06nrNOZDBfWYkuJ93P0
+# 3bWjw3lQBZQEjCPSxmjWiIVU7OKGHfaYkpjRA7epWg9BqKqWUYmHmmzJxSIiQgF9
+# +Dei3nhP1cmEl2wz
 # SIG # End signature block

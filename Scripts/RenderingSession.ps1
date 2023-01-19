@@ -127,7 +127,7 @@ function UpdateSession($arrAccountDomain, $remoteRenderingDomain, $accountId, $a
         } | ConvertTo-Json
         $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
-        $token = GetAuthenticationToken -authenticationEndpoint $arrAccountDomain -accountId $accountId -accountKey $accountKey
+        $token = GetAuthenticationToken -ArrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method PATCH -ContentType "application/json" -Body $body -Headers @{ Authorization = "Bearer $token" }
 
         WriteSuccessResponse($response.RawContent)

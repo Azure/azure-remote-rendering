@@ -100,3 +100,6 @@ WSATestCertificate.pfx.meta
 # Ignore "Generated" prefabs that are created by the app's sharing framework
 /[Aa]ssets/**/[Ss]haring/**/[Gg]enerated
 /[Aa]ssets/**/[Ss]haring/**/[Gg]enerated.meta
+
+# De-Ignore obj files as we carry obj models in this project
+!/[Aa]ssets/**/*.obj

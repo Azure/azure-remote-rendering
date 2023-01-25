@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
-using Quaternion = UnityEngine.Quaternion;
 using System.Globalization;
 
-#if UNITY_WSA
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
 using UnityEngine.XR.ARFoundation;
 #endif
 
@@ -68,7 +65,7 @@ public class RemoteRendering : MonoBehaviour
     private ARRServiceUnity arrService = null;
     private GameObject modelEntityGO = null;
 
-#if UNITY_WSA
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
     private ARAnchor modelArAnchor = null;
 #endif
 
@@ -168,7 +165,7 @@ public class RemoteRendering : MonoBehaviour
 
     public void DisconnectSession()
     {
-        if( arrService.CurrentActiveSession?.ConnectionStatus == ConnectionStatus.Connected )
+        if (arrService.CurrentActiveSession?.ConnectionStatus == ConnectionStatus.Connected)
         {
             DestroyModel();
             arrService.CurrentActiveSession.Disconnect();
@@ -237,11 +234,10 @@ public class RemoteRendering : MonoBehaviour
 
     private void PlaceModel()
     {
-#if UNITY_WSA
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
         if (modelArAnchor != null)
         {
             DestroyImmediate(modelArAnchor);
-        
             modelArAnchor = null;
         }
 #endif
@@ -249,7 +245,7 @@ public class RemoteRendering : MonoBehaviour
         if (modelEntityGO != null)
         {
             modelEntityGO.transform.position = Camera.main.transform.position + Camera.main.transform.forward * 2;
-#if UNITY_WSA
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
             // anchor the model in the world
             modelArAnchor = modelEntityGO.AddComponent<ARAnchor>();
 #endif    
@@ -263,11 +259,10 @@ public class RemoteRendering : MonoBehaviour
             return;
         }
 
-#if UNITY_WSA
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
         if (modelArAnchor != null)
         {
             DestroyImmediate(modelArAnchor);
-        
             modelArAnchor = null;
         }
 #endif
@@ -308,7 +303,7 @@ public class RemoteRendering : MonoBehaviour
 
             if (props.Status != RenderingSessionStatus.Ready)
             {
-                if(hasSessionId)
+                if (hasSessionId)
                 {
                     LogMessage($"Session ID: {sessionId} is in state: {props.Status}. Starting a new session.");
                 }

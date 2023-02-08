@@ -14,6 +14,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 	{
 		private PointerStateServiceProfile _pointerStateServiceProfile;
         private PointerMode _mode = PointerMode.None;
+        private PointerMode _previousMode = PointerMode.None;
+        private object _previousModeData = null;
         private readonly Dictionary<PointerType, List<PointerStateVisibilityOverride>> _visibilityOverrideRequests =
             new Dictionary<PointerType, List<PointerStateVisibilityOverride>>();
 
@@ -38,7 +40,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Get or set mode data for the current mode.
         /// </summary>
-        public System.Object ModeData { get; private set; }
+        public object ModeData { get; private set; }
         #endregion IPointerStateService Properties
 
         #region IPointerStateService Event
@@ -54,14 +56,21 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
        /// </summary>
         public void SetModeWithData(PointerMode mode, object modeData)
         {
-            var oldData = ModeData;
+            _previousModeData = ModeData;
             ModeData = modeData;
 
-            var oldMode = _mode;
+            _previousMode = _mode;
             _mode = mode;
+
             // Always fire changed event, even if _mode hasn't really changed. Resetting the mode to the same value can
             // have meaning. For example, resetting "clip" mode can reset the clipping plane position.
-            ModeChanged?.Invoke(this, new PointerModeChangedEventData(oldMode, oldData, _mode, ModeData));
+            ModeChanged?.Invoke(this, new PointerModeChangedEventData(_previousMode, _previousModeData, _mode, ModeData));
+        }
+
+        /// <inheritdoc/>
+        public void RestorePreviousMode()
+        {
+            SetModeWithData(_previousMode, _previousModeData);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit;
@@ -6,6 +6,7 @@ using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Physics;
 using Microsoft.MixedReality.Toolkit.Utilities;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
@@ -248,7 +249,6 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     {
         _log.LogVerbose("StartPlacement() Entered ({0})", name);
 
-        SetSpatialMeshVisibility(true);
         StopOtherPlacements();
         SetInitialPosition();
 
@@ -256,6 +256,10 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         {
             _placementFinished = new TaskCompletionSource<bool>();
         }
+
+        // set current mode to "none" so you don't accidentally delete or move the model
+        AppServices.PointerStateService.Mode = PointerMode.None;
+        SetSpatialMeshVisibility(true);
 
         DisposePointerVisibilityOverrides();
         _currentVisibilityOverrides = new IPointerStateVisibilityOverride[]
@@ -297,6 +301,12 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         InPlacement = false;
         _lastUsedPointer = null;
         UpdatePlacementVisualActiveState();
+
+        AppServices.PointerStateService.RestorePreviousMode();
+        if (AppServices.PointerStateService.Mode == PointerMode.None)
+        {
+            AppServices.PointerStateService.Mode = PointerMode.Manipulate;
+        }
 
         if (wasInPlacement)
         {
@@ -374,6 +384,7 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
         if (InPlacement)
         {
             StopPlacement();
+            eventData.Use();
         }
 
         _pointerOverride = null;
@@ -425,6 +436,13 @@ public class ObjectPlacement : InputSystemGlobalHandlerListener, IMixedRealityPo
     private void UpdatePoseViaPointer()
     {
         IMixedRealityPointer usePointer = _pointerOverride ?? _focusProvider?.PrimaryPointer;
+
+        // Editor workaround for "DefaultPrimaryPointerSelector" returning the "None_GGVPointer" which doesn't has a cursor.
+        if (Application.isEditor && usePointer is GGVPointer)
+        {
+            usePointer = CoreServices.InputSystem.DetectedInputSources.SelectMany(inputSource => inputSource.Pointers.Where(pointer => !(pointer is GGVPointer))).FirstOrDefault();
+        }
+
         bool? isVisible = usePointer?.BaseCursor?.IsVisible;
         if (usePointer == null || usePointer.BaseCursor == null || (!isVisible ?? true))
         {

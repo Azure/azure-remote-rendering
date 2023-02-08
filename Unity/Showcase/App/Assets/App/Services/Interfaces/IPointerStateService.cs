@@ -33,6 +33,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         void SetModeWithData(PointerMode mode, object modeData);
 
         /// <summary>
+        /// Set the pointer mode and associate data to the previous state.
+        /// </summary>
+        void RestorePreviousMode();
+
+        /// <summary>
         /// Prevent the given pointer type from being shown/used. If ShowPointer() is called after this, the pointer
         /// will be shown until the caller of ShowPointer() disposes its IPointerStateVisibilityOverride object.
         /// </summary>

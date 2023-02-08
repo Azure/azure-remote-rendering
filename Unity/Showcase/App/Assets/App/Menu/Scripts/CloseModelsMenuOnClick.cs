@@ -40,9 +40,6 @@ public class CloseModelsMenuOnClick : MonoBehaviour
         {
             // close menu
             handMenuHooks.ClearMenu();
-
-            // set current mode to "none" so you don't accidentally delete or move the model
-            AppServices.PointerStateService.Mode = PointerMode.None;
         }
     }
     #endregion Private Functions

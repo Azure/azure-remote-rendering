@@ -190,7 +190,7 @@ function ConvertAsset(
             $conversionId = "Sample-Conversion-$(New-Guid)"
         }
 
-        $url = "$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
+        $url = "https://remoterendering.$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
 
         $conversionType = if ($useContainerSas) {"container Shared Access Signatures"} else {"linked storage account"}
 
@@ -227,7 +227,7 @@ function ConvertAsset(
 # returns the conversion process state
 function GetConversionStatus($arrAccountDomain, $remoteRenderingDomain, $accountId, $accountKey, $conversionId) {
     try {
-        $url = "$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
+        $url = "https://remoterendering.$remoteRenderingDomain/accounts/$accountId/conversions/${conversionId}?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }

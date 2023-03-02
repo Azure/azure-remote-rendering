@@ -575,7 +575,7 @@ function TrySetGlobalAuthenticationToken([string]$arrAccountDomain, [GUID]$accou
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12;
 
         try {
-            $webResponse = Invoke-WebRequest -UseBasicParsing -Uri "$arrAccountDomain/accounts/$accountId/token" -Headers @{ Authorization = "Bearer ${accountId}:$accountKey" }
+            $webResponse = Invoke-WebRequest -UseBasicParsing -Uri "https://sts.$arrAccountDomain/accounts/$accountId/token" -Headers @{ Authorization = "Bearer ${accountId}:$accountKey" }
     
             if ($webResponse.StatusCode -eq 200) {
                 $response = ConvertFrom-Json -InputObject $webResponse.Content
@@ -614,7 +614,7 @@ function CreateRenderingSession([string] $arrAccountDomain, [string] $remoteRend
             $sessionId = "Sample-Session-$(New-Guid)"
         }
 
-        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
+        $url = "https://remoterendering.$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         WriteInformation("Creating Rendering Session ...")
         WriteInformation("  arrAccountDomain: $arrAccountDomain")
@@ -663,7 +663,7 @@ function StopSession([string] $arrAccountDomain, [string] $remoteRenderingDomain
 #call REST API <endpoint>/accounts/<accountId>/sessions/<SessionId>
 function GetSessionProperties([string] $arrAccountDomain, [string] $remoteRenderingDomain, [string] $accountId, [string] $accountKey, [string] $sessionId) {
     try {
-        $url = "$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
+        $url = "https://remoterendering.$remoteRenderingDomain/accounts/$accountId/sessions/${sessionId}?api-version=2021-01-01-preview"
 
         $token = GetAuthenticationToken -arrAccountDomain $arrAccountDomain -accountId $accountId -accountKey $accountKey
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method GET -ContentType "application/json" -Headers @{ Authorization = "Bearer $token" }

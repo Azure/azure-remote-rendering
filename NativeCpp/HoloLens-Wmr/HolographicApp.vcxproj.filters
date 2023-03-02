@@ -109,8 +109,8 @@
     </FxCompile>
     <None Include="packages.config" />
     <None Include="Content\VertexShaderShared_txt.hlsl" />
-    <None Include="..\..\..\Bin\uwp_arm64_vs2019\dev\RemoteRenderingClient.dll" />
-    <None Include="..\..\..\External\HolographicAppRemoting\bin\arm64\uwp\release\Microsoft.Holographic.HybridRemoting.dll" />
+    <None Include="..\..\..\..\Bin\uwp_arm64_vs2022\dev\RemoteRenderingClient.dll" />
+    <None Include="..\..\..\..\External\HolographicAppRemoting\bin\arm64\uwp\release\Microsoft.Holographic.HybridRemoting.dll" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

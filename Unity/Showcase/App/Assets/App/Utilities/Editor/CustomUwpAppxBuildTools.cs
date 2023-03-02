@@ -174,7 +174,7 @@ namespace Microsoft.MixedReality.Toolkit.Build.Editor
         private static async Task<string> FindMsBuildPathAsync()
         {
             // Finding msbuild.exe involves different work depending on whether or not users
-            // have VS2017 or VS2019 installed.
+            // have VS2017 or VS2019/VS2022 installed.
             foreach (VSWhereFindOption findOption in VSWhereFindOptions)
             {
                 var result = await new Process().StartProcessAsync(

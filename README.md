@@ -16,6 +16,10 @@ This repository contains the following folders:
 
 Another useful open-source tool which uses the C++ ARR SDK is Azure Remote Rendering Asset Tool (ARRT). This desktop application can be used to upload, convert and remotely render 3D models, using Azure Remote Rendering. Find the source code and binary releases on the [Azure Remote Rendering Asset Tool GitHub repository](https://github.com/Azure/azure-remote-rendering-asset-tool).
 
+## Requirements
+
+To check out this repository, [Git LFS](https://git-lfs.github.com/) must be installed.
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

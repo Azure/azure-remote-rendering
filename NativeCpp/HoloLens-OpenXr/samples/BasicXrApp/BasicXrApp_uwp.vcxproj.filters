@@ -63,13 +63,12 @@
       <Filter>Assets</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="XrApiLayer_msft_holographic_remoting.json" />
     <None Include="Content\VertexShaderShared_txt.hlsl">
       <Filter>Content\Shaders</Filter>
     </None>
-    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
-    <None Include="$(NativeRRPackageRoot)\bin\$(RRPlatform)\release\RemoteRenderingClient.dll" />
-    <None Include="$(NativeRRPackageRoot)\bin\$(RRPlatform)\release\Microsoft.Holographic.HybridRemoting.dll" />
+    <None Include="$(SolutionDir)\..\..\..\..\Bin\$(RRPlatform)\dev\RemoteRenderingClient.dll" />
+    <None Include="$(SolutionDir)\..\..\..\..\Bin\$(RRPlatform)\dev\Microsoft.Holographic.HybridRemoting.dll" />
+    <None Include="$(SolutionDir)\..\..\..\..\External\HolographicAppRemoting\include\HolographicAppRemoting\XrApiLayer_msft_holographic_remoting.json" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\PixelShader_txt.hlsl">

@@ -14,6 +14,7 @@
 #include "ShaderStructures.h"
 
 #include <string>
+#include <mutex>
 
 #include <DWrite.h>
 #include <d2d1.h>

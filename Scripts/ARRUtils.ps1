@@ -11,7 +11,10 @@ function ToDomain {
     $suffix = ".mixedreality.azure.com"
 
     $cleanedRegion = $Region -replace $suffix, "" # If someone specifies eastus.mixedreality.azure.com it should still work
-    $cleanedRegion = $cleanedRegion.TrimStart("https://") # If someone specifies the https:// part just trim it also
+
+    if( $cleanedRegion -Match "https://(?<content>.*)"){
+        $cleanedRegion = $matches['content'] ## If the url contains https:// remove it.
+    }
     if ($AllPublicRegions.Contains($cleanedRegion)) {
         $prefix = if ($Type -eq "Rendering") {
             "remoterendering"

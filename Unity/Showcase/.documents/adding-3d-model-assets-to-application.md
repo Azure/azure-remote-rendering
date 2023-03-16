@@ -1,21 +1,25 @@
 # Adding 3D Model Assets to ARR Showcase
 A developer can customize the list of 3D model assets that appear within the application's menu. By default, the application only includes Azure Remote Render Rendering's [sample engine](https://docs.microsoft.com/en-us/azure/remote-rendering/samples/sample-model#built-in-sample-model) asset. To add more models, the developer has a simple and an advance option.
 
+> **IMPORTANT**\
+> By default, Showcase scales models automatically at loading time if the model bounds either exceed 1 meter or are below 0.5 meter. This might be unintended behavior for models that must be inspected at 1:1 scaling. To bypass auto-scaling for loaded models, the 'Advance Method for Adding Models' through the XML file must be used with `MinSize`/`MaxSize` set to zero. See [Transform Type](#transform-type) section below.
+
 ## Simple Method for Adding Models
-The easiest way to include more models is by configuring an Azure blob container. This configuration is done during the application's [Remote Rendering setup](./implementation-notes.md#remote-rendering-service-extension). Once an Azure blob container is configured, the application will automatically ingest the container's [`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models) blobs. 
+The easiest way to include more models is by configuring an Azure blob container. This configuration is done during the application's [Remote Rendering setup](./implementation-notes.md#remote-rendering-service-extension). Once an Azure blob container is configured, the application will automatically ingest the container's [`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models) blobs.
 
 The application's menu will be populate its model list with all remote rendering asset blobs ([`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models)) within the configured Azure blob container. The menu will label each model by using it's blob name, and display an associated image, if one is available. The associated image must have the same name without extension as the remote rendered asset, and be a PNG image. For example, the model at `https://{storageEndpoint}/{storageContainer}/remote-asset.arrAsset` will, by default, use the PNG image at `https://{storageEndpoint}/{storageContainer}/remote-asset.png`. If a different image or label is desired, then the more advance method is required.
 
 ## Advance Method for Adding Models
-At startup, the application will first try to populate its menu with models listed in a `models.xml` blob. This blob is stored at the "root" of the configured Azure blob container; for example `https://{storageEndpoint}/{storageContainer}/models.xml`. After the `models.xml` blob is loaded, the application will search for any remaining [`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models) blobs within the configured Azure blob container, as defined in the [simple method](#simple-method-for-adding-models). 
+At startup, the application will first try to populate its menu with models listed in a `models.xml` blob. This blob is stored at the "root" of the configured Azure blob container; for example `https://{storageEndpoint}/{storageContainer}/models.xml`. After the `models.xml` blob is loaded, the application will search for any remaining [`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models) blobs within the configured Azure blob container, as defined in the [simple method](#simple-method-for-adding-models).
 
 This advance method is useful for the following scenarios:
 1. Defining custom labels or images.
-2. Loading multiple models at once, represented as a single menu item.
-3. Displaying a locally rendered model while the remote asset is loading.
-4. Displaying a locally rendered model indefinitely.
-5. Handling remote models that do not have remote colliders.
-6. Adding remote rendered light sources.
+1. Loading multiple models at once, represented as a single menu item.
+1. Displaying a locally rendered model while the remote asset is loading.
+1. Displaying a locally rendered model indefinitely.
+1. Handling remote models that do not have remote colliders.
+1. Adding remote rendered light sources.
+1. Overriding a model's `Transform` options, for instance to turn off auto-scaling.
 
 ### Creating a Model XML File
 The `models.xml` file (or blob) is a list of model [`Containers`](#container-type). ARR Showcase will insert all enabled [`Containers`](#container-type) into it's menu. Each [`Container`](#container-type) is a set of one or more assets, along with metadata, such a label and image URL. A [`Container`](#container-type) asset can be a remote rendered model stored in an [`.arrAsset`](https://docs.microsoft.com/en-us/azure/remote-rendering/concepts/models) blob, a locally rendered model stored in an Unity Asset Package, or a remote rendered light source. 
@@ -474,8 +478,8 @@ The [`Transform`](#transform-type) type can contain the following child tags:
 | <div style="width:90px">Child Tag</div> | <div style="width:60px">Type</div> | Description |
 | :--- | :--- | :--- |
 | Center | `boolean` | If `true`, the geometric center of a mesh (or model) asset will be placed at its parent's origin. Also, if `true`, any set `Position` is ignored. The default value is `false`. Light sources ignore this property. |
-| MaxSize | [`Vector3`](#vector3-type) | A vector describing the maximum geometric size of a mesh (or model) asset, in world (or global) space. If the asset's geometric size is bigger than this value, the asset's size is reduced. This value is applied after applying the `Scale` value, but before applying the `Position` and `Center` values. This value must be larger or equal to `MinSize`. Zero or negative values in the `MaxSize` vector are ignored. The default value is `(0, 0, 0)`. Light sources ignore this property. |
-| MinSize | [`Vector3`](#vector3-type) | A vector describing the minimum geometric size of a mesh (or model) asset, in world (or global) space. If the asset's geometric size is smaller than this value, the asset's size is increased. This value is applied after applying the `Scale` value, but before applying the `Position` and `Center` values. This value must be smaller or equal to `MaxSize`. Zero or negative values in the `MinSize` vector are ignored. The default value is `(0, 0, 0)`. Light sources ignore this property. |
+| MaxSize | [`Vector3`](#vector3-type) | A vector describing the maximum geometric size of a mesh (or model) asset, in world (or global) space. If the asset's geometric size is bigger than this value, the asset's size is reduced. This value is applied after applying the `Scale` value, but before applying the `Position` and `Center` values. This value must be larger or equal to `MinSize`. Negative values in the `MaxSize` vector are ignored. The default value is `(0, 0, 0)`, which means the model won't be scaled down, regardless of it's size. Light sources ignore this property. |
+| MinSize | [`Vector3`](#vector3-type) | A vector describing the minimum geometric size of a mesh (or model) asset, in world (or global) space. If the asset's geometric size is smaller than this value, the asset's size is increased. This value is applied after applying the `Scale` value, but before applying the `Position` and `Center` values. This value must be smaller or equal to `MaxSize`. Negative values in the `MinSize` vector are ignored. The default value is `(0, 0, 0)`, which means the model won't be scaled up, regardless of it's size. Light sources ignore this property. |
 | Position | [`Vector3`](#vector3-type) | A vector describing the position of the component, relative to its parent. The default value is `(0, 0, 0)`. |
 | Rotation | [`Vector3`](#vector3-type) | A vector describing the rotation, in degrees, of the component, relative to its parent. The default value is `(0, 0, 0)`. [`DirectionalLight`](#directionallight-type) types ignore this property. |
 | Scale | [`Vector3`](#vector3-type) | A vector describing the scale of the component, relative to its parent. The default value is `(1, 1, 1)`. Light sources ignore this property. |

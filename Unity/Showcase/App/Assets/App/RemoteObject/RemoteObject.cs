@@ -1065,7 +1065,7 @@ public class RemoteObject : MonoBehaviour
     /// </summary>
     private void ApplyMinMaxSize(RemoteItemBase item, Component container, UnityEngine.Bounds bounds)
     {
-        if (item.Transform.MaxSize == Vector3.zero && item.Transform.MaxSize == Vector3.zero)
+        if (item.Transform.MinSize == Vector3.zero && item.Transform.MaxSize == Vector3.zero)
         {
             return;
         }

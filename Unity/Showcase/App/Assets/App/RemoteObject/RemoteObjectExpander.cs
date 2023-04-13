@@ -219,7 +219,9 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     /// </summary>
     public void OnSourcePoseChanged(SourcePoseEventData<MixedRealityPose> eventData)
     {
-        _lastPoseChangeEventData = eventData;
+        // 'SourcePoseEventData' is a reference type and may be reused by the underlying event system, therefore we need to manage our own copy.
+        _lastPoseChangeEventData ??= new SourcePoseEventData<MixedRealityPose>(null);
+        _lastPoseChangeEventData.Initialize(eventData.InputSource, eventData.Controller, eventData.SourceData);
     }
     #endregion IMixedRealitySourcePoseHandler
 
@@ -746,9 +748,15 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
                 RouteEventToCurrentObject(sourcePoseChangedEventData, OnSourcePoseChangedEventHandler);
                 _pendingSourcePoseChanged = null;
             }
+            else if (sourcePoseChangedEventData != null)
+            {
+                // 'SourcePoseEventData' is a reference type and may be reused by the underlying event system, therefore we need to make a copy here.
+                _pendingSourcePoseChanged ??= new SourcePoseEventData<MixedRealityPose>(null);
+                _pendingSourcePoseChanged.Initialize(sourcePoseChangedEventData.InputSource, sourcePoseChangedEventData.Controller, sourcePoseChangedEventData.SourceData);
+            }
             else
             {
-                _pendingSourcePoseChanged = sourcePoseChangedEventData;
+                _pendingSourcePoseChanged = null;
             }
         }
 
@@ -759,9 +767,15 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
                 RouteEventToCurrentObject(pointerDownEventData, OnPointerDownEventHandler);
                 _pendingPointerDown = null;
             }
+            else if (pointerDownEventData != null)
+            {
+                // 'MixedRealityPointerEventData' is a reference type and may be reused by the underlying event system, therefore we need to make a copy here.
+                _pendingPointerDown ??= new MixedRealityPointerEventData(null);
+                _pendingPointerDown.Initialize(pointerDownEventData.Pointer, pointerDownEventData.MixedRealityInputAction, pointerDownEventData.Handedness, pointerDownEventData.InputSource, pointerDownEventData.Count);
+            }
             else
             {
-                _pendingPointerDown = pointerDownEventData;
+                _pendingPointerDown = null;
             }
         }
 

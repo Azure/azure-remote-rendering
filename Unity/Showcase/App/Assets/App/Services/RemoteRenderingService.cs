@@ -888,7 +888,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void EditorUpdateTimer(object state)
         {
-            MainThreadInvoker.Invoke(Update, true);
+            SynchronizationContextUtility.EnsureUnityMainThread(Update);
         }
 
 #if UNITY_EDITOR
@@ -1793,11 +1793,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
             private void AutoUpdateProperties(object timerState)
             {
-                MainThreadInvoker.Invoke(async () =>
+                SynchronizationContextUtility.EnsureUnityMainThread(async () =>
                 {
                     await UpdateProperties();
                     InitializeAutoUpdateTimer();
-                }, false);
+                });
             }
 
             /// <summary>
@@ -1833,7 +1833,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </summary>
             private void AutoRenewWithDefault(object timerState)
             {
-                MainThreadInvoker.Invoke(async () =>
+                SynchronizationContextUtility.EnsureUnityMainThread(async () =>
                 {
                     const int maxRetry = 10;
                     int retry = 0;
@@ -1846,7 +1846,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
 
                     InitializeAutoRenewTimer();
-                }, false);
+                });
             }
 
             /// <summary>
@@ -2184,7 +2184,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <param name="timerState"></param>
             private void AutoReconnectWorker(object timerState)
             {
-                MainThreadInvoker.Invoke(async () =>
+                SynchronizationContextUtility.EnsureUnityMainThread(async () =>
                 {
                     if (!CanAutoReconnect())
                     {
@@ -2197,7 +2197,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     {
                         InitializeAutoReconnectTimer();
                     }
-                }, false);
+                });
             }
 
             /// <summary>

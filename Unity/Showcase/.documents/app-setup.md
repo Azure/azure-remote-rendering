@@ -17,6 +17,7 @@
 ## Setup collaboration cloud services
 
 * Ensure you have created an Azure Spatial Anchors account.  If you do not already have an account, see the [Create an Azure Spatial Anchors account](https://docs.microsoft.com/azure/spatial-anchors/how-tos/create-asa-account?tabs=azure-portal) manual.
+* Ensure you have added the Azure Spatial Anchors packages to your project. To add the packages, follow the [Azure Spatial Anchor Service Extension](implementation-notes.md#azure-spatial-anchor-service-extension) instructions within this repository.
 * Ensure you have added ExitGame's Photon Voice 2 assets into your project. To add this plug-in, follow the [Using Photon Voice 2 for Collaboration](implementation-notes.md#using-photon-voice-2-for-collaboration) instructions within this repository.
 
 ## Configure application

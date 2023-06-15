@@ -3159,7 +3159,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 4346604148940461558}
-        m_TargetAssemblyTypeName: MoveToHandJoint, Assembly-CSharp
+        m_TargetAssemblyTypeName: MoveToHandJoint, App
         m_MethodName: MoveToHandJointNow
         m_Mode: 1
         m_Arguments:
@@ -6296,7 +6296,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 5511929106288031536}
-        m_TargetAssemblyTypeName: MoveToHandJoint, Assembly-CSharp
+        m_TargetAssemblyTypeName: MoveToHandJoint, App
         m_MethodName: set_Hand
         m_Mode: 0
         m_Arguments:
@@ -6308,7 +6308,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 4346604148940461558}
-        m_TargetAssemblyTypeName: MoveToHandJoint, Assembly-CSharp
+        m_TargetAssemblyTypeName: MoveToHandJoint, App
         m_MethodName: set_Hand
         m_Mode: 0
         m_Arguments:
@@ -6320,7 +6320,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
       - m_Target: {fileID: 4346604148940461557}
-        m_TargetAssemblyTypeName: SummonMenuWaitTimer, Assembly-CSharp
+        m_TargetAssemblyTypeName: SummonMenuWaitTimer, App
         m_MethodName: TriggerTimer
         m_Mode: 1
         m_Arguments:

@@ -389,12 +389,12 @@ PrefabInstance:
     - target: {fileID: 243183659357970488, guid: 368a3213c7822c34cb6faaba4f12cf4d,
         type: 3}
       propertyPath: keywords.Array.data[44].response.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: AppActions, Assembly-CSharp
+      value: AppActions, App
       objectReference: {fileID: 0}
     - target: {fileID: 243183659357970488, guid: 368a3213c7822c34cb6faaba4f12cf4d,
         type: 3}
       propertyPath: keywords.Array.data[45].response.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: AppActions, Assembly-CSharp
+      value: AppActions, App
       objectReference: {fileID: 0}
     - target: {fileID: 243183659357970489, guid: 368a3213c7822c34cb6faaba4f12cf4d,
         type: 3}

@@ -90,6 +90,26 @@ MonoBehaviour:
   features: []
   m_renderMode: 1
   m_depthSubmissionMode: 0
+--- !u!114 &-8209222622184123132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34219f5077d851f448f60c5f0c3568ee, type: 3}
+  m_Name: AzureRemoteRenderingFeature WSA
+  m_EditorClassIdentifier: 
+  m_enabled: 1
+  nameUi: Azure Remote Rendering
+  version: 0.0.1
+  featureIdInternal: com.microsoft.azure.remote-rendering.feature.remote-rendering
+  openxrExtensionStrings: 
+  company: Microsoft
+  priority: 0
+  required: 0
 --- !u!114 &-8157611318118770970
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -692,20 +712,21 @@ MonoBehaviour:
   m_Name: WSA
   m_EditorClassIdentifier: 
   features:
+  - {fileID: 8248926813840711713}
+  - {fileID: -8209222622184123132}
   - {fileID: -2712686728841952419}
   - {fileID: 6418306358070357627}
+  - {fileID: -8886540763236484762}
+  - {fileID: -4208089541050824286}
   - {fileID: -608980936004011803}
   - {fileID: -8157611318118770970}
   - {fileID: -4572504266132978423}
   - {fileID: 331908230514288558}
-  - {fileID: 2226234463130373740}
-  - {fileID: 7184379022085446615}
-  - {fileID: -4208089541050824286}
-  - {fileID: -8886540763236484762}
   - {fileID: -1703410262156335570}
   - {fileID: 5880004495260398179}
-  - {fileID: 8248926813840711713}
+  - {fileID: 2226234463130373740}
   - {fileID: -426738551078463852}
+  - {fileID: 7184379022085446615}
   m_renderMode: 1
   m_depthSubmissionMode: 1
 --- !u!114 &-1886747946979223176

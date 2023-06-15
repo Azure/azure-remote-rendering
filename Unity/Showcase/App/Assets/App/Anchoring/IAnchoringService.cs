@@ -1,10 +1,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.Azure.SpatialAnchors;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+#if AZURE_SPATIAL_ANCHORS_ENABLED
+using Microsoft.Azure.SpatialAnchors;
+using Microsoft.Azure.SpatialAnchors.Unity;
+#else
+using Microsoft.Azure.SpatialAnchors.Stub;
+#endif
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {

@@ -317,7 +317,7 @@ MonoBehaviour:
   - {fileID: -115745708627202638}
   - {fileID: -3180159920418761415}
   m_renderMode: 1
-  m_depthSubmissionMode: 1
+  m_depthSubmissionMode: 0
 --- !u!114 &-6060646299645930583
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -405,7 +405,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c79c911b38743a649b1c1eddb5097202, type: 3}
   m_Name: HandTrackingFeaturePlugin Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 1
+  m_enabled: 0
   nameUi: Hand Tracking
   version: 1.5.1
   featureIdInternal: com.microsoft.openxr.feature.handtracking
@@ -645,11 +645,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c8f1ce8139888c4ab621f6b3c8bb558, type: 3}
   m_Name: MotionControllerFeaturePlugin Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 1
+  m_enabled: 0
   nameUi: Motion Controller Model
   version: 1.5.1
   featureIdInternal: com.microsoft.openxr.feature.controller
   openxrExtensionStrings: XR_MSFT_controller_model XR_FB_render_model
+  company: Microsoft
+  priority: 0
+  required: 0
+--- !u!114 &-2543870267923859187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34219f5077d851f448f60c5f0c3568ee, type: 3}
+  m_Name: AzureRemoteRenderingFeature WSA
+  m_EditorClassIdentifier: 
+  m_enabled: 1
+  nameUi: Azure Remote Rendering
+  version: 0.0.1
+  featureIdInternal: com.microsoft.azure.remote-rendering.feature.remote-rendering
+  openxrExtensionStrings: 
   company: Microsoft
   priority: 0
   required: 0
@@ -750,7 +770,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f8ec2975f18d5e479159feb34b4dc86, type: 3}
   m_Name: HoloLensFeaturePlugin Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 1
+  m_enabled: 0
   nameUi: Mixed Reality Features
   version: 1.5.1
   featureIdInternal: com.microsoft.openxr.feature.hololens
@@ -959,7 +979,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f928d0d73a35f294fbe357ca17aa3547, type: 3}
   m_Name: MicrosoftHandInteraction Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 1
+  m_enabled: 0
   nameUi: Microsoft Hand Interaction Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.handtracking
@@ -1036,6 +1056,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   features:
   - {fileID: -2898183352348533125}
+  - {fileID: -2543870267923859187}
   - {fileID: -5687809338199990469}
   - {fileID: 6493146556150393544}
   - {fileID: -1277732293586361761}
@@ -1487,7 +1508,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f6bfdbcb316ed242b30a8798c9eb853, type: 3}
   m_Name: KHRSimpleControllerProfile Standalone
   m_EditorClassIdentifier: 
-  m_enabled: 1
+  m_enabled: 0
   nameUi: Khronos Simple Controller Profile
   version: 0.0.1
   featureIdInternal: com.unity.openxr.feature.input.khrsimpleprofile

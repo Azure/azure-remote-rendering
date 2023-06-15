@@ -1,15 +1,22 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.Azure.SpatialAnchors;
-using Microsoft.Azure.SpatialAnchors.Unity;
-using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using UnityEngine;
+
+using Microsoft.MixedReality.Toolkit.Utilities;
+
+#if AZURE_SPATIAL_ANCHORS_ENABLED
+using Microsoft.Azure.SpatialAnchors;
+using Microsoft.Azure.SpatialAnchors.Unity;
+#else
+using Microsoft.Azure.SpatialAnchors.Stub;
+#endif
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -87,7 +94,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <summary>
         /// Can cloud anchors be created.
         /// </summary>
-        public bool IsCloudEnabled => IsNativeEnabled && _hasAccount;
+        public bool IsCloudEnabled => IsNativeEnabled && IsPackageInstalled && _hasAccount;
 
         /// <summary>
         /// Can native anchors be created
@@ -114,6 +121,23 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         public event Action<IAnchoringService, AnchoringServiceCreatingArgs> ActiveCreationsCountChanged;
         #endregion IAnchoringService Events
 
+        #region Private Properties
+        /// <summary>
+        /// Is the ASA package installed.
+        /// </summary>
+        private static bool IsPackageInstalled
+        {
+            get
+            {
+#if AZURE_SPATIAL_ANCHORS_ENABLED
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+        #endregion
+
         #region IMixedRealityExtensionService Methods
         /// <summary>
         /// Initialize the service. This will create a new SpatialAnchorManager if one doesn't exist.
@@ -125,9 +149,27 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return;
             }
 
-            LogVerbose("Initializing");
+            LogVerbose("Initializing. Loading profile.");
             _appContext = SynchronizationContext.Current;
+            var asaProfile = await _loadedProfile;
 
+            if (!IsPackageInstalled)
+            {
+                if (_hasAccount)
+                {
+                    LogError("Anchoring service is disabled. No Azure Spatial Anchors package is installed!");
+                }
+                else
+                {
+                    LogVerbose("Anchoring service is disabled.");
+                }
+
+                _serviceInit.SetResult(true);
+                Disable();
+                return;
+            }
+
+            LogVerbose("Initializing. Setting up SpatialAnchorManager.");
             if (AnchorManager == null)
             {
                 AnchorManager = MixedRealityPlayspace.Transform.GetComponentInChildren<SpatialAnchorManager>();
@@ -141,10 +183,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 AnchorManager = anchorManagerObject.AddComponent<SpatialAnchorManager>();
             }
 
-            LogVerbose("Initializing. Loading profile.");
             AnchorManager.enabled = false;
             AnchorManager.gameObject.SetActive(false);
-            var asaProfile = await _loadedProfile;
 
             LogVerbose("Initializing. Loaded profile. IsCouldEnabled:{0} IsNativeEnabled:{1}", IsCloudEnabled, IsNativeEnabled);
             AnchorManager.SpatialAnchorsAccountId = asaProfile.AnchorAccountId;

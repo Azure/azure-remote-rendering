@@ -788,7 +788,7 @@ PrefabInstance:
     - target: {fileID: 4361666669630295058, guid: 0da1809f726a4d243854e6942ef00970,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: RemoteObjectStageMoveHelper, Assembly-CSharp
+      value: RemoteObjectStageMoveHelper, App
       objectReference: {fileID: 0}
     - target: {fileID: 4361666669630295058, guid: 0da1809f726a4d243854e6942ef00970,
         type: 3}

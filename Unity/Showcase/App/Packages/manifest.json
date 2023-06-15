@@ -1,9 +1,7 @@
 {
   "scopedRegistries": [],
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.1.41.tgz",
-    "com.microsoft.azure.spatial-anchors-sdk.core": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.core-2.12.0.tgz",
-    "com.microsoft.azure.spatial-anchors-sdk.windows": "file:../../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.windows-2.12.0.tgz",
+    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.1.42.tgz",
     "com.microsoft.mixedreality.openxr": "file:../../../MRPackages/com.microsoft.mixedreality.openxr-1.5.1.tgz",
     "com.microsoft.mixedreality.toolkit.extensions": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.extensions-2.8.2.tgz",
     "com.microsoft.mixedreality.toolkit.foundation": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.foundation-2.8.2.tgz",

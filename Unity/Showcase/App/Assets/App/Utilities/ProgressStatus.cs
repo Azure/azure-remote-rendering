@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
@@ -165,7 +165,9 @@ public class ProgressCollection : ProgressStatus
     {
         if (_updateTimer != null)
         {
+#if UNITY_WSA
             Debug.Assert(UnityEngine.WSA.Application.RunningOnAppThread(), "Not running on app thread.");
+#endif
             _updateTimer.Dispose();
             _updateTimer = null;
         }

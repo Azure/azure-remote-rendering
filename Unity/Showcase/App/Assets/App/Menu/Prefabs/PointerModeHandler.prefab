@@ -140,7 +140,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 7419143862810644031}
-          m_TargetAssemblyTypeName: PointerVisibilityOverride, Assembly-CSharp
+          m_TargetAssemblyTypeName: PointerVisibilityOverride, App
           m_MethodName: AlwaysHide
           m_Mode: 1
           m_Arguments:
@@ -155,7 +155,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 7419143862810644031}
-          m_TargetAssemblyTypeName: PointerVisibilityOverride, Assembly-CSharp
+          m_TargetAssemblyTypeName: PointerVisibilityOverride, App
           m_MethodName: ResetState
           m_Mode: 1
           m_Arguments:
@@ -174,7 +174,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 7419143862810644031}
-          m_TargetAssemblyTypeName: PointerVisibilityOverride, Assembly-CSharp
+          m_TargetAssemblyTypeName: PointerVisibilityOverride, App
           m_MethodName: AlwaysHide
           m_Mode: 1
           m_Arguments:
@@ -189,7 +189,7 @@ MonoBehaviour:
       m_PersistentCalls:
         m_Calls:
         - m_Target: {fileID: 7419143862810644031}
-          m_TargetAssemblyTypeName: PointerVisibilityOverride, Assembly-CSharp
+          m_TargetAssemblyTypeName: PointerVisibilityOverride, App
           m_MethodName: ResetState
           m_Mode: 1
           m_Arguments:

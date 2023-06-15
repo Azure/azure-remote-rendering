@@ -38,7 +38,7 @@ MonoBehaviour:
       type: 2}
   focusProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.RemoteFocusProviderNoCollider,
-      Assembly-CSharp
+      App
   raycastProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.DefaultRaycastProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   focusQueryBufferSize: 128

@@ -286,7 +286,7 @@ MonoBehaviour:
           m_CallState: 2
         - m_Target: {fileID: 7763140071903612484}
           m_TargetAssemblyTypeName: Microsoft.MixedReality.Toolkit.Extensions.SharingObjectBase,
-            Assembly-CSharp
+            App
           m_MethodName: DelayDespawn
           m_Mode: 1
           m_Arguments:

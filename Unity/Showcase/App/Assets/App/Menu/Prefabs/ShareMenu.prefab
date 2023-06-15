@@ -566,7 +566,7 @@ PrefabInstance:
     - target: {fileID: 235990599682329342, guid: dfef8fcb97bca4c479c2e15872fd6c3d,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 235990599682329342, guid: dfef8fcb97bca4c479c2e15872fd6c3d,
         type: 3}
@@ -671,7 +671,7 @@ PrefabInstance:
     - target: {fileID: 8573578107771572007, guid: dfef8fcb97bca4c479c2e15872fd6c3d,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 8573578107771572007, guid: dfef8fcb97bca4c479c2e15872fd6c3d,
         type: 3}
@@ -756,7 +756,7 @@ PrefabInstance:
     - target: {fileID: 3976870517306372877, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 3976870517306372877, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
@@ -786,7 +786,7 @@ PrefabInstance:
     - target: {fileID: 4764494432012834100, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 4764494432012834100, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
@@ -821,7 +821,7 @@ PrefabInstance:
     - target: {fileID: 6789133138987094404, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 6789133138987094404, guid: 1b02e7cfde0246042ab37b7532fe74cf,
         type: 3}
@@ -1038,7 +1038,7 @@ PrefabInstance:
     - target: {fileID: 2236035276861458673, guid: c6b5823901a88294f97ff563b63fbb7d,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 2236035276861458673, guid: c6b5823901a88294f97ff563b63fbb7d,
         type: 3}
@@ -1148,7 +1148,7 @@ PrefabInstance:
     - target: {fileID: 7779204866850979122, guid: c6b5823901a88294f97ff563b63fbb7d,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 7779204866850979122, guid: c6b5823901a88294f97ff563b63fbb7d,
         type: 3}
@@ -1462,7 +1462,7 @@ PrefabInstance:
     - target: {fileID: 7448212954936364813, guid: db826ff89f14cea4688b05946c18b1c7,
         type: 3}
       propertyPath: OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: SubMenuController, Assembly-CSharp
+      value: SubMenuController, App
       objectReference: {fileID: 0}
     - target: {fileID: 7448212954936364813, guid: db826ff89f14cea4688b05946c18b1c7,
         type: 3}

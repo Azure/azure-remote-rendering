@@ -1,0 +1,31 @@
+{
+    "name": "App.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:a959f90081f84f1479d9904352e4e3a3",
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:e40ba710768534012815d3193fa296cb",
+        "GUID:f9fe0089ec81f4079af78eb2287a6163",
+        "GUID:4847341ff46394e83bb78fbd0652937e",
+        "GUID:96aa6ba065960476598f8f643e7252b6",
+        "GUID:d0230f68c4b40e4419987063ca06f213",
+        "GUID:a7a4c34601384f9389d5c4207f3c6331",
+        "GUID:cadcbfb06c3f4683bccf2c955c150d0d",
+        "GUID:8213dc10c274b714cb89afec31623845",
+        "GUID:584b16fd20064a269d31514d588aa585",
+        "GUID:829e63f67f814aae828de5ab51326cf6",
+        "GUID:7404ed9ad29ad3844ac3a261c8d45b60",
+        "GUID:3b76ab8242cc35d479edf0a949d56d59"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

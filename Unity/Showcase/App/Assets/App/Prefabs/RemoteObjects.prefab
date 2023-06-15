@@ -206,7 +206,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 2725324604960708284}
-        m_TargetAssemblyTypeName: RemoteCameraSettings, Assembly-CSharp
+        m_TargetAssemblyTypeName: RemoteCameraSettings, App
         m_MethodName: SetPrimaryObject
         m_Mode: 0
         m_Arguments:

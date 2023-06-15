@@ -11,7 +11,7 @@ using UnityEditor;
 [InitializeOnLoad]
 public static class BuildGuard
 {
-    private static readonly List<BuildTarget> s_supportedPlatforms = new List<BuildTarget> { BuildTarget.WSAPlayer };
+    private static readonly List<BuildTarget> s_supportedPlatforms = new List<BuildTarget> { BuildTarget.StandaloneWindows64, BuildTarget.WSAPlayer };
     private static string s_unsupportedPlatformDialogOptOutKey = "UNSUPPORTED_PLATFORM_DIALOG_OPT_OUT_KEY";
 
     static BuildGuard()

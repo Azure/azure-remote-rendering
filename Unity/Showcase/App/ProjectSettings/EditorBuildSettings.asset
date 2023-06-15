@@ -12,8 +12,6 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleSceneDesktop.unity
     guid: 7b64afefd252f4d4bbf03aa97e2d54a7
   m_configObjects:
-    Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: bebd22fe0218c5b48813259ff0657a9a,
-      type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 1c0dc29e9d338cf4e867f224b63433c0,
       type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 261b7d8b2b130de41b17046d08508624,

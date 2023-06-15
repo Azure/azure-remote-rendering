@@ -624,7 +624,9 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
         private void UpdateCombinedStatus()
         {
+#if UNITY_WSA
             _log.LogAssert(UnityEngine.WSA.Application.RunningOnAppThread(), "Not running on app thread.");
+#endif
 
             if (_primaryMachine == null)
             {

@@ -4,7 +4,6 @@
 using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.SpatialAwareness;
 using Microsoft.MixedReality.Toolkit.XRSDK;
-using Microsoft.MixedReality.Toolkit.XRSDK.WindowsMixedReality;
 using System;
 using System.Threading;
 using UnityEngine;

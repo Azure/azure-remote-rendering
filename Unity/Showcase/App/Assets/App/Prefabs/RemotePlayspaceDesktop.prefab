@@ -3759,7 +3759,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 7411913431833439896}
-        m_TargetAssemblyTypeName: AppActions, Assembly-CSharp
+        m_TargetAssemblyTypeName: AppActions, App
         m_MethodName: QuitApplication
         m_Mode: 1
         m_Arguments:

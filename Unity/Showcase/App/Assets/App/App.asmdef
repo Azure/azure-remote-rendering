@@ -1,0 +1,43 @@
+{
+    "name": "App",
+    "rootNamespace": "",
+    "references": [
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:a9420e37d7990b54abdef6688edbe313",
+        "GUID:92703082f92b41ba80f0d6912de66115",
+        "GUID:e40ba710768534012815d3193fa296cb",
+        "GUID:4847341ff46394e83bb78fbd0652937e",
+        "GUID:33d8827e6b886c24980a9ae3153d16c9",
+        "GUID:9a6ddf5d388cc2b498e8a9d44bd289f0",
+        "GUID:d0230f68c4b40e4419987063ca06f213",
+        "GUID:3b76ab8242cc35d479edf0a949d56d59",
+        "GUID:a7a4c34601384f9389d5c4207f3c6331",
+        "GUID:748bc79f751cd664a945de4f8480e12c",
+        "GUID:7404ed9ad29ad3844ac3a261c8d45b60",
+        "GUID:8b7cc3e86d77403b8b984c08cbaeaf8f",
+        "GUID:8213dc10c274b714cb89afec31623845",
+        "GUID:2dfc6c13295e6094caf03e31906b45b8",
+        "GUID:c29fd43ee25241842985361a5e48a1a7",
+        "GUID:831409e8f9d13b5479a3baef9822ad34",
+        "GUID:57c32fc907df0f54e8e6e8f0d2488336",
+        "GUID:b59fae9c7ebc1574e8690f2570b29d6f",
+        "GUID:8e3c55029ca641543bf030857af4d525",
+        "GUID:d62e4537d6f8ca64c8d2affe565a5cd1"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.microsoft.azure.spatial-anchors-sdk.core",
+            "expression": "",
+            "define": "AZURE_SPATIAL_ANCHORS_ENABLED"
+        }
+    ],
+    "noEngineReferences": false
+}

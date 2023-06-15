@@ -53,7 +53,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: AppActions, Assembly-CSharp
+        m_TargetAssemblyTypeName: AppActions, App
         m_MethodName: ShowInterface
         m_Mode: 1
         m_Arguments:
@@ -65,7 +65,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: PlaceOnTarget, Assembly-CSharp
+        m_TargetAssemblyTypeName: PlaceOnTarget, App
         m_MethodName: Place
         m_Mode: 1
         m_Arguments:

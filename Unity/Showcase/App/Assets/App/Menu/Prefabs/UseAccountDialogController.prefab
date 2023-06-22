@@ -25,7 +25,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5597474880080247614}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -43,5 +43,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d86c503b2416968439473348fc0e48a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dialogPrefab: {fileID: 8763119407713475931, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
-    type: 3}
+  maxUserNameLength: 30

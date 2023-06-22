@@ -777,14 +777,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f60853dba6e84e549a9b3ee064538c91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  logLevel: 3
-  ignoreGlobalLogLevel: 0
-  playbackOnlyWhenEnabled: 0
-  playDelayMs: -1
-  playbackDelaySettings:
-    MinDelaySoft: 200
-    MaxDelaySoft: 400
-    MaxDelayHard: 1000
 --- !u!1 &2861598755139390497
 GameObject:
   m_ObjectHideFlags: 0
@@ -842,16 +834,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19db17f867fdc6f419c7a5f51662f6b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 0
-  ObservedComponents: []
   sceneViewId: 0
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
 --- !u!114 &7783074234660953476
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -864,13 +847,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a22fe2bf0aa6362488bbac9f5e22d315, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  logLevel: 3
-  ignoreGlobalLogLevel: 0
-  recorderInUse: {fileID: 0}
-  speakerInUse: {fileID: 791148213284350786}
-  AutoCreateRecorderIfNotFound: 0
   UsePrimaryRecorder: 1
-  SetupDebugSpeaker: 0
 --- !u!114 &1504022280151024486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1170,19 +1147,6 @@ Transform:
   m_Father: {fileID: 3329305218131671834}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &454757216510290713
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8551377592824795238}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 0.26041067, y: 0.30516565, z: 0.28962302}
-  m_Center: {x: 0.000000007450581, y: 0.008868944, z: 0.0034889048}
 --- !u!1 &8750576662498526955
 GameObject:
   m_ObjectHideFlags: 0
@@ -1420,6 +1384,19 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 8551377592824829646}
   m_PrefabAsset: {fileID: 0}
+--- !u!65 &454757216510290713
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8551377592824795238}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 0.26041067, y: 0.30516565, z: 0.28962302}
+  m_Center: {x: 0.000000007450581, y: 0.008868944, z: 0.0034889048}
 --- !u!1001 &8776119951183812709
 PrefabInstance:
   m_ObjectHideFlags: 0

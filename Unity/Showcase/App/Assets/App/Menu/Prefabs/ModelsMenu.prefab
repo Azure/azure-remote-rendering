@@ -226,6 +226,7 @@ MonoBehaviour:
   clippingSide: -1
   useOnPreRender: 0
   applyToSharedMaterial: 0
+  cacheSharedMaterialsFromRenderer: 0
 --- !u!114 &984021163546746068
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -276,7 +277,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &5966533797856863546
 Animator:
-  serializedVersion: 3
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -289,10 +290,12 @@ Animator:
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &5966533798602567864
 GameObject:
   m_ObjectHideFlags: 0
@@ -456,7 +459,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   thumbRoot: {fileID: 5966533799545348304}
+  isTouchable: 0
+  snapToPosition: 0
+  thumbCollider: {fileID: 0}
+  touchCollider: {fileID: 0}
   sliderValue: 0
+  useSliderStepDivisions: 0
+  sliderStepDivisions: 1
   trackVisuals: {fileID: 0}
   tickMarks: {fileID: 0}
   thumbVisuals: {fileID: 0}
@@ -538,10 +547,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db568ff594a361d4e9a9ac960905ddd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playSoundsOnlyOnInteract: 0
   interactionStartSound: {fileID: 8300000, guid: 6c0efce9e4f4243449555af66e975f27,
     type: 3}
   interactionEndSound: {fileID: 8300000, guid: 32c013149113ba24cb267e1e3f6725c7, type: 3}
   playTickSounds: 1
+  alignWithStepSlider: 1
   passNotchSound: {fileID: 8300000, guid: 0632575a55cf09349a999a10968f6395, type: 3}
   tickEvery: 0.1
   startPitch: 0.75

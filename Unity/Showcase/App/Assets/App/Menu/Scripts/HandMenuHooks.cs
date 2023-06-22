@@ -418,8 +418,8 @@ public class HandMenuHooks : MonoBehaviour, IMainMenu
             notificationBar.NotificationBarHidden.AddListener(WhenNotificationBarHiddenShowAnchorInformation);
         }
 
-        // Disable tools by default
-        AppServices.PointerStateService.Mode = PointerMode.None;
+        // Start with far interaction enabled
+        AppServices.PointerStateService.Mode = PointerMode.Manipulate;
     }
 
     /// <summary>

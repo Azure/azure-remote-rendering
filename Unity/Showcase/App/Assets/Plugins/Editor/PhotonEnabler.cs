@@ -32,6 +32,14 @@ public class PhotonEnabler
             Target = BuildTargetGroup.WSA,
             Defines = new string[] { "PHOTON_INSTALLED" }
         }
+#if UNITY_ANDROID
+        ,
+        new ScriptDefineSettings()
+        {
+            Target = BuildTargetGroup.Android,
+            Defines = new string[] { "PHOTON_INSTALLED" }
+        }
+#endif
     };
 
     /// <summary>

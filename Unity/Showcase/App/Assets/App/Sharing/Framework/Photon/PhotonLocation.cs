@@ -55,10 +55,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions.Sharing.Communication.Photon
             PhotonSharingRoom room,
             PhotonProperties properties)
         {
-            bool useAzureSpatialAnchors =
-                await AppServices.AnchoringService.IsReady() &&
+            bool useAzureSpatialAnchors = false;
+#if !UNITY_ANDROID
+            useAzureSpatialAnchors = await AppServices.AnchoringService.IsReady() &&
                 AppServices.AnchoringService.IsCloudEnabled;
-
+#endif
             ISharingServiceRoomAddresses rooms = new PhotonSharingRoomAddresses(room, properties);
             ISharingServiceAddressSearchStrategy search = new AzureSpatialAnchorSearchStrategy(settings, rooms);
 

@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleSceneDesktop.unity
     guid: 7b64afefd252f4d4bbf03aa97e2d54a7
+  - enabled: 1
+    path: Assets/App/VR/Background/scenes/RoomBlue.unity
+    guid: 8617a4e6966a22440a50f2076d3709da
   m_configObjects:
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 1c0dc29e9d338cf4e867f224b63433c0,
       type: 2}

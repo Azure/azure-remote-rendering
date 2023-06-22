@@ -48,6 +48,7 @@ MonoBehaviour:
   clippingSide: -1
   useOnPreRender: 0
   applyToSharedMaterial: 0
+  cacheSharedMaterialsFromRenderer: 0
 --- !u!114 &9005376569761975762
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112,6 +113,7 @@ MonoBehaviour:
   clippingSide: -1
   useOnPreRender: 0
   applyToSharedMaterial: 0
+  cacheSharedMaterialsFromRenderer: 0
 --- !u!114 &5947097958580501275
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -176,6 +178,7 @@ MonoBehaviour:
   clippingSide: -1
   useOnPreRender: 0
   applyToSharedMaterial: 0
+  cacheSharedMaterialsFromRenderer: 0
 --- !u!114 &694900978737522233
 MonoBehaviour:
   m_ObjectHideFlags: 0

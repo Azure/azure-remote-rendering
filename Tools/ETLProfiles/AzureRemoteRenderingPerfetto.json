@@ -1,0 +1,66 @@
+{
+  "durationMs": 30000,
+  "flushTimeoutMs": 30000,
+  "writeIntoFile": true,
+  "fileWritePeriodMs": 2500,
+  "maxFileSizeBytes": 1000000000,
+  "flushPeriodMs": 30000,
+  "buffers": [
+    {
+      "sizeKb": 522240,
+	    "fillPolicy": 2
+    }
+  ],
+  "dataSources": [
+    {
+      "config": {
+        "name": "Microsoft.Azure.RemoteRendering.API"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Holographic.AppRemoting.NanoTransport"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Nano.Network"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Nano.Network.urcp"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Basix"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Nano.Input"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Nano.Media"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Streaming.Nano"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Holographic.AppRemoting.HttpHandshake"
+      }
+    },
+    {
+      "config": {
+        "name": "Microsoft.Holographic.AppRemoting"
+      }
+    }
+  ]
+}

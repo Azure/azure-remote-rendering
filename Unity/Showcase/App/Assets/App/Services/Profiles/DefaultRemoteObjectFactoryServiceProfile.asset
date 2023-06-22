@@ -13,6 +13,4 @@ MonoBehaviour:
   m_Name: DefaultRemoteObjectFactoryServiceProfile
   m_EditorClassIdentifier: 
   isCustomProfile: 1
-  LoadingStatusPrefab: {fileID: 847265149088661384, guid: 32483f1cd87be964b9f45e6cc1e7923d,
-    type: 3}
   ConcurrentModelLoads: 10

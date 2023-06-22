@@ -36,7 +36,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 180}
 --- !u!95 &4300075691882444671
 Animator:
-  serializedVersion: 3
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -49,10 +49,12 @@ Animator:
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &3732069864290763340
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66,15 +68,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   handedness: 2
-  head: {fileID: 0}
   copyTransforms: 0
-  animator: {fileID: 0}
+  head: {fileID: 0}
   wrist: {fileID: 8821794705760801520}
   thumbMetacarpal: {fileID: 8821794705760801528}
   indexKnuckle: {fileID: 8821794705760801480}
   middleKnuckle: {fileID: 8821794705760801496}
   ringKnuckle: {fileID: 8821794705760801472}
   pinkyKnuckle: {fileID: 8821794705760801488}
+  animator: {fileID: 0}
 --- !u!114 &2841993185055482930
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -87,9 +89,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6aa8f286a81ef704ba99684490afc1a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handedness: 2
-  interpolateLerpSpeed: 20
   transforms: {fileID: 3732069864290763340}
+  avatarSerialization: {fileID: 0}
+  interpolateLerpSpeed: 20
   modelFingerPointing: {x: 1, y: 0, z: 0}
   modelPalmFacing: {x: 0, y: -1, z: 0}
 --- !u!1001 &8821794705760929884

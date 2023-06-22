@@ -12,6 +12,10 @@ PrefabInstance:
       value: AppTouchPointer
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -24,6 +28,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
@@ -33,14 +41,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_RootOrder
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}

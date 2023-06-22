@@ -22,12 +22,12 @@ MonoBehaviour:
     runtimePlatform: -1
     settingsProfile: {fileID: 11400000, guid: 32349edfa9bacb94a9fe58923e9a2400, type: 2}
   nearClipPlaneOpaqueDisplay: 0.1
-  farClipPlaneOpaqueDisplay: 80
+  farClipPlaneOpaqueDisplay: 100
   cameraClearFlagsOpaqueDisplay: 2
   backgroundColorOpaqueDisplay: {r: 0, g: 0, b: 0, a: 1}
   opaqueQualityLevel: 2
   nearClipPlaneTransparentDisplay: 0.1
-  farClipPlaneTransparentDisplay: 80
+  farClipPlaneTransparentDisplay: 100
   cameraClearFlagsTransparentDisplay: 2
   backgroundColorTransparentDisplay: {r: 0, g: 0, b: 0, a: 0}
   transparentQualityLevel: 1

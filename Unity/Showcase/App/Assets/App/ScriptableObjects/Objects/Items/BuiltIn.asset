@@ -15,11 +15,11 @@ MonoBehaviour:
   Model:
     Name: Engine (Built-In)
     Enabled: 1
-    HasColliders: 1
     Transform:
       Center: 0
       Position: {x: 0, y: 0, z: 0}
       Rotation: {x: 0, y: 0, z: 0}
       Scale: {x: 1, y: 1, z: 1}
-    Animations: []
+      MinSize: {x: 0, y: 0, z: 0}
+      MaxSize: {x: 0, y: 0, z: 0}
     Url: builtin://Engine

@@ -17,3 +17,4 @@ MonoBehaviour:
   MinNotificationLevel: 0
   DialogPrefab: {fileID: 8763119407713475931, guid: 905dccb9ff8d07b4f9423664ed5a2ccc,
     type: 3}
+  DialogDefaultLocation: 0

@@ -9,22 +9,37 @@ using Microsoft.MixedReality.Toolkit;
 /// </summary>
 public class HandMeshEnabler : MonoBehaviour
 {
-    void Start()
+    /// <summary>
+    /// Whether the hand mesh should be enabled on this platform.
+    /// </summary>
+    private bool EnableHandMesh
     {
-#if UNITY_EDITOR || !UNITY_ANDROID
-        return;
+        get
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return true;
+#else
+            return false;
 #endif
+        }
+    }
 
-        MixedRealityInputSystemProfile inputSystemProfile = CoreServices.InputSystem?.InputSystemProfile;
-        if (inputSystemProfile == null)
+    private void Start()
+    {
+        if (this.EnableHandMesh)
         {
-            return;
+            MixedRealityInputSystemProfile inputSystemProfile = CoreServices.InputSystem?.InputSystemProfile;
+            if (inputSystemProfile != null)
+            {
+                MixedRealityHandTrackingProfile handTrackingProfile = inputSystemProfile.HandTrackingProfile;
+                if (handTrackingProfile != null)
+                {
+                    handTrackingProfile.EnableHandMeshVisualization = true;
+                }
+            }
         }
 
-        MixedRealityHandTrackingProfile handTrackingProfile = inputSystemProfile.HandTrackingProfile;
-        if (handTrackingProfile != null)
-        {
-            handTrackingProfile.EnableHandMeshVisualization = true;
-        }
+        this.enabled = false;
+        Destroy(this);
     }
 }

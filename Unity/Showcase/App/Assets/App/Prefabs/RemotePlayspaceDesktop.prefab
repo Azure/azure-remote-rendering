@@ -3063,6 +3063,11 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1956964679528405470, guid: 5355e166425a15646a0edcb35816032d,
+        type: 3}
+      propertyPath: runInEditor
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2125280994661332114, guid: 5355e166425a15646a0edcb35816032d,
         type: 3}
       propertyPath: pointerToolIcon
@@ -3111,6 +3116,11 @@ PrefabInstance:
     - target: {fileID: 4118232745255044593, guid: 5355e166425a15646a0edcb35816032d,
         type: 3}
       propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4802631747262172770, guid: 5355e166425a15646a0edcb35816032d,
+        type: 3}
+      propertyPath: runInEditor
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5945899345870560579, guid: 5355e166425a15646a0edcb35816032d,

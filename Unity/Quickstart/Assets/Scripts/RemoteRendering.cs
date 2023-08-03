@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
 using Microsoft.Azure.RemoteRendering;
@@ -183,6 +183,7 @@ public class RemoteRendering : MonoBehaviour
     {
         // Create a root object to parent a loaded model to.
         Entity modelEntity = arrService.CurrentActiveSession.Connection.CreateEntity();
+        modelEntity.Name = "Model";
 
         // Get the game object representation of this entity.
         modelEntityGO = modelEntity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents);

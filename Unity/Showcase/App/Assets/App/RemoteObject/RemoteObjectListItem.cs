@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit;
@@ -224,7 +224,17 @@ public class RemoteObjectListItem : ListItemEventHandler
 
             if (downloadedTexture != null && downloadedTexture.texture != null)
             {
-                newLoadedTexture = downloadedTexture.texture;
+                // The downloaded texture comes without mipmaps, but we want mipmaps especially for VR platforms.
+                // Unity can generate mipmaps during runtime, but not in an already created texture without initial mipmaps.
+                // Therefore create a new texture with mipmaps enabled...
+                newLoadedTexture = new Texture2D(downloadedTexture.texture.width, downloadedTexture.texture.height, downloadedTexture.texture.format, true);
+                newLoadedTexture.filterMode = FilterMode.Trilinear;
+
+                // Copy over the full res texture..
+                Graphics.CopyTexture(downloadedTexture.texture, 0, 0, newLoadedTexture, 0, 0);
+
+                // And finally apply and let Unity generate the mipmap levels.
+                newLoadedTexture.Apply(true, true);
             }
 
             DestoryRequest(www);

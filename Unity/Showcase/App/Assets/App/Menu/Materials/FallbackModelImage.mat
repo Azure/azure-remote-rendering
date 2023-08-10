@@ -9,13 +9,13 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: FallbackModelImage
   m_Shader: {fileID: 4800000, guid: 5bdea20278144b11916d77503ba1467a, type: 3}
-  m_ShaderKeywords: _SPECULAR_HIGHLIGHTS
+  m_ShaderKeywords: _ALPHABLEND_ON _SPECULAR_HIGHLIGHTS
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
+  m_CustomRenderQueue: 3000
   stringTagMap:
-    RenderType: Opaque
+    RenderType: Fade
   disabledShaderPasses: []
   m_SavedProperties:
     serializedVersion: 3
@@ -40,7 +40,7 @@ Material:
     - _AlbedoAlphaMode: 0
     - _AlbedoAssignedAtRuntime: 0
     - _BlendOp: 0
-    - _BlendedClippingWidth: 1
+    - _BlendedClippingWidth: 0
     - _BorderLight: 0
     - _BorderLightOpaque: 0
     - _BorderLightOpaqueAlpha: 1
@@ -52,10 +52,10 @@ Material:
     - _ClippingBorderWidth: 0.025
     - _ColorWriteMask: 15
     - _CullMode: 2
-    - _CustomMode: 0
+    - _CustomMode: 2
     - _Cutoff: 0.5
     - _DirectionalLight: 0
-    - _DstBlend: 0
+    - _DstBlend: 10
     - _EdgeSmoothingValue: 0.002
     - _EnableChannelMap: 0
     - _EnableEmission: 0
@@ -84,7 +84,7 @@ Material:
     - _IridescenceThreshold: 0.05
     - _Metallic: 0
     - _MipmapBias: -2
-    - _Mode: 0
+    - _Mode: 5
     - _NearLightFade: 0
     - _NearPlaneFade: 0
     - _NormalMapScale: 1

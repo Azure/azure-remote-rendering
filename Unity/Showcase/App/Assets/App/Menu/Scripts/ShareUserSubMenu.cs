@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit.Extensions;
@@ -48,12 +48,12 @@ public class ShareUserSubMenu : SubMenu
 
     [SerializeField]
     [Tooltip("The text mesh display the panel title.")]
-    private TextMesh titleText = null;
+    private TMPro.TextMeshPro titleText = null;
 
     /// <summary>
     /// The text mesh displaying the number of players in the current room.
     /// </summary>
-    public TextMesh TitleText
+    public TMPro.TextMeshPro TitleText
     {
         get => titleText;
         set => titleText = value;

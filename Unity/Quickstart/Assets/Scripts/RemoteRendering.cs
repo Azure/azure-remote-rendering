@@ -1,26 +1,44 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
+
 using UnityEngine;
+
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
-using System.Globalization;
 
 #if UNITY_WSA && AR_FOUNDATION_AVAILABLE
 using UnityEngine.XR.ARFoundation;
 #endif
 
-// ask Unity to automatically append an ARRServiceUnity component when a RemoteRendering script is attached
+// Ask Unity to automatically append an ARRServiceUnity component when a RemoteRendering script is attached.
 [RequireComponent(typeof(ARRServiceUnity))]
 public class RemoteRendering : MonoBehaviour
 {
+    private static readonly string LastSessionIdKey = "Microsoft.Azure.RemoteRendering.Quickstart.LastSessionId";
+
+    private string sessionId = null;
+    private ARRServiceUnity arrService = null;
+    private GameObject modelEntityGO = null;
+
+#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
+    private ARAnchor modelArAnchor = null;
+#endif
+
     // Fill out the variables with your account details. Note that these need to be set on the RemoteRendering object in the Unity scene.
     // Modifying these values in code has no effect.
-
-    // RemoteRenderingDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
-    // For the best suitable region near you, please refer to the "Reference > Regions" chapter in the documentation
+    /// <summary>
+    /// RemoteRenderingDomain must be '<region>.mixedreality.azure.com' - if no '<region>' is specified, connections will fail
+    /// For the best suitable region near you, please refer to the "Reference > Regions" chapter in the documentation
+    /// </summary>
     public string RemoteRenderingDomain = "westus2.mixedreality.azure.com";
-    // AccountDomain must be '<account_region>.mixedreality.azure.com' where '<account_region>' is the your Remote Rendering
-    // account location.
+    /// <summary>
+    /// AccountDomain must be '<account_region>.mixedreality.azure.com' where '<account_region>' is the your Remote Rendering
+    /// account location.
+    /// </summary>
     public string AccountDomain = "<enter your account domain here>";
     public string AccountId = "<enter your account id here>";
     public string AccountKey = "<enter your account key here>";
@@ -29,45 +47,33 @@ public class RemoteRendering : MonoBehaviour
     public uint MaxLeaseTimeMinutes = 10;
     public RenderingSessionVmSize VMSize = RenderingSessionVmSize.Standard;
 
-    private readonly string LastSessionIdKey = "Microsoft.Azure.RemoteRendering.Quickstart.LastSessionId";
+    public string ModelName = "builtin://Engine";
+    public RemoteFrameStats Stats;
 
-    private string _sessionId = null;
-
-    // Load or store the session id from the editor or player settings, so we can try to re-use an existing session
-    [SerializeField]
+    /// <summary>
+    /// Load or store the session id from the persistent preference store, so we can try to re-use an existing session.
+    /// </summary>
     public string SessionId
     {
         get
         {
-#if UNITY_EDITOR
-            _sessionId = UnityEditor.EditorPrefs.GetString(LastSessionIdKey);
-#else
-            _sessionId = PlayerPrefs.GetString(LastSessionIdKey);
-#endif
-            return _sessionId;
+            if (sessionId == null)
+            {
+                sessionId = PlayerPrefs.GetString(LastSessionIdKey, string.Empty);
+            }
+            return sessionId;
         }
 
         set
         {
-#if UNITY_EDITOR
-            UnityEditor.EditorPrefs.SetString(LastSessionIdKey, value);
-#else
-            PlayerPrefs.SetString(LastSessionIdKey, value);
-#endif
-            _sessionId = value;
+            if (sessionId != value)
+            {
+                sessionId = value;
+                PlayerPrefs.SetString(LastSessionIdKey, value);
+            }
         }
     }
 
-    public string ModelName = "builtin://Engine";
-
-    public RemoteFrameStats Stats;
-
-    private ARRServiceUnity arrService = null;
-    private GameObject modelEntityGO = null;
-
-#if UNITY_WSA && AR_FOUNDATION_AVAILABLE
-    private ARAnchor modelArAnchor = null;
-#endif
 
     private void Awake()
     {
@@ -298,7 +304,7 @@ public class RemoteRendering : MonoBehaviour
                 }
                 finally
                 {
-                    SessionId = null;
+                    SessionId = string.Empty;
                 }
             }
 
@@ -328,15 +334,18 @@ public class RemoteRendering : MonoBehaviour
         catch (RRSessionException sessionException)
         {
             LogMessage($"Error creating session: {sessionException.Context.ErrorMessage}", true);
+            return;
         }
         catch (RRException generalException)
         {
             LogMessage($"General error creating session: {generalException.ErrorCode}", true);
+            return;
         }
         catch (ArgumentException argumentException)
         {
             var msg = argumentException.Message + "\nPlease check your Remote Rendering account configuration.";
             LogMessage(msg, true);
+            return;
         }
 
         ConnectAndLoadModel();

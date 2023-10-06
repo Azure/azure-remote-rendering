@@ -1,6 +1,8 @@
-﻿using System;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using UnityEngine;
-using UnityEngine.Events; 
+using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
 #if ENABLE_WINMD_SUPPORT

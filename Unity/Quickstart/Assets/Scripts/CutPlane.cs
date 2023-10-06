@@ -1,6 +1,10 @@
-﻿using Microsoft.Azure.RemoteRendering;
-using Microsoft.Azure.RemoteRendering.Unity;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using UnityEngine;
+
+using Microsoft.Azure.RemoteRendering;
+using Microsoft.Azure.RemoteRendering.Unity;
 
 public class CutPlane : MonoBehaviour
 {

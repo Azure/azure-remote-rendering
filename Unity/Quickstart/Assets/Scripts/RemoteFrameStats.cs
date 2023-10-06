@@ -1,10 +1,11 @@
-﻿using Microsoft.Azure.RemoteRendering;
-using Microsoft.Azure.RemoteRendering.Unity;
-using System;
-using System.Collections.Generic;
-using TMPro;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using UnityEngine;
-using UnityEngine.UI;
+
+using Microsoft.Azure.RemoteRendering;
+using Microsoft.Azure.RemoteRendering.Unity;
+using TMPro;
 
 public class RemoteFrameStats : MonoBehaviour
 {

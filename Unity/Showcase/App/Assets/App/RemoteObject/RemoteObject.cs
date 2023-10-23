@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -54,12 +54,12 @@ public class RemoteObject : MonoBehaviour
 
     [SerializeField]
     [Tooltip("This is the root transform where all dynamically create objects will be placed.")]
-    private Transform root = null;
+    private UnityEngine.Transform root = null;
 
     /// <summary>
     /// This is the root transform where all dynamically create objects will be placed.
     /// </summary>
-    public Transform Root
+    public UnityEngine.Transform Root
     {
         get => root;
         set => root = value;
@@ -80,12 +80,12 @@ public class RemoteObject : MonoBehaviour
 
     [SerializeField]
     [Tooltip("The placeholder to show while loading an object.")]
-    private Transform placeholder = null;
+    private UnityEngine.Transform placeholder = null;
 
     /// <summary>
     /// The placeholder to show while loading an object.
     /// </summary>
-    public Transform Placeholder
+    public UnityEngine.Transform Placeholder
     {
         get => placeholder;
         set => placeholder = value;
@@ -228,12 +228,12 @@ public class RemoteObject : MonoBehaviour
     /// <summary>
     /// The container for local placeholder models.
     /// </summary>
-    private Transform LocalContainer { get; set; }
+    private UnityEngine.Transform LocalContainer { get; set; }
 
     /// <summary>
     /// The target of the RemoteItemBase.Transform changes.
     /// </summary>
-    private Transform MainContainer { get; set; }
+    private UnityEngine.Transform MainContainer { get; set; }
     #endregion Private Properties
 
     #region MonoBehavior Methods
@@ -364,7 +364,7 @@ public class RemoteObject : MonoBehaviour
         CreateMainContainer(item);
 
         // Create a new local container, if needed.
-        Transform localContainer = null;
+        UnityEngine.Transform localContainer = null;
         if (LocalContainer == null)
         {
             localContainer = CreateLocalContainer(MainContainer);
@@ -499,7 +499,7 @@ public class RemoteObject : MonoBehaviour
         oldLoadingTaskSource?.TrySetResult(false); 
     }
 
-    private async Task LoadLocalModels(RemoteItemBase model, Transform localParent)
+    private async Task LoadLocalModels(RemoteItemBase model, UnityEngine.Transform localParent)
     {
         RemoteContainer modelWithChildren = model as RemoteContainer;
         if (modelWithChildren == null || localParent == null)
@@ -527,7 +527,7 @@ public class RemoteObject : MonoBehaviour
         }
     }
 
-    private async Task<GameObject> LoadLocalModel(RemotePlaceholderModel model, Transform localParent)
+    private async Task<GameObject> LoadLocalModel(RemotePlaceholderModel model, UnityEngine.Transform localParent)
     {
         if (model == null || localParent == null)
         {
@@ -864,14 +864,14 @@ public class RemoteObject : MonoBehaviour
         return result;
     }
 
-    private Transform CreateLocalContainer(Transform parent)
+    private UnityEngine.Transform CreateLocalContainer(UnityEngine.Transform parent)
     {
         GameObject localObject = new GameObject($"{name} (Local Container)");
         localObject.transform.SetParent(parent, false);
         return localObject.transform;
     }  
 
-    private void DestroyLocalContainer(Transform container)
+    private void DestroyLocalContainer(UnityEngine.Transform container)
     {
         if (container != null && container.gameObject != null)
         {
@@ -879,7 +879,7 @@ public class RemoteObject : MonoBehaviour
         }
     }
 
-    private RemoteEntitySyncObject CreateRemoteContainer(IRemoteRenderingMachine machine, Transform parent)
+    private RemoteEntitySyncObject CreateRemoteContainer(IRemoteRenderingMachine machine, UnityEngine.Transform parent)
     {
         RemoteEntitySyncObject syncObject = null;
 
@@ -948,7 +948,7 @@ public class RemoteObject : MonoBehaviour
         return result;
     }
 
-    private static Task<UnityEngine.Bounds> GetBoundsAsNeeded(RemoteItemBase item, Transform container)
+    private static Task<UnityEngine.Bounds> GetBoundsAsNeeded(RemoteItemBase item, UnityEngine.Transform container)
     {
         if (!ModelNeedsBounds(item))
         {
@@ -1210,7 +1210,7 @@ public class RemoteObject : MonoBehaviour
     /// <summary>
     /// Update model container visibility
     /// </summary>
-    private void UpdateContainerVisibility(RemoteItemBase item, Transform container)
+    private void UpdateContainerVisibility(RemoteItemBase item, UnityEngine.Transform container)
     {
         if (container == null)
         {

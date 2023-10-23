@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -11,12 +11,12 @@ public class RemoteObjectReset : MonoBehaviour
     #region Serialized Fields
     [SerializeField]
     [Tooltip("The transform containing the root entity.")]
-    private Transform root = null;
+    private UnityEngine.Transform root = null;
 
     /// <summary>
     /// Get or set the transform containing the root entity
     /// </summary>
-    public Transform Root
+    public UnityEngine.Transform Root
     {
         get => root;
         set => root = value;

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -48,19 +48,19 @@ public class RemoteRenderingCoordinator : MonoBehaviour
 
     [Header("Development Account Credentials")]
     [SerializeField]
-    private string accountId = "<enter your account id here>";
-    public string AccountId {
-        get => accountId.Trim();
-        set => accountId = value;
-    }
-
-    [SerializeField]
     private string accountDomain = "<enter your account domain here>";
     public string AccountDomain
     {
         get => accountDomain.Trim();
         set => accountDomain = value;
-    }    
+    }
+
+    [SerializeField]
+    private string accountId = "<enter your account id here>";
+    public string AccountId {
+        get => accountId.Trim();
+        set => accountId = value;
+    }
 
     [SerializeField]
     private string accountKey = "<enter your account key here>";
@@ -410,7 +410,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
     /// <param name="parent">The parent Transform for this remote entity</param>
     /// <param name="progress">A call back method that accepts a float progress value [0->1]</param>
     /// <returns>An awaitable Remote Rendering Entity</returns>
-    public async Task<Entity> LoadModel(string modelPath, Transform parent = null, Action<float> progress = null)
+    public async Task<Entity> LoadModel(string modelPath, UnityEngine.Transform parent = null, Action<float> progress = null)
     {
         //Create a root object to parent a loaded model to
         var modelEntity = ARRSessionService.CurrentActiveSession.Connection.CreateEntity();
@@ -458,7 +458,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
     /// <param name="parent">The parent Transform for this remote entity</param>
     /// <param name="progress">A call back method that accepts a float progress value [0->1]</param>
     /// <returns></returns>
-    public async Task<Entity> LoadModel(string storageAccountName, string blobName, string modelPath, Transform parent = null, Action<float> progress = null)
+    public async Task<Entity> LoadModel(string storageAccountName, string blobName, string modelPath, UnityEngine.Transform parent = null, Action<float> progress = null)
     {
         //Create a root object to parent a loaded model to
         var modelEntity = ARRSessionService.CurrentActiveSession.Connection.CreateEntity();

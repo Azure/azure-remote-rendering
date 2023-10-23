@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -648,7 +648,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             int children = transform.childCount;
             if (Entity != null && Entity.Valid && children > 0)
             {
-                Transform newParent = Entity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents).transform;
+                UnityEngine.Transform newParent = Entity.GetOrCreateGameObject(UnityCreationMode.DoNotCreateUnityComponents).transform;
                 for (int i = children - 1; i > 0; i--)
                 {
                     transform.GetChild(i).SetParent(newParent, true);

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -203,42 +203,17 @@ public static class RemoteEntityExtensions
     }
 
     /// <summary>
-    /// Replace all mesh materials with the given material.
+    /// Replace the mesh materials with the given material.
     /// </summary>
     public static void ReplaceMaterials(this Remote.Entity entity, Remote.Material material)
     {
-        IEnumerable<Remote.MeshComponent> meshComponents =
-            entity?.FindComponentsOfType<MeshComponent>();
-
-        foreach (var mesh in meshComponents)
+        MeshComponent meshComponent = entity?.FindComponentOfType(ObjectType.MeshComponent) as MeshComponent;
+        if (meshComponent != null)
         {
-            int materialCount = mesh.UsedMaterials.Count;
+            int materialCount = meshComponent.UsedMaterials.Count;
             for (int i = 0; i < materialCount; i++)
             {
-                mesh.SetMaterial(i, material);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Find the Azure Remote Rendering components of a given type on the given entity.
-    /// </summary>
-    public static IEnumerable<T> FindComponentsOfType<T>(this Remote.Entity entity)
-        where T : ComponentBase
-    {
-        if (entity == null)
-        {
-            yield break;
-        }
-
-        IReadOnlyList<ComponentBase> components = entity.Components;
-        int count = components.Count;
-        for (int i = 0; i < count; i++)
-        {
-            ComponentBase component = components[i];
-            if (component is T)
-            {
-                yield return (T)component;
+                meshComponent.SetMaterial(i, material);
             }
         }
     }

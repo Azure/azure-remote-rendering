@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -257,6 +257,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             Entity resultEntity = parentEntity;
             int[] childIndices = sharingObject.Address;
             int childIndicesCount = childIndices?.Length ?? 0;
+            List<Entity> childList = new List<Entity>();
 
             for (int i = 0; i < childIndicesCount; i++)
             {
@@ -268,14 +269,16 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 int index = childIndices[i];
-                if (parentEntity.Children.Count <= index)
+                parentEntity.GetChildren(childList);
+
+                if (childList.Count <= index)
                 {
                     _log.LogError("Can't find remote enity on game object '{0}'. The a parent didn't have enough children. Was excepting a child at index '{1}' ({2})", root?.name, index, sharingObject?.SharingId);
                     resultEntity = null;
                     break;
                 }
 
-                resultEntity = parentEntity.Children[index];
+                resultEntity = childList[index];
                 parentEntity = resultEntity;
             }           
 

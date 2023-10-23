@@ -85,11 +85,11 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         public RemoteRenderingServiceRegion[] remoteRenderingDomains = RemoteRenderingServiceRegion.Defaults;
         public override RemoteRenderingServiceRegion[] RemoteRenderingDomains { get => remoteRenderingDomains; set => remoteRenderingDomains = value; }
 
-        [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
-        public string AccountId = Guid.Empty.ToString();
-
         [Tooltip("The default Azure remote rendering account domain. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountDomain = string.Empty;
+
+        [Tooltip("The default Azure remote rendering account id to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
+        public string AccountId = Guid.Empty.ToString();
 
         [Tooltip("The default Azure remote rendering account key to use. Optional if 'arr.account.xml' has been created and placed in the 'StreamingAssets' directory.")]
         public string AccountKey = string.Empty;

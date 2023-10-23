@@ -1811,8 +1811,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   remoteRenderingDomain: westus2.mixedreality.azure.com
-  accountId: 
   accountDomain: 
+  accountId: 
   accountKey: 
   renderingSessionVmSize: 2
   maxLeaseHours: 0

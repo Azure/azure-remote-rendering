@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -7,7 +7,6 @@ using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Physics;
 using Microsoft.MixedReality.Toolkit.Utilities;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -53,10 +52,9 @@ namespace Microsoft.MixedReality.Toolkit.Input
         private readonly Dictionary<uint, RemotePointerResult> _remotePointerData = new Dictionary<uint, RemotePointerResult>();
         private readonly List<(IMixedRealityPointer pointer, GameObject oldFocus, GameObject newFocus)> _pendingFocusChanges = new List<(IMixedRealityPointer, GameObject, GameObject)>();
         private readonly Dictionary<GameObject, int> _localFocusExits = new Dictionary<GameObject, int>();
-        private readonly RayCastTasks _remoteRayCasts = new RayCastTasks(_raycastMaxCacheSize);
+        private readonly List<Task> _remoteRayCasts = new List<Task>();
 
         private static RayCastHit _invalidRemoteResult = new RayCastHit() { HitObject = null };
-        private static RayCastHit[] _invalidRemoteResults = new RayCastHit[1] { _invalidRemoteResult };
 
         /// <summary>
         /// This is the max number of remote ray casts that can executed simultaneously.
@@ -502,12 +500,20 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 return;
             }
 
-            // Throttle remote ray-casts, and don't start another remote ray-cast until old operations have completed.
+            // Throttle remote ray-casts
             float currentTime = Time.time;
-            if ((currentTime - _lastRemoteRayCast < RemoteRayCastRate) ||
-                (!_remoteRayCasts.IsCompletedOrEmpty()))
+            if (currentTime - _lastRemoteRayCast < RemoteRayCastRate)
             {
                 return;
+            }
+
+            // Don't start another remote ray-cast until old operations have completed.
+            foreach (Task pendingRayCast in _remoteRayCasts)
+            {
+                if (!pendingRayCast.IsCompleted)
+                {
+                    return;
+                }
             }
 
             // Execute a remote ray-cast for all pointers.
@@ -530,12 +536,12 @@ namespace Microsoft.MixedReality.Toolkit.Input
         /// <summary>
         /// Execute a remote cast (ray cast or star cast) for the given pointer.
         /// </summary>
-        private async Task<RayCastHit[]> DoRemoteCast(RemotePointerResult pointerResult)
+        private async Task DoRemoteCast(RemotePointerResult pointerResult)
         {
             IMixedRealityPointer pointer = pointerResult?.Pointer;
             if (pointer == null)
             {
-                return default;
+                return;
             }
 
             // If the pointer is locked, keep the focused object the same.
@@ -543,42 +549,40 @@ namespace Microsoft.MixedReality.Toolkit.Input
             // even if the pointer isn't pointing at them.
             if (pointer.IsFocusLocked && pointer.IsTargetPositionLockedOnFocusLock)
             {
-                return default;
+                return;
             }
 
-            Task<RayCastHit[]> castTask = null;
+            Task<RayCastHit> castTask = null;
             switch (pointer.SceneQueryType)
             {
                 case SceneQueryType.SimpleRaycast:
                     castTask = DoRaycast(pointerResult);
                     break;
-
                 case SceneQueryType.SphereCast:
                 case SceneQueryType.SphereOverlap:
                     castTask = DoMultiRaycast(pointerResult);
                     break;
-
                 default:
-                    castTask = Task.FromResult(_invalidRemoteResults);
+                    castTask = Task.FromResult(_invalidRemoteResult);
                     break;
             }
 
-            RayCastHit[] rayCastResults = await castTask;
+            RayCastHit rayCastResult = await castTask;
 
             if (!(pointerResult.IsDisposed) &&
                 (pointer != null) &&
                 !(pointer.IsFocusLocked && pointer.IsTargetPositionLockedOnFocusLock))
             {
-                pointerResult.StageRemoteData(rayCastResults);
+                pointerResult.StageRemoteData(rayCastResult);
             }
 
-            return rayCastResults;
+            return;
         }
 
         /// <summary>
         /// Execute a remote ray cast for the given pointer.
         /// </summary>
-        private Task<RayCastHit[]> DoRaycast(RemotePointerResult pointerResult)
+        private Task<RayCastHit> DoRaycast(RemotePointerResult pointerResult)
         {
             var pointer = pointerResult?.Pointer;
             if (pointer == null ||
@@ -620,19 +624,19 @@ namespace Microsoft.MixedReality.Toolkit.Input
         /// <summary>
         /// Execute a remote star cast (multi-ray cast) for the given pointer.
         /// </summary>
-        private async Task<RayCastHit[]> DoMultiRaycast(RemotePointerResult pointerResult)
+        private async Task<RayCastHit> DoMultiRaycast(RemotePointerResult pointerResult)
         {
             var pointer = pointerResult?.Pointer;
             if (pointer == null ||
                 pointer.Rays == null)
             {
-                return null;
+                return _invalidRemoteResult;
             }
             
-            RayCastTasks rayCastTasks = pointerResult.RayCasts;
+            List<Task<RayCastHit>> rayCastTasks = pointerResult.RayCasts;
             rayCastTasks.Clear();
 
-            int rayCount = Math.Min(pointer.Rays.Length, rayCastTasks.MaxSize);
+            int rayCount = pointer.Rays.Length;
             for (int i = 0; i < rayCount; i++)
             {
                 RayStep step = pointer.Rays[i];
@@ -642,14 +646,49 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 }
             }
 
-            RayCastHit[][] hits = await Task.WhenAll(rayCastTasks);
-            return await SortHits(hits);
+            // Don't use "WhenAll" because it does GC allocs.
+            // Also don't fill the list yet, as the list is also
+            // used to retrieve the hits from the native side.
+            foreach (Task<RayCastHit> rayCast in rayCastTasks)
+            {
+                await rayCast;
+            }
+
+            List<RayCastHit> rayCastHits = pointerResult.RayCastHits;
+            rayCastHits.Clear();
+
+            foreach (Task<RayCastHit> rayCast in rayCastTasks)
+            {
+                RayCastHit result = rayCast.Result;
+                if (result.HitObject != null)
+                {
+                    rayCastHits.Add(result);
+                }
+            }
+
+            rayCastHits.Sort((RayCastHit a, RayCastHit b) =>
+            {
+                if (a.DistanceToHit == b.DistanceToHit)
+                {
+                    return 0;
+                }
+                else if (a.DistanceToHit < b.DistanceToHit)
+                {
+                    return -1;
+                }
+                else
+                {
+                    return 1;
+                }
+            });
+
+            return (rayCastHits.Count > 0) ? rayCastHits[0] : _invalidRemoteResult;
         }
 
         /// <summary>
         /// Actually do the work of submitting a ray cast request to the remote session.
         /// </summary>
-        private async Task<RayCastHit[]> DoRemoteRaycast(RemotePointerResult pointerResult, Vector3 position, Vector3 direction, float distance)
+        private async Task<RayCastHit> DoRemoteRaycast(RemotePointerResult pointerResult, Vector3 position, Vector3 direction, float distance)
         {
             RayCast cast = new RayCast(
                 position.toRemotePos(),
@@ -662,67 +701,18 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 pointerResult.Visualizer.Add(position, direction, distance);
             }
 
-            RayCastHit[] hits = null;
             try
             {
                 var result = await AppServices.RemoteRendering.PrimaryMachine.Actions.RayCastQueryAsync(cast);
-                hits = result.Hits;
+                result.GetHits(pointerResult.RayCastHits);
+
+                return (pointerResult.RayCastHits.Count > 0) ? pointerResult.RayCastHits[0] : _invalidRemoteResult;
             }
             catch (Exception ex)
             {
                 Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}",  $"Failed to execute a remote ray cast ({cast.StartPos.toUnityPos()}) -> ({cast.EndPos.toUnityPos()}). Reason: {ex.Message}");
             }
-            return hits;
-        }
-
-        /// <summary>
-        /// Sort a list of lists of multiple ray cast results. Sort by distances in ascending order. Sorting happens 
-        /// on a background thread.
-        /// </summary>
-        private Task<RayCastHit[]> SortHits(RayCastHit[][] hits)
-        {
-            return Task.Run(() =>
-            {
-                if (hits == null)
-                {
-                    return new RayCastHit[0];
-                }
-
-                List<RayCastHit> sortedHits = new List<RayCastHit>();
-                foreach (var rayResults in hits)
-                {
-                    if (rayResults == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var rayResult in rayResults)
-                    {
-                        if (rayResult.HitObject != null)
-                        {
-                            sortedHits.Add(rayResult);
-                        }
-                    }
-                }
-
-                sortedHits.Sort((RayCastHit a, RayCastHit b) =>
-                {
-                    if (a.DistanceToHit == b.DistanceToHit)
-                    {
-                        return 0;
-                    }
-                    else if (a.DistanceToHit < b.DistanceToHit)
-                    {
-                        return -1;
-                    }
-                    else
-                    {
-                        return 1;
-                    }
-                });
-
-                return sortedHits.ToArray();
-            });
+            return _invalidRemoteResult;
         }
         #endregion Private Methods
 
@@ -748,7 +738,6 @@ namespace Microsoft.MixedReality.Toolkit.Input
 
             public RemotePointerResult(IMixedRealityPointer pointer)
             {
-                RayCasts = new RayCastTasks(_rayCastCacheSize);
                 Pointer = pointer;
                 _remotePointer = pointer as IRemotePointer;
                 _remoteSpherePointer = pointer as IRemoteSpherePointer;
@@ -818,10 +807,14 @@ namespace Microsoft.MixedReality.Toolkit.Input
             public bool IsPreviousTargetValid { get => PreviousTargetEntity != null && PreviousTargetEntity.Valid; }
 
             /// <summary>
-            /// This is a cache of remote ray casts, exposed has a clear-able enumerator. This is helpful when doing 
-            /// multiple ray casts every frame, and wanting to avoid allocations when awaiting for the results. 
+            /// Resusable list of tasks used by <see cref="DoMultiRaycast(RemotePointerResult)"/>, so we don't have to allocate a new list each time.
             /// </summary>
-            public RayCastTasks RayCasts { get; private set; }
+            public List<Task<RayCastHit>> RayCasts { get; private set; } = new List<Task<RayCastHit>>();
+
+            /// <summary>
+            /// Reusable list to retrieve the ray cast results using <see cref="RayCastQueryResult.GetHits(List{RayCastHit})"/> without allocating a new list each frame. 
+            /// </summary>
+            public List<RayCastHit> RayCastHits { get; private set; } = new List<RayCastHit>();
 
             /// <summary>
             /// A helper object to aid in visualizing remote ray casts.
@@ -859,7 +852,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
             /// <summary>
             /// Try to stage remote focus data, so it can be committed during the next update.
             /// </summary>
-            public void StageRemoteData(RayCastHit[] result)
+            public void StageRemoteData(RayCastHit result)
             {
                 if (this.IsDisposed)
                 {
@@ -871,14 +864,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
                     "There was more than one call to StageRemoteData() during the frame update. Check if there are multiple 'in-flight' remote ray casts occuring for this pointer.");
 
                 _lastStagedTime = Time.time;
-                if (result == null || result.Length == 0)
-                {
-                    this._staged.RemoteResult = _invalidRemoteResult;
-                }
-                else
-                {
-                    this._staged.RemoteResult = result[0];
-                }
+                this._staged.RemoteResult = result;
 
                 // Copy target entity to our public field
                 Entity hitEntity = this._staged.RemoteResult.HitEntity;
@@ -1030,7 +1016,7 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 }
 
                 GameObject target = NearestFocusableGameObject(TargetEntity);
-                Transform transform = (target == null) ? null : target.transform;
+                UnityEngine.Transform transform = (target == null) ? null : target.transform;
 
                 RayCastHit currentRemoteHit = RemoteResult;
                 float distance = (float)currentRemoteHit.DistanceToHit;
@@ -1120,100 +1106,6 @@ namespace Microsoft.MixedReality.Toolkit.Input
                 /// The remote Entity that was hit.
                 /// </summary>
                 public Entity TargetEntity { get; set; }
-            }
-        }
-
-        /// <summary>
-        /// This is a cache of remote ray casts, exposed has a clear-able enumerator. This is helpful when doing 
-        /// multiple ray casts every frame, and wanting to avoid allocations when awaiting for the results. 
-        /// </summary>
-        private class RayCastTasks : IEnumerator<Task<RayCastHit[]>>, IEnumerable<Task<RayCastHit[]>>
-        {
-            private Task<RayCastHit[]>[] cache = null;
-            private int current = -1;
-            private uint size = 0;
-
-            public RayCastTasks(uint cacheSize)
-            {
-                cache = new Task<RayCastHit[]>[cacheSize];
-                size = 0;
-            }
-
-            public uint Count => size;
-
-            public int MaxSize => cache.Length;
-
-            public void Add(Task<RayCastHit[]> value)
-            {
-                if (size >= cache.Length)
-                {
-                    Debug.LogAssertion("Failed to add ray cast task to cache. Size limit has been reached.");
-                    return;
-                }
-
-                cache[size++] = value;
-            }
-
-            public Task<RayCastHit[]> GetCurrent()
-            {
-                if (current < 0 || current > size)
-                {
-                    return null;
-                }
-
-                return cache[current];
-            }
-
-            public Task<RayCastHit[]> Current => GetCurrent();
-
-            object IEnumerator.Current => GetCurrent();
-
-            public void Dispose()
-            {
-                Clear();
-            }
-
-            public bool MoveNext()
-            {
-                current++;
-                return current < size;
-            }
-
-            public void Reset()
-            {
-                current = -1;
-            }
-
-            public void Clear()
-            {
-                Reset();
-                size = 0;
-            }
-
-            public bool IsCompletedOrEmpty()
-            {
-                bool completed = true;
-                for (uint i = 0; i < size; i++)
-                {
-                    var task = cache[i];
-                    completed &=
-                        task.Status == TaskStatus.RanToCompletion ||
-                        task.Status == TaskStatus.Faulted ||
-                        task.Status == TaskStatus.Canceled;
-                }
-                return completed;
-            }
-
-            public IEnumerator<Task<RayCastHit[]>> GetEnumerator()
-            {
-                Reset();
-                return this;
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                Reset();
-                return this;
             }
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -83,7 +83,7 @@ public class RemoteClippingBox : MonoBehaviour
     #region Unity Inspector Variables
     [Tooltip("The transform that is used to calculate the bounds of the clipping box. If none is specified, the bounds of the attached GameObject will be used.")]
     [SerializeField]
-    private Transform boundsOverride;
+    private UnityEngine.Transform boundsOverride;
 
     [Tooltip("The faces if the clipping box which will be used.")]
     [SerializeField]
@@ -245,7 +245,7 @@ public class RemoteClippingBox : MonoBehaviour
     /// <returns>
     /// The corresponding position.
     /// </returns>
-    static private Vector3 FaceToPosition(ClippingBoxFaces face, Transform parent)
+    static private Vector3 FaceToPosition(ClippingBoxFaces face, UnityEngine.Transform parent)
     {
         switch (face)
         {
@@ -325,7 +325,7 @@ public class RemoteClippingBox : MonoBehaviour
     /// <returns>
     /// The transform to use as the bounds of the clipping box.
     /// </returns>
-    protected virtual Transform GetBounds()
+    protected virtual UnityEngine.Transform GetBounds()
     {
         return (boundsOverride != null ? boundsOverride : transform);
     }
@@ -365,7 +365,7 @@ public class RemoteClippingBox : MonoBehaviour
     /// <param name="bounds">
     /// The bounds to match.
     /// </param>
-    private void UpdateBounds(Transform bounds)
+    private void UpdateBounds(UnityEngine.Transform bounds)
     {
         // Loop through active faces
         ForAllFaces((face, faceObject) =>
@@ -407,7 +407,7 @@ public class RemoteClippingBox : MonoBehaviour
             }
 
             // Get the bounds
-            Transform bounds = GetBounds();
+            UnityEngine.Transform bounds = GetBounds();
 
             // Were faces updated or have the bounds changed?
             if ((facesUpdated || bounds.hasChanged))
@@ -435,7 +435,7 @@ public class RemoteClippingBox : MonoBehaviour
     /// </summary>
     protected virtual void OnDrawGizmos()
     {
-        Transform bounds = GetBounds();
+        UnityEngine.Transform bounds = GetBounds();
 
         if ((enabled) && (bounds != null))
         {
@@ -495,6 +495,6 @@ public class RemoteClippingBox : MonoBehaviour
     /// <summary>
     /// Gets or sets the transform that is used to calculate the bounds of the clipping box. If none is specified, the bounds of the attached GameObject will be used.
     /// </summary>
-    public Transform BoundsOverride { get => boundsOverride; set => boundsOverride = value; }
+    public UnityEngine.Transform BoundsOverride { get => boundsOverride; set => boundsOverride = value; }
     #endregion // Public Properties
 }

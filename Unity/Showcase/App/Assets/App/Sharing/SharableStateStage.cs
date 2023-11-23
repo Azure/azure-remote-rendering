@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.MixedReality.Toolkit.Extensions;
@@ -40,6 +40,11 @@ public class SharableStateStage : MonoBehaviour
         get => stage;
         set => stage = value;
     }
+
+    [SerializeField]
+    [Tooltip("Whether to hide the initial \"Place Stage?\" dialog.")]
+    private bool skipInitialPlacement = false;
+
     #endregion Serialized Fields
 
     #region Public Properties
@@ -174,7 +179,7 @@ public class SharableStateStage : MonoBehaviour
     /// </summary>
     private async void TryPlacingStageIfNotPlaced()
     {
-        if (Stage == null || !AnchorSupport.IsNativeEnabled)
+        if (Stage == null || skipInitialPlacement)
         {
             return;
         }

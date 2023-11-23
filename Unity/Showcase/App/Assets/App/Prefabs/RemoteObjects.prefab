@@ -157,7 +157,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8088438766915552524}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1.5, z: 3}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4172090552303109727}
@@ -242,7 +242,7 @@ MonoBehaviour:
   showSpatialMesh: 1
   meshPhysicsLayerMask:
     serializedVersion: 2
-    m_Bits: 2147484160
+    m_Bits: 2147484161
   defaultDistance: 3
   maxDistance: 3
   distanceFromHead: 2
@@ -336,6 +336,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sharingObject: {fileID: 4715696139745444898}
   stage: {fileID: 119912833322213656}
+  skipInitialPlacement: 0
 --- !u!82 &814022029474365853
 AudioSource:
   m_ObjectHideFlags: 0

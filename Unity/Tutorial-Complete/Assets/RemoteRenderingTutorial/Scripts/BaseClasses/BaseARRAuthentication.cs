@@ -8,6 +8,6 @@ public abstract class BaseARRAuthentication : MonoBehaviour
 {
     public abstract event Action<string> AuthenticationInstructions;
 
-    public abstract Task<SessionConfiguration> GetAARCredentials();
+    public abstract Task<SessionConfiguration> GetARRCredentials();
     public abstract Task<AuthenticationResult> TryLogin();
 }

@@ -61,11 +61,11 @@ public class AADAuthentication : BaseARRAuthentication
 
     public void OnEnable()
     {
-        RemoteRenderingCoordinator.ARRCredentialGetter = GetAARCredentials;
+        RemoteRenderingCoordinator.ARRCredentialGetter = GetARRCredentials;
         this.gameObject.AddComponent<ExecuteOnUnityThread>();
     }
 
-    public async override Task<SessionConfiguration> GetAARCredentials()
+    public async override Task<SessionConfiguration> GetARRCredentials()
     {
         var result = await TryLogin();
         if (result != null)

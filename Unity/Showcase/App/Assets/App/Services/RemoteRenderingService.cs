@@ -2114,7 +2114,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
 
                     try
                     {
-                        await _arrSession.ConnectAsync(new RendererInitOptions());
+                        await _arrSession.ConnectAsync(RendererInitOptions.PlatformDefaults);
                     }
                     catch (Exception ex)
                     {

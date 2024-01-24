@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Collections;
@@ -183,6 +183,12 @@ public class ClippingGizmoHighlight : MonoBehaviour
 
     private IEnumerator HighlightScaleRoutine()
     {
+		// This function might be called before the script Start has been called.
+        if (_initialScales == null)
+        {
+            yield return null;
+        }
+
         List<Vector3> startScales = new List<Vector3>();
         foreach (Renderer renderer in gizmoRenderers)
         {
@@ -203,6 +209,12 @@ public class ClippingGizmoHighlight : MonoBehaviour
 
     private IEnumerator DefaultScaleRoutine()
     {
+		// This function might be called before the script Start has been called.
+        if (_initialScales == null)
+        {
+            yield return null;
+        }
+		
         List<Vector3> startScales = new List<Vector3>();
         foreach (Renderer renderer in gizmoRenderers)
         {

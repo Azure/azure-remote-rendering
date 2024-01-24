@@ -378,7 +378,7 @@ public class RemoteRenderingCoordinator : MonoBehaviour
         // This session is set when connecting to a new or existing session
 
         ARRSessionService.CurrentActiveSession.ConnectionStatusChanged += OnLocalRuntimeStatusChanged;
-        await ARRSessionService.CurrentActiveSession.ConnectAsync(new RendererInitOptions());
+        await ARRSessionService.CurrentActiveSession.ConnectAsync(RendererInitOptions.PlatformDefaults);
     }
 
     public void DisconnectRuntimeFromRemoteSession()

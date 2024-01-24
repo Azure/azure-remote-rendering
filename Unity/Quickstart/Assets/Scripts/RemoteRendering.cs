@@ -360,7 +360,7 @@ public class RemoteRendering : MonoBehaviour
                 return;
             }
 
-            ConnectionStatus res = await arrService.CurrentActiveSession.ConnectAsync(new RendererInitOptions());
+            ConnectionStatus res = await arrService.CurrentActiveSession.ConnectAsync(RendererInitOptions.PlatformDefaults);
             if (!arrService.CurrentActiveSession.IsConnected)
             {
                 LogMessage($"Failed to connect to runtime: {res}.", true);

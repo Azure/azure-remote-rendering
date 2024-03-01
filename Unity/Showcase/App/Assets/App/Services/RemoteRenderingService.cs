@@ -1071,7 +1071,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         // Step 1. Find all the PNG thumbnail images, and cache their blobIndex. These will be applied to model entries.
                         foreach (var blob in enumerationResults.Blobs)
                         {
-                            if (string.Equals(Path.GetExtension(blob.Name), _imageExtension, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(Path.GetExtension(blob.Name), _imageExtension, System.StringComparison.OrdinalIgnoreCase))
                             {
                                 // Assume all images will be used, so create a SAS url for all images
                                 // The Azure Blob Storage file system uses case sensitive names, so using the raw blob name is fine.
@@ -1222,7 +1222,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 string blobName = blob.Name;
-                bool isModelIndexFile = blobName.EndsWith(_modelIndexName, StringComparison.InvariantCultureIgnoreCase);
+                bool isModelIndexFile = blobName.EndsWith(_modelIndexName, System.StringComparison.InvariantCultureIgnoreCase);
                 if (!isModelIndexFile)
                 {
                     return null;
@@ -2264,7 +2264,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 // For builtin models the SAS load function must be used.
-                if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
+                if (model.Url.StartsWith("builtin://", System.StringComparison.InvariantCultureIgnoreCase))
                 {
                     return _arrSession.Connection.LoadModelFromSasAsync(new LoadModelFromSasOptions(
                         model.Url,
@@ -2294,7 +2294,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 // For builtin models the SAS load function must be used.
-                if (model.Url.StartsWith("builtin://", StringComparison.InvariantCultureIgnoreCase))
+                if (model.Url.StartsWith("builtin://", System.StringComparison.InvariantCultureIgnoreCase))
                 {
                     return _arrSession.Connection.LoadModelFromSasAsync(new LoadModelFromSasOptions(
                         model.Url,

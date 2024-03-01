@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.Azure.RemoteRendering;
@@ -464,7 +464,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             public bool ShouldSerializePhotonAvatarPrefabName()
             {
                 return !string.IsNullOrEmpty(PhotonAvatarPrefabName) && 
-                    !PhotonAvatarPrefabName.Equals("Default", StringComparison.InvariantCultureIgnoreCase);
+                    !PhotonAvatarPrefabName.Equals("Default", System.StringComparison.InvariantCultureIgnoreCase);
             }
         }
 

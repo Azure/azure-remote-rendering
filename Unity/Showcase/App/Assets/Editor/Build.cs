@@ -35,10 +35,6 @@ public class Build
             }
         }
 
-        string vsTargetVersion = Environment.GetEnvironmentVariable("ARR_UNITY_VS_TARGET_VERSION");
-        EditorUserBuildSettings.wsaUWPVisualStudioVersion = vsTargetVersion;
-        Console.WriteLine("Using Visual Studio installation version '{0}'.", vsTargetVersion);
-
         List<string> sceneList = new List<string> { "Assets/Scenes/SampleScene.unity" };
         if (includeVREnvironment)
         {

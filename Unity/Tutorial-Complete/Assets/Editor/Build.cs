@@ -21,12 +21,7 @@ public class Build
             }
         }
 
-        string vsTargetVersion = Environment.GetEnvironmentVariable("ARR_UNITY_VS_TARGET_VERSION");
-        EditorUserBuildSettings.wsaUWPVisualStudioVersion = vsTargetVersion;
-        Console.WriteLine("Using Visual Studio installation version '{0}'.", vsTargetVersion);
-
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
-
         buildPlayerOptions.scenes = new string[]{ "Assets/Scenes/SampleScene.unity" };
         // The location path name is specified relative to the Unity project folder!
         buildPlayerOptions.locationPathName = buildLocation;

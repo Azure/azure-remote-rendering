@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.IO;
@@ -10,24 +10,41 @@ using System;
 using Windows.Storage;
 #endif
 
+#if !UNITY_EDITOR && UNITY_ANDROID
+using UnityEngine.Networking;
+#endif
+
+
 public static class LocalStorageHelper
 {
     public static async Task<TResult> Load<TResult>(string filePath) 
     {
-        bool appxFile = filePath?.StartsWith("ms-appx:///") == true;
+        bool appxFile = filePath?.StartsWith("ms-appx:///") ?? false;
+        bool jarFile = filePath?.StartsWith("jar:file://") ?? false;
+
         TResult result = default;
 
-        if (appxFile || File.Exists(filePath))
+        if (File.Exists(filePath) || appxFile || jarFile)
         {
             Stream stream = null;
             FileStream file = null;
             try
             {
-#if !UNITY_EDITOR && WINDOWS_UWP
-                if (filePath.StartsWith("ms-appx:///"))
+#if !UNITY_EDITOR && UNITY_WSA
+                if (appxFile)
                 {
                     StorageFile storeFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(filePath));
                     stream = await storeFile.OpenStreamForReadAsync();
+                }
+#endif
+
+#if !UNITY_EDITOR && UNITY_ANDROID
+                if (jarFile)
+                {
+                    using UnityWebRequest webRequest = UnityWebRequest.Get(filePath);
+                    UnityWebRequestAsyncOperation asyncOperation = webRequest.SendWebRequest();
+                    while (!asyncOperation.isDone) { await Task.Yield(); }
+                    stream = new MemoryStream(webRequest.downloadHandler.data);
                 }
 #endif
 

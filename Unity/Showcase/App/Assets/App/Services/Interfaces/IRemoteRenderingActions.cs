@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Threading.Tasks;
@@ -54,6 +54,13 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
         /// <param name="cast">Outgoing RayCast.</param>
         /// <returns></returns>
         Task<RayCastQueryResult> RayCastQueryAsync(RayCast cast);
+
+        /// <summary>
+        /// Asynchronously perform a sphere overlap check on the remote scene.
+        /// </summary>
+        /// <param name="query">Outgoing spatial sphere query.</param>
+        /// <returns></returns>
+        Task<SpatialQueryResult> SpatialQuerySphereAsync(SpatialQuerySphere query);
 
         /// <summary>
         ///  Create a new entity on the server. The new entity can be inserted into the scenegraph and have components added to it.

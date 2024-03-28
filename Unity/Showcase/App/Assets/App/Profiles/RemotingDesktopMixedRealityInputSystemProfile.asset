@@ -37,8 +37,7 @@ MonoBehaviour:
     deviceManagerProfile: {fileID: 11400000, guid: cc2a0fa97d2f9f14996ffd20776bab57,
       type: 2}
   focusProviderType:
-    reference: Microsoft.MixedReality.Toolkit.Input.RemoteFocusProviderNoCollider,
-      App
+    reference: Microsoft.MixedReality.Toolkit.Input.FocusProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   raycastProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.DefaultRaycastProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   focusQueryBufferSize: 128

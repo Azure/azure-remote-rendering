@@ -105,8 +105,7 @@ MonoBehaviour:
     runtimePlatform: -1
     deviceManagerProfile: {fileID: 0}
   focusProviderType:
-    reference: Microsoft.MixedReality.Toolkit.Input.RemoteFocusProviderNoCollider,
-      App
+    reference: Microsoft.MixedReality.Toolkit.Input.FocusProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   raycastProviderType:
     reference: Microsoft.MixedReality.Toolkit.Input.DefaultRaycastProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
   focusQueryBufferSize: 128

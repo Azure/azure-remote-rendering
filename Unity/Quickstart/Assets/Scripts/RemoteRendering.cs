@@ -218,6 +218,12 @@ public class RemoteRendering : MonoBehaviour
         rootGO.GetComponent<RemoteEntitySyncObject>().SyncEveryFrame = true;
 
         var aabb = (await loadModelResult.Root.QueryLocalBoundsAsync()).toUnity();
+        if(!aabb.IsValid())
+        {
+            LogMessage("Model loaded with an invalid bounding box (it will not show up).");
+            return;
+        }
+
         bool tooBig = aabb.extents.magnitude > Camera.main.farClipPlane;
         bool tooFar = aabb.center.magnitude > Camera.main.farClipPlane;
         float scaleFactor = 1.0f;

@@ -16,34 +16,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4215223911988956, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
@@ -61,5 +33,54 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 3908768167658931896, guid: f7657f5acf012aa4a868b19616cb58c8,
         type: 3}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 114405004987074356, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 51e60b8742bc47640923ac9e75ea74e9, type: 3}
+--- !u!1 &4250293267260961197 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1247086986094436, guid: 51e60b8742bc47640923ac9e75ea74e9,
+    type: 3}
+  m_PrefabInstance: {fileID: 4249283744061298377}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2483876141168533465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4250293267260961197}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a111e9da7bd039479261bcd819be6fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  destroyOnSourceLost: 0
+  useSourcePoseData: 1
+  useSourcePoseAsFallback: 1
+  poseAction:
+    id: 0
+    description: None
+    axisConstraint: 0
+  handedness: 1
+  cursorPrefab: {fileID: 4250293267260961197}
+  disableCursorOnStart: 1
+  setCursorVisibilityOnSourceDetected: 1
+  raycastOrigin: {fileID: 0}
+  activeHoldAction:
+    id: 0
+    description: None
+    axisConstraint: 0
+  pointerAction:
+    id: 1
+    description: Select
+    axisConstraint: 2
+  grabAction:
+    id: 0
+    description: None
+    axisConstraint: 0
+  requiresHoldAction: 0
+  requiresActionBeforeEnabling: 1
+  overrideGlobalPointerExtent: 0
+  pointerExtent: 10
+  defaultPointerExtent: 10
+  sphereCastRadius: 0.1

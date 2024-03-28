@@ -1,9 +1,8 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using Microsoft.MixedReality.Toolkit.Input;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.MixedReality.Toolkit.Extensions
 {
@@ -26,14 +25,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             get
             {
                 return GetService<IRemoteObjectFactoryService>();
-            }
-        }
-
-        public static IRemoteFocusProvider RemoteFocusProvider
-        {
-            get
-            {
-                return GetService<IRemoteFocusProvider>();
             }
         }
 

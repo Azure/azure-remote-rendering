@@ -1,17 +1,19 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System.Collections.Generic;
+
+using UnityEngine;
+using UnityEngine.Events;
+
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
 using Microsoft.MixedReality.Toolkit;
-using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
 using Microsoft.MixedReality.Toolkit.Physics;
+using Microsoft.MixedReality.Toolkit.UI;
 using Microsoft.MixedReality.Toolkit.Utilities;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.EventSystems;
+using Microsoft.Showcase.App.Pointers;
 
 /// <summary>
 /// On pointer down events, this behavior will automatically create game objects for the focused ARR entity. This 
@@ -59,9 +61,9 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     private HashSet<Entity> _initialEntitiesWithGameObjects = new HashSet<Entity>();
 
     /// <summary>
-    /// This pose change will be forwarded to the expanded object piece, so to ensure that the `ObjectManipulator` functions correctly.
+    /// Cache for controller poses, we need to forward to ObjectManipulator.
     /// </summary>
-    private SourcePoseEventData<MixedRealityPose> _lastPoseChangeEventData;
+    private Dictionary<uint, MixedRealityPose> _lastInputPose = new Dictionary<uint, MixedRealityPose>();
 
     /// <summary>
     /// A cache of the pointers' expanded objects.
@@ -180,7 +182,8 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
             focusDetails.Object.transform != null &&
             focusDetails.Object.transform.IsChildOf(transform)) 
         {
-            GetOrCreateExpander(eventData.Pointer).Initialize(_lastPoseChangeEventData, eventData);
+            _lastInputPose.TryGetValue(eventData.SourceId, out MixedRealityPose pose);
+            GetOrCreateExpander(eventData.Pointer).Initialize(eventData, pose);
         }
     }
 
@@ -194,34 +197,22 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     #endregion IMixedRealityPointerHandler
 
     #region IMixedRealitySourcePoseHandler
-    /// <summary>
-    /// Raised when the source pose tracking state is changed.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnSourcePoseChanged(SourcePoseEventData<TrackingState> eventData) { }
 
-    /// <summary>
-    /// Raised when the source position is changed.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnSourcePoseChanged(SourcePoseEventData<Vector2> eventData) { }
 
-    /// <summary>
-    /// Raised when the source position is changed.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnSourcePoseChanged(SourcePoseEventData<Vector3> eventData) { }
 
-    /// <summary>
-    /// Raised when the source rotation is changed.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnSourcePoseChanged(SourcePoseEventData<UnityEngine.Quaternion> eventData) { }
 
-    /// <summary>
-    /// Raised when the source pose is changed.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnSourcePoseChanged(SourcePoseEventData<MixedRealityPose> eventData)
     {
-        // 'SourcePoseEventData' is a reference type and may be reused by the underlying event system, therefore we need to manage our own copy.
-        _lastPoseChangeEventData ??= new SourcePoseEventData<MixedRealityPose>(null);
-        _lastPoseChangeEventData.Initialize(eventData.InputSource, eventData.Controller, eventData.SourceData);
+        _lastInputPose[eventData.SourceId] = eventData.SourceData;
     }
     #endregion IMixedRealitySourcePoseHandler
 
@@ -329,7 +320,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
     private class PointerObjectExpander
     {
         private ProxyObject _proxyObject = null;
-        private IRemotePointerResult _remoteFocusData = null;
+        private IRemotePointer _remotePointer = null;
 
         /// <summary>
         /// Create an new object expander for a pointer.
@@ -352,14 +343,14 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         /// <summary>
         /// Is the a pointer attached to this proxy object.
         /// </summary>
-        public bool Active { get => _remoteFocusData != null; }
+        public bool Active { get => _remotePointer != null; }
 
         /// <summary>
         /// Release all dependencies of this object, and destroy the current proxy object.
         /// </summary>
         public void Dispose()
         {
-            _remoteFocusData = null;
+            _remotePointer = null;
             DestroyProxyObject();
         }
 
@@ -376,19 +367,11 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         }
 
         /// <summary>
-        /// Initialize, expand the pointer remote target to a game object. Then forward the given events to the new object.
+        /// Initialize, expand the pointer remote target to a game object.
         /// </summary>
-        public void Initialize(SourcePoseEventData<MixedRealityPose> poseEventData, MixedRealityPointerEventData pointerEventData)
+        public void Initialize(MixedRealityPointerEventData eventData, MixedRealityPose pose)
         {
-            UpdateProxyObject(pointerEventData.Pointer);
-
-            // Forwarding the event is done later in the frame by DelayPointerDown component on the proxy object
-            if (_proxyObject != null)
-            {
-                var eventProxy = _proxyObject.EnsureComponent<DelayedEventProxy>();
-                eventProxy.Fire(poseEventData);
-                eventProxy.Fire(pointerEventData);
-            }
+            UpdateProxyObject(eventData, pose);
         }
 
         /// <summary>
@@ -471,34 +454,57 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         /// <summary>
         /// Attempt to find or create a proxy object for the remote entity focused by the event data's pointer.
         /// </summary>
-        private void UpdateProxyObject(IMixedRealityPointer pointer, bool allowCreate = true)
+        private void UpdateProxyObject(MixedRealityPointerEventData eventData, MixedRealityPose pose, bool allowCreate = true)
         {
-            IRemoteFocusProvider remoteFocusProvider = AppServices.RemoteFocusProvider;
-            IRemotePointerResult remoteResult = remoteFocusProvider?.GetRemoteResult(pointer);
-            if (remoteResult == null || !remoteResult.IsTargetValid)
+            IRemotePointer remotePointer = eventData.Pointer as IRemotePointer;
+
+            if (!(remotePointer?.FocusEntityTarget?.Valid ?? false))
             {
-                _remoteFocusData = null;
+                _remotePointer = null;
                 DestroyProxyObject();
                 return;
             }
 
             // Get or create a new proxy object
             if (_proxyObject == null ||
-                _proxyObject.Entity != remoteResult.TargetEntity)
+                _proxyObject.Entity != remotePointer.FocusEntityTarget)
             {
                 DestroyProxyObject();
                 _proxyObject = allowCreate ?
-                    GetOrCreateProxyObject(remoteResult.TargetEntity, ExpandedPrefab) :
-                    GetProxyObject(remoteResult.TargetEntity);
+                    GetOrCreateProxyObject(remotePointer.FocusEntityTarget, ExpandedPrefab) :
+                    GetProxyObject(remotePointer.FocusEntityTarget);
             }
 
             // Save focusing object. This will be used to determine when the proxy object has lost focus
-            _remoteFocusData = remoteResult;
+            _remotePointer = remotePointer;
 
             // If a proxy object was created, change focus this object
-            if (_proxyObject != null)
+            if ((_proxyObject != null) && (CoreServices.FocusProvider != null))
             {
-                remoteFocusProvider.TryFocusingChild(remoteResult.Pointer, _proxyObject.RemoteSyncObject.gameObject);
+                if (CoreServices.FocusProvider.TryGetFocusDetails(eventData.Pointer, out FocusDetails focusDetails) && (focusDetails.Object != _proxyObject.gameObject))
+                {
+                    focusDetails.Object = _proxyObject.gameObject;
+                    focusDetails.PointLocalSpace = _proxyObject.transform.InverseTransformPoint(focusDetails.Point);
+                    focusDetails.NormalLocalSpace = _proxyObject.transform.InverseTransformDirection(focusDetails.Normal);
+
+                    CoreServices.FocusProvider?.TryOverrideFocusDetails(eventData.Pointer, focusDetails);
+
+                    // The GGVPointer and GazePointer are two different but entangled pointers.
+                    // The GGVPointer is the one raising the OnPointerDown event, but the GazePointer
+                    // is the one controlling the cursor. So we have to update the GazePointer as well.
+                    if (eventData.Pointer is RemoteGGVPointer remoteGGVPointer)
+                    {
+                        CoreServices.FocusProvider?.TryOverrideFocusDetails(remoteGGVPointer.GazePointer, focusDetails);
+                    }
+
+                    // ObjectManipulator needs the "OnSourcePoseChanged" called once for proper initialization.
+                    if (_proxyObject.TryGetComponent(out ObjectManipulator componentManipulator))
+                    {
+                        SourcePoseEventData<MixedRealityPose> arg = new SourcePoseEventData<MixedRealityPose>(null);
+                        arg.Initialize(eventData.InputSource, eventData.Pointer.Controller, pose);
+                        componentManipulator.OnSourcePoseChanged(arg);
+                    }
+                }
             }
         }
 
@@ -513,7 +519,7 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
                 return false;
             }
 
-            Entity focused = _remoteFocusData?.TargetEntity;
+            Entity focused = _remotePointer?.FocusEntityTarget;
             if (focused == null || !focused.Valid)
             {
                 return false;
@@ -710,95 +716,6 @@ public class RemoteObjectExpander : InputSystemGlobalHandlerListener, IMixedReal
         {
             var proxyObject = entityGameObject?.GetComponent<ProxyObject>();
             return (proxyObject != null) ? proxyObject.RefCount : 0;
-        }
-    }
-
-    /// <summary>
-    /// Handle forwarding events to proxy object late in the frame. This is done because during `OnPointerDown` and 
-    /// `OnSourcePoseChanged` the proxy object's `ObjectManipular::Start()` hasn't been called in all cases.
-    /// So we wait to forward events to prevent jumpy behavior of the moved pieces, and to ensure rotation works.
-    /// </summary>
-    private class DelayedEventProxy : MonoBehaviour
-    {
-        private MixedRealityPointerEventData _pendingPointerDown = null;
-        private SourcePoseEventData<MixedRealityPose> _pendingSourcePoseChanged = null;
-        private bool _started = false;
-
-        public void Start()
-        {
-            _started = true;
-
-            if (_pendingSourcePoseChanged != null)
-            {
-                Fire(_pendingSourcePoseChanged);
-                _pendingSourcePoseChanged = null;
-            }
-
-            if (_pendingPointerDown != null)
-            {
-                Fire(_pendingPointerDown);
-                _pendingPointerDown = null;
-            }
-        }
-
-        public void Fire(SourcePoseEventData<MixedRealityPose> sourcePoseChangedEventData)
-        {
-            if (_started && sourcePoseChangedEventData != null)
-            {
-                RouteEventToCurrentObject(sourcePoseChangedEventData, OnSourcePoseChangedEventHandler);
-                _pendingSourcePoseChanged = null;
-            }
-            else if (sourcePoseChangedEventData != null)
-            {
-                // 'SourcePoseEventData' is a reference type and may be reused by the underlying event system, therefore we need to make a copy here.
-                _pendingSourcePoseChanged ??= new SourcePoseEventData<MixedRealityPose>(null);
-                _pendingSourcePoseChanged.Initialize(sourcePoseChangedEventData.InputSource, sourcePoseChangedEventData.Controller, sourcePoseChangedEventData.SourceData);
-            }
-            else
-            {
-                _pendingSourcePoseChanged = null;
-            }
-        }
-
-        public void Fire(MixedRealityPointerEventData pointerDownEventData)
-        {
-            if (_started && pointerDownEventData != null)
-            {
-                RouteEventToCurrentObject(pointerDownEventData, OnPointerDownEventHandler);
-                _pendingPointerDown = null;
-            }
-            else if (pointerDownEventData != null)
-            {
-                // 'MixedRealityPointerEventData' is a reference type and may be reused by the underlying event system, therefore we need to make a copy here.
-                _pendingPointerDown ??= new MixedRealityPointerEventData(null);
-                _pendingPointerDown.Initialize(pointerDownEventData.Pointer, pointerDownEventData.MixedRealityInputAction, pointerDownEventData.Handedness, pointerDownEventData.InputSource, pointerDownEventData.Count);
-            }
-            else
-            {
-                _pendingPointerDown = null;
-            }
-        }
-
-        private static readonly ExecuteEvents.EventFunction<IMixedRealitySourcePoseHandler> OnSourcePoseChangedEventHandler =
-            delegate (IMixedRealitySourcePoseHandler handler, BaseEventData eventData)
-            {
-                var casted = ExecuteEvents.ValidateEventData<SourcePoseEventData<MixedRealityPose>>(eventData);
-                handler.OnSourcePoseChanged(casted);
-            };
-
-        private static readonly ExecuteEvents.EventFunction<IMixedRealityPointerHandler> OnPointerDownEventHandler =
-            delegate (IMixedRealityPointerHandler handler, BaseEventData eventData)
-            {
-                if (eventData != null)
-                {
-                    var casted = ExecuteEvents.ValidateEventData<MixedRealityPointerEventData>(eventData);
-                    handler.OnPointerDown(casted);
-                }
-            };
-
-        private void RouteEventToCurrentObject<T>(BaseEventData eventData, ExecuteEvents.EventFunction<T> eventFunction) where T : IEventSystemHandler
-        {
-            ExecuteEvents.Execute(gameObject, eventData, eventFunction);
         }
     }
     #endregion Private Classes

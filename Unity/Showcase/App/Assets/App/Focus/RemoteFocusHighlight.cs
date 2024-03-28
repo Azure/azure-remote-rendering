@@ -1,13 +1,15 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System.Collections.Generic;
+
+using UnityEngine;
 
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.Azure.RemoteRendering.Unity;
 using Microsoft.MixedReality.Toolkit;
-using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
-using System.Collections.Generic;
-using UnityEngine;
+using Microsoft.Showcase.App.Pointers;
 
 /// <summary>
 /// This behavior will apply a selection outline around ARR entities that are focused by a user. For this class to 
@@ -16,7 +18,7 @@ using UnityEngine;
 public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedRealityFocusChangedHandler
 {
     Entity _root = null;
-    IRemoteFocusProvider _remoteFocusProvider = null;
+    Dictionary<uint, Entity> _pointerFocusedEntity = new Dictionary<uint, Entity>();
     Dictionary<Entity, HashSet<uint>> _entityIdSelectedCounts = new Dictionary<Entity, HashSet<uint>>();
     Dictionary<Entity, bool> _pendingSelection = new Dictionary<Entity, bool>();
     HashSet<Entity> _highlighting = new HashSet<Entity>();
@@ -57,17 +59,13 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
     #endregion Serialized Fields
 
     #region MonoBehavior Methods
-    protected override void Start()
-    {
-        base.Start();
-        _remoteFocusProvider = AppServices.RemoteFocusProvider;
-    }
-
     /// <summary>
-    /// Commit the final set of selection highlighting changes.
+    /// Check if any remote Entity focus has changed and
+    /// commit the final set of selection highlighting changes.
     /// </summary>
     private void LateUpdate()
     {
+        CheckFocusEntityUpdate();
         CommitSelectionChanges();
     }
 
@@ -88,7 +86,6 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
         CommitSelectionChanges();
     }
     #endregion MonoBehavior Methods
-
     #region InputSystemGlobalHandlerListener Methods
     /// <summary>
     /// Register for global focus events, as children may hide these events. 
@@ -108,45 +105,63 @@ public class RemoteFocusHighlight : InputSystemGlobalHandlerListener, IMixedReal
     #endregion InputSystemGlobalHandlerListener Methods
 
     #region IMixedRealityFocusChangedHandler Methods
+    /// <inheritdoc/>
     public void OnBeforeFocusChange(FocusEventData eventData)
     {
     }
 
-    /// <summary>
-    /// Handle focus change events.
-    /// </summary>
+    /// <inheritdoc/>
     public void OnFocusChanged(FocusEventData eventData)
     {
-        // Ignore if there is no remote focus provider, or this is disabled
-        if (_remoteFocusProvider == null || transform == null || !isActiveAndEnabled)
+        // Ignore if this is no remote pointer, or this is disabled
+        if (transform == null || !isActiveAndEnabled || !(eventData.Pointer is IRemotePointer remotePointer))
         {
             return;
         }
 
-        Entity oldEntity = null;
-        if (eventData.OldFocusedObject != null &&
-            eventData.OldFocusedObject.transform.IsChildOf(transform))
-        {
-            oldEntity = _remoteFocusProvider.GetEntity(eventData.Pointer, eventData.OldFocusedObject);
-        }
-
-        Entity newEntity = null;
-        if (eventData.NewFocusedObject != null &&
-            eventData.NewFocusedObject.transform.IsChildOf(transform))
-        {
-            newEntity = _remoteFocusProvider.GetEntity(eventData.Pointer, eventData.NewFocusedObject);
-        }
-
-        UpdateSelectionCount(oldEntity, eventData.Pointer, false);
-        UpdateSelectionCount(newEntity, eventData.Pointer, true);
-
-        SetChildSelectionFlags(oldEntity);
-        SetChildSelectionFlags(newEntity);
-        SetRootSelectionFlags();
+        UpdatePointerFocus(remotePointer, eventData.NewFocusedObject);
     }
     #endregion IMixedRealityFocusChangedHandler Methods
 
     #region Private Methods
+    /// <summary>
+    /// <see cref="OnFocusChanged"/> is only invoked when the focues <see cref="GameObject"/> changes,
+    /// but not if the <see cref="IRemotePointer.FocusEntityTarget"/> does. We therefore have to
+    /// manually check for any <see cref="IRemotePointer.FocusEntityTarget"/> changes.
+    /// </summary>
+    private void CheckFocusEntityUpdate()
+    {
+        foreach (IRemotePointer pointer in CoreServices.InputSystem.FocusProvider.GetPointers<IRemotePointer>())
+        {
+            UpdatePointerFocus(pointer, CoreServices.InputSystem.FocusProvider.GetFocusedObject(pointer));
+        }
+    }
+
+    private void UpdatePointerFocus(IRemotePointer pointer, GameObject focusedObject)
+    {
+        _pointerFocusedEntity.TryGetValue(pointer.PointerId, out Entity oldEntity);
+        Entity newEntity = (focusedObject != null && focusedObject.transform.IsChildOf(transform)) ? pointer.FocusEntityTarget : null;
+
+        if (oldEntity != newEntity)
+        {
+            if (newEntity != null)
+            {
+                _pointerFocusedEntity[pointer.PointerId] = newEntity;
+            }
+            else
+            {
+                _pointerFocusedEntity.Remove(pointer.PointerId);
+            }
+
+            UpdateSelectionCount(oldEntity, pointer, false);
+            UpdateSelectionCount(newEntity, pointer, true);
+
+            SetChildSelectionFlags(oldEntity);
+            SetChildSelectionFlags(newEntity);
+            SetRootSelectionFlags();
+        }
+    }
+
     /// <summary>
     /// Set the highlighted property.
     /// </summary>

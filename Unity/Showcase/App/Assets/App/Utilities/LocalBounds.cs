@@ -1,8 +1,9 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using UnityEngine;
 using Microsoft.MixedReality.Toolkit;
+using Microsoft.Azure.RemoteRendering.Unity;
 
 /// <summary>
 /// A helper class for calculating local bounds of objects.
@@ -30,7 +31,7 @@ public static class LocalBounds
     /// </summary>
     public static bool IsInvalidOrInfinite(this Bounds bounds)
     {
-        return !bounds.IsValid() ||
+        return !CommonExtensions.IsValid(bounds) ||
             bounds.size.x == float.PositiveInfinity ||
             bounds.size.y == float.PositiveInfinity ||
             bounds.size.z == float.PositiveInfinity ||

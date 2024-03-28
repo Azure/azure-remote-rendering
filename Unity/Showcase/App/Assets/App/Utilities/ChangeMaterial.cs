@@ -4,6 +4,7 @@
 using Microsoft.Azure.RemoteRendering;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Input;
+using Microsoft.Showcase.App.Pointers;
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -107,8 +108,10 @@ public class ChangeMaterial : MonoBehaviour
 
     public Task Apply(MixedRealityPointerEventData eventData)
     {
-        IRemotePointerResult pointerResult = AppServices.RemoteFocusProvider?.GetRemoteResult(eventData.Pointer);
-        return Apply(pointerResult.TargetEntity);
+        IRemotePointer remotePointer = eventData.Pointer as IRemotePointer;
+        Entity targetEntity  = remotePointer?.FocusEntityTarget;
+
+        return Apply(targetEntity);
     }
 
     public Task Apply(Entity entity, RemoteMaterial remoteMaterial)

@@ -2250,12 +2250,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession != null && _arrSession.IsConnected;
             }
 
-            /// <summary>
-            /// Asynchronously load a model. This call will return immediately with an object that will emit an event when the model load has completed on the server.
-            /// </summary>
-            /// <param name="model">The model to load.</param>
-            /// <param name="parent">The parent of the model.</param>
-            /// <returns></returns>
+
+            /// <inheritdoc/>
             public Task<LoadModelResult> LoadModelAsyncAsOperation(RemoteModel model, Entity parent, ModelProgressStatus progress)
             {
                 if (!IsValid())
@@ -2280,12 +2276,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
             }
 
-            /// <summary>
-            /// Load model with extended parameters.
-            /// </summary>
-            /// <param name="model">The model to load.</param>
-            /// <param name="parent">The parent of the model.</param>
-            /// <returns></returns>
+
+            /// <inheritdoc/>
             public Task<LoadModelResult> LoadModelAsync(RemoteModel model, Entity parent)
             {
                 if (!IsValid())
@@ -2310,11 +2302,8 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
             }
 
-            /// <summary>
-            /// Asynchronously load a texture. This call will return immediately with an object that will emit an event when the texture load has completed on the server.
-            /// </summary>
-            /// <param name="textureId">String identifier for the texture.</param>
-            /// <returns></returns>
+
+            /// <inheritdoc/>
             public Task<Remote.Texture> LoadTextureAsync(string storageAccountName, string containerName, string blobPath, TextureType type)
             {
                 if (!IsValid())
@@ -2329,13 +2318,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     type));
             }
 
-            /// <summary>
-            /// Asynchronously perform a raycast query on the remote scene.  This call will return immediately with an object that will emit an event when the raycast has returned from the server.
-            /// The raycast will be performed on the server against the state of the world on the frame that the raycast was issued on.  Results will be sorted by distance, with the closest
-            /// intersection to the user being the first item in the array.
-            /// </summary>
-            /// <param name="cast">Outgoing RayCast.</param>
-            /// <returns></returns>
+            /// <inheritdoc/>
             public Task<RayCastQueryResult> RayCastQueryAsync(RayCast cast)
             {
                 if (!IsValid())
@@ -2346,10 +2329,19 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.RayCastQueryAsync(cast);
             }
 
-            /// <summary>
-            ///  Create a new entity on the server. The new entity can be inserted into the scenegraph and have components added to it.
-            /// </summary>
-            /// <returns>Newly created entity.</returns>
+            /// <inheritdoc/>
+            public Task<SpatialQueryResult> SpatialQuerySphereAsync(SpatialQuerySphere query)
+            {
+                if (!IsValid())
+                {
+                    return Task.FromResult<SpatialQueryResult>(null);
+                }
+
+                return _arrSession.Connection.SpatialQuerySphereAsync(query);
+            }
+
+
+            /// <inheritdoc/>
             public Entity CreateEntity()
             {
                 if (!IsValid())
@@ -2360,11 +2352,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.CreateEntity();
             }
 
-            /// <summary>
-            ///  Create a new material on the server. The new material can be set to mesh components.
-            /// </summary>
-            /// <param name="type">Type of created material.</param>
-            /// <returns>Newly created material.</returns>
+            /// <inheritdoc/>
             public Remote.Material CreateMaterial(MaterialType type)
             {
                 if (!IsValid())
@@ -2376,12 +2364,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             }
 
 
-            /// <summary>
-            ///  Create a new component locally and on the server. This call can fail if the entity already has a component of componentType on it.
-            /// </summary>
-            /// <param name="componentType">Component type to create.</param>
-            /// <param name="owner">Owner of the component.</param>
-            /// <returns>A newly created component or null if the call failed.</returns>
+            /// <inheritdoc/>
             public ComponentBase CreateComponent(ObjectType componentType, Entity owner)
             {
                 if (!IsValid())
@@ -2392,9 +2375,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.CreateComponent(componentType, owner);
             }
 
-            /// <summary>
-            /// Returns global camera settings.
-            /// </summary>
+            /// <inheritdoc/>
             public CameraSettings GetCameraSettings()
             {
                 if (!IsValid())
@@ -2405,9 +2386,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.CameraSettings;
             }
 
-            /// <summary>
-            /// Returns global sky reflection settings.
-            /// </summary>
+            /// <inheritdoc/>
             public SkyReflectionSettings GetSkyReflectionSettings()
             {
                 if (!IsValid())
@@ -2418,9 +2397,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.SkyReflectionSettings;
             }
 
-            /// <summary>
-            /// Returns global outline settings.
-            /// </summary>
+            /// <inheritdoc/>
             public OutlineSettings GetOutlineSettings()
             {
                 if (!IsValid())
@@ -2431,9 +2408,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.OutlineSettings;
             }
 
-            /// <summary>
-            /// Returns global z-fighting mitigation state.
-            /// </summary>
+            /// <inheritdoc/>
             public ZFightingMitigationSettings GetZFightingMitigationSettings()
             {
                 if (!IsValid())
@@ -2444,12 +2419,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.ZFightingMitigationSettings;
             }
 
-            /// <summary>
-            /// Load a remote material, from a data object.
-            /// </summary>
-            /// <remarks>
-            /// Move this to material factory...Session should know about RemoteMaterial, as it leads to a circular data flow.
-            /// </remarks>
+            /// <inheritdoc/>
             public Task<Remote.Material> LoadMaterial(RemoteMaterial material)
             {
                 if (!IsValid())
@@ -2460,9 +2430,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _materialCache.LoadMaterial(material);
             }
 
-            /// <summary>
-            /// Load a 2D texture.
-            /// </summary>
+            /// <inheritdoc/>
             public async Task<Remote.Texture> LoadTexture2D(string url)
             {
                 try
@@ -2476,9 +2444,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
             }
 
-            /// <summary>
-            /// Load a cube map texture.
-            /// </summary>
+            /// <inheritdoc/>
             public async Task<Remote.Texture> LoadTextureCubeMap(string url)
             {
                 try
@@ -2510,9 +2476,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 return _arrSession.Connection.LoadTextureFromSasAsync(new LoadTextureFromSasOptions(url, type));
             }
 
-            /// <summary>
-            /// Load and set cube map
-            /// </summary>
+            /// <inheritdoc/>
             public async Task SetLighting(string url)
             {
                 if (!IsValid())

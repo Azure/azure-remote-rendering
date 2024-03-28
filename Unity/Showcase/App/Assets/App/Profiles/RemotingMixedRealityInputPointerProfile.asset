@@ -27,7 +27,7 @@ MonoBehaviour:
   gazeCursorPrefab: {fileID: 3908768167658931896, guid: f7657f5acf012aa4a868b19616cb58c8,
     type: 3}
   gazeProviderType:
-    reference: Microsoft.MixedReality.Toolkit.Input.GazeProvider, Microsoft.MixedReality.Toolkit.Services.InputSystem
+    reference: Microsoft.Showcase.App.Pointers.RemoteGazeProvider, App
   useHeadGazeOverride: 1
   isEyeTrackingEnabled: 0
   pointerOptions:
@@ -61,21 +61,21 @@ MonoBehaviour:
       m_Bits: 2147486515
   - controllerType: 5167
     handedness: 7
-    pointerPrefab: {fileID: 1507865967819406, guid: d1696cbc8ab70e04c8c9f36e1409a885,
+    pointerPrefab: {fileID: 7889694328819963316, guid: b30f8b7b7db3a954ebb156deeb3289d1,
       type: 3}
     prioritizedLayerMasks:
     - serializedVersion: 2
       m_Bits: 2048
   - controllerType: 2048
     handedness: 7
-    pointerPrefab: {fileID: 1247086986094436, guid: 039b325c9e8fd0545a0475fd4aa35b10,
+    pointerPrefab: {fileID: 3168087022288499329, guid: cc1a02e0e0088764c82b35ea59afed03,
       type: 3}
     prioritizedLayerMasks:
     - serializedVersion: 2
       m_Bits: 2147486515
   - controllerType: 512
     handedness: 7
-    pointerPrefab: {fileID: 8953170493194829522, guid: 840df22ff840d5540b58ca6088afde25,
+    pointerPrefab: {fileID: 7422278454151059129, guid: cedd23d43e141624cbcad273a8583d0a,
       type: 3}
     prioritizedLayerMasks:
     - serializedVersion: 2

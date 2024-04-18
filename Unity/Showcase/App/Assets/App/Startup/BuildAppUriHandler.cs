@@ -15,9 +15,14 @@ public class BuildAppUriHandler
     [PostProcessBuild(1)]
     public static void OnPostprocessBuild(BuildTarget target, string pathToBuiltProject)
     {
+        if (target != BuildTarget.WSAPlayer)
+        {
+            return;
+        }
+
         // Find the appxmanifest, assume the one we want is the first one
         string[] manifests = Directory.GetFiles(
-            pathToBuiltProject, 
+            pathToBuiltProject,
             "Package.appxmanifest", 
             SearchOption.AllDirectories);
 

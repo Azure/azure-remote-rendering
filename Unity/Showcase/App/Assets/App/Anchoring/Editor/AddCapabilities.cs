@@ -15,6 +15,11 @@ public class AddCapabilities
     [PostProcessBuild(0)]
     public static void OnPostprocessBuild(BuildTarget target, string pathToBuiltProject)
     {
+        if (target != BuildTarget.WSAPlayer)
+        {
+            return;
+        }
+
         // Find the appxmanifest, assume the one we want is the first one
         string[] manifests = Directory.GetFiles(
             pathToBuiltProject,

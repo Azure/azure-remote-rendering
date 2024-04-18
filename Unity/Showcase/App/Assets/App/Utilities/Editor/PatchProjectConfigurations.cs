@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -25,7 +26,7 @@ public class PatchProjectConfigurations : IPostprocessBuildWithReport
 
     public void OnPostprocessBuild(BuildReport report)
     {
-        if (report == null || report.files == null)
+        if (report == null || report.files == null || report.summary.platformGroup != BuildTargetGroup.WSA)
         {
             return;
         }
@@ -33,7 +34,7 @@ public class PatchProjectConfigurations : IPostprocessBuildWithReport
         foreach (var patchEntry in _replacements)
         {
             string[] files = Directory.GetFiles(
-                report.summary.outputPath, 
+                report.summary.outputPath,
                 patchEntry.fileSearchPattern, 
                 SearchOption.AllDirectories);
 

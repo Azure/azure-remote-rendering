@@ -1,4 +1,5 @@
 # App Directories
+
 All the app specific code is under the [App](../App/Assets/App) directory.  The following is a list of primary app directories:
 
 | <div style="width:190px">Directory</div> | Description |
@@ -14,13 +15,12 @@ All the app specific code is under the [App](../App/Assets/App) directory.  The 
 | [App/Profiles](../App/Assets/App/Profiles) | Mixed Reality Toolkit profiles needed to enable things like remote focusing, mouse pointers, and custom Mixed Reality Toolkit services. |
 | [App/RemoteLighting](../App/Assets/App/RemoteLighting) | Classes for adding remote rendered light sources to the scene. |
 | [App/RemoteMaterial](../App/Assets/App/RemoteMaterial) | Classes for editing remote rendered materials. |
-| [App/RemoteObjects](../App/Assets/App/RemoteObjects) | Classes for loading and viewing remote rendered and local models. |
-| [App/ScriptableObjects](../App/Assets/App/SciptableObjects) | Scriptable objects for defining remote rendered model files, materials, and light sources. |
+| [App/RemoteObjects](../App/Assets/App/RemoteObject) | Classes for loading and viewing remote rendered and local models. |
+| [App/ScriptableObjects](../App/Assets/App/ScriptableObjects) | Scriptable objects for defining remote rendered model files, materials, and light sources. |
 | [App/Services](../App/Assets/App/Services) | Mixed Reality Toolkit services, such as the [IRemoteRenderingService](../App/Assets/App/Services/Interfaces/IRemoteRenderingService.cs) and [IPointerStateService](../App/Assets/App/Services/Interfaces/IPointerStateService.cs). |
 | [App/Shaders](../App/Assets/App/Shaders) | Various custom shaders. |
 | [App/Sharing](../App/Assets/App/Sharing) | Collaboration components needed for shared experiences with other HoloLens and desktop devices. |
 | [App/Startup](../App/Assets/App/Startup) | Components used at application startup, such as deep link handling. |
-| [App/Storage](../App/Assets/App/Storage) | Azure Storage helpers, and custom text parsers. | 
-| [App/Texture](../App/Assets/App/Texture) | Various application textures. | 
-| [App/UnityMouse](../App/Assets/App/UnityMouse) | Mixed Reality Toolkit components for a desktop mouse pointer. | 
+| [App/Storage](../App/Assets/App/Storage) | Azure Storage helpers, and custom text parsers. |
+| [App/Texture](../App/Assets/App/Textures) | Various application textures. |
 | [App/Utilities](../App/Assets/App/Utilities) | A variety of application helper classes. |

@@ -1,11 +1,14 @@
 # Implementation notes
+
 This page contains notes on various aspects of the application's implementation.
 
 ## Mixed Reality Toolkit Integration
+
 This application has a strong dependency on the [Mixed Reality Toolkit](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/?view=mrtkunity-2021-05). Much of the application code has taken dependencies on the the Mixed Reality Toolkit for things like user interfaces, materials, spatial awareness, interactions, and extension services. This document will discus a two of these integration points, [Mixed Reality Toolkit Service Extensions](#mixed-reality-toolkit-service-extensions) and [Custom Input Handling](#custom-input-handling).
 
 ## Mixed Reality Toolkit Service Extensions
-The application uses the [Mixed Reality Toolkit's service extensions](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/extensions/extension-services?view=mrtkunity-2021-05) for integrating with [Azure Remote Rendering](https://docs.microsoft.com/en-us/azure/remote-rendering/), [Azure Storage](https://docs.microsoft.com/en-us/azure/storage/), [Azure Spatial Anchors](https://docs.microsoft.com/en-us/azure/spatial-anchors/), and collaboration services like Exit Game's [Photon Voice 2](https://www.photonengine.com/en-US/Voice). 
+
+The application uses the [Mixed Reality Toolkit's service extensions](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/extensions/extension-services?view=mrtkunity-2021-05) for integrating with [Azure Remote Rendering](https://docs.microsoft.com/en-us/azure/remote-rendering/), [Azure Storage](https://docs.microsoft.com/en-us/azure/storage/), [Azure Spatial Anchors](https://docs.microsoft.com/en-us/azure/spatial-anchors/), and collaboration services like Exit Game's [Photon Voice 2](https://www.photonengine.com/en-US/Voice).
 
 The service extensions that need to be configured before launching the application are:
 
@@ -15,7 +18,7 @@ The service extensions that need to be configured before launching the applicati
 
 ## Remote Rendering Service Extension
 
-The [`RemoteRenderingService`](#remote-rendering-service-extension) component is a custom Mixed Reality Toolkit [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html) that wraps the functionality provided by the [Azure Remote Rendering Unity Package](https://docs.microsoft.com/en-us/azure/remote-rendering/how-tos/unity/install-remote-rendering-unity-package). The [`RemoteRenderingService`](#remote-rendering-service-extension) helps manage the lifecycle of Azure Remote Rendering sessions, as well as helps manage the lifetime of remote rendered assets within these sessions. For example, the [`RemoteRenderingService`](#remote-rendering-service-extension) can help start a remote rendering session, load a remote rendered asset, unload a remote rendered asset, and then stop a remote rendering session. To use the [`RemoteRenderingService`](#remote-rendering-service-extension), an Azure Remote Rendering account and an Azure Storage account must first be created. 
+The [`RemoteRenderingService`](#remote-rendering-service-extension) component is a custom Mixed Reality Toolkit [extension service](https://microsoft.github.io/MixedRealityToolkit-Unity/Documentation/Extensions/ExtensionServices.html) that wraps the functionality provided by the [Azure Remote Rendering Unity Package](https://docs.microsoft.com/en-us/azure/remote-rendering/how-tos/unity/install-remote-rendering-unity-package). The [`RemoteRenderingService`](#remote-rendering-service-extension) helps manage the lifecycle of Azure Remote Rendering sessions, as well as helps manage the lifetime of remote rendered assets within these sessions. For example, the [`RemoteRenderingService`](#remote-rendering-service-extension) can help start a remote rendering session, load a remote rendered asset, unload a remote rendered asset, and then stop a remote rendering session. To use the [`RemoteRenderingService`](#remote-rendering-service-extension), an Azure Remote Rendering account and an Azure Storage account must first be created.
 
 To create an Azure Remote Rendering account follow the [Create an Azure Remote Rendering account](https://docs.microsoft.com/en-us/azure/remote-rendering/how-tos/create-an-account) manual. Once you have created an Azure Remote Rendering account, you will be provided with an Azure Remote Rendering account ID, account domain, and account authentication settings.
 
@@ -26,7 +29,7 @@ Finally, as part of the setup, you must decide which authentication method to us
 ### Remote Rendering Configuration Profiles
 
 A variety of remote rendering and storage settings can be changed with the [`RemoteRenderingService`](#remote-rendering-service-extension) configuration profile. The type of settings differ based on the type of profile that is [created](#choosing-the-authentication-method-for-azure-remote-rendering). However, there is a set of base settings that are common across all profile types, these are as follows:
- 
+
 | <div style="width:190px">Property</div> | Description                                                                                                                     |
 | :------------------ | :------------------ |
 | Size | The Azure Remote Rendering session size, either `Standard` or `Premium`. See [limitations of session sizes](https://docs.microsoft.com/azure/remote-rendering/reference/limits#overall-number-of-polygons).    |
@@ -43,12 +46,14 @@ A variety of remote rendering and storage settings can be changed with the [`Rem
 > To be able to load models from the storage account, you must link it to your Azure Remote Rendering account. This applies to both profile types. The necessary steps are described on the [<u>account creation page</u>](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#link-storage-accounts) of the Remote Rendering documentation. Please note that this is only necessary for loading models.
 
 ### Choosing the Authentication Method for Azure Remote Rendering
-This application exposes two authentication methods for accessing Azure Remote Rendering and Azure Storage services, authenticating either using an account secret or an Azure Active Directory (AAD) account. The type of authentication used is defined by the type of [`RemoteRenderingService`](#remote-rendering-service-extension) configuration profile that is applied, [development](#remote-renderings-development-configuration-profile) or [production](#remote-renderings-production-configuration-profile). 
+
+This application exposes two authentication methods for accessing Azure Remote Rendering and Azure Storage services, authenticating either using an account secret or an Azure Active Directory (AAD) account. The type of authentication used is defined by the type of [`RemoteRenderingService`](#remote-rendering-service-extension) configuration profile that is applied, [development](#remote-renderings-development-configuration-profile) or [production](#remote-renderings-production-configuration-profile).
 
 ### Remote Rendering's Development Configuration Profile
-A [development](#remote-renderings-development-configuration-profile) profile is the quickest way to get started because it uses account keys, without additional configuration. 
 
-To create a development profile right-click Unity's Asset window and select *Create > ARR Showcase > Configuration Profile > Remote Rendering Service > Development*. Then apply this profile to the [`RemoteRenderingService`](#remote-rendering-service-extension) configuration under the Mixed Reality Toolkit's inspector window.
+A [development](#remote-renderings-development-configuration-profile) profile is the quickest way to get started because it uses account keys, without additional configuration.
+
+To create a development profile right-click Unity's Asset\App\Services\Profiles window and select *Create > ARR Showcase > Configuration Profile > Remote Rendering Service > Development*. Then apply this profile to the [`RemoteRenderingService`](#remote-rendering-service-extension) configuration under the Mixed Reality Toolkit's inspector window.
 
 ![Remote Rendering Development Configuration](.images/editor-arr-service-config-development.png)
 
@@ -60,6 +65,7 @@ To create a development profile right-click Unity's Asset window and select *Cre
 | Storage Account Key      | The Azure Storage account key. Needed if the *model container* is private. |
 
 ### Remote Rendering's Production Configuration Profile
+
 A [production](#remote-renderings-production-configuration-profile) profile is the most secure way to utilize Azure Remote Rendering and Azure Blob Storage because it uses Azure Active Directory (AAD) to authenticate users. The production profile will require additional Azure configuration, described in the Azure Remote Rendering tutorial for [security](https://docs.microsoft.com/azure/remote-rendering/tutorials/unity/security/security).
 
 To create a production profile right-click Unity's Asset window and select *Create > ARR Showcase > Configuration Profile > Remote Rendering Service > Production*. Then apply this profile to the [`RemoteRenderingService`](#remote-rendering-service-extension) configuration under the Mixed Reality Toolkit's inspector window.
@@ -75,14 +81,20 @@ To create a production profile right-click Unity's Asset window and select *Crea
 | Storage Model Path By Username  | If checked, models uploaded through the desktop application will be stored in a sub directory matching the user name. |
 
 ### Configuring Remote Rendering and Azure Storage with XML File
- 
-Mostly all setting of the [`RemoteRenderingService`](#remote-rendering-service-extension) settings are optional if their values are set in the [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file. The [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file can be placed under Unity's [`StreamingAssets`](../App/Assets/StreamingAssets) directory. If this file exists, the app will use the file's settings, instead of those within the configuration profile.
- 
-The [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file is not tracked by *Git*, as defined in the repository's [`.gitignore`](../.gitignore), preventing accidental commits of private/secret information. So it is preferred to use [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the MRTK's configuration profiles.
 
-Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the [%USERPROFILE%/AppData/LocalLow/Microsoft/ARR Showcase]() folder. For HoloLens overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
+Mostly all setting of the [`RemoteRenderingService`](#remote-rendering-service-extension) settings are optional if their values are set in the [`arr.account.xml`](.samples/arr.account.xml) file. The [`arr.account.xml`](.samples/arr.account.xml) file can be placed under Unity's `StreamingAssets` directory. If this file exists, the app will use the file's settings, instead of those within the configuration profile.
 
-The schema for [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) and [`arr.overrides.xml`](.samples/arr.overrides.xml) can be found [here](.schemas/arr.overrides.schema.xds).
+The [`arr.account.xml`](.samples/arr.account.xml) file is not tracked by *Git*, as defined in the repository's [`.gitignore`](../../../.gitignore), preventing accidental commits of private/secret information. So it is preferred to use [`arr.account.xml`](.samples/arr.account.xml) instead of adding your private account settings to the MRTK's configuration profiles.
+
+Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. The [`arr.overrides.xml`](.samples/arr.overrides.xml) file needs to be placed in the following folder, depending on target platform:
+  - For inside the **Unity editor**, it needs to be placed in the `%USERPROFILE%/AppData/LocalLow/Microsoft/Azure Remote Rendering Showcase` folder.
+  - For **HoloLens 2**, it needs to be placed in the app's [LocalState](https://docs.microsoft.com/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder.
+  - For **Quest**, it needs to be placed in the `Internal shared storage\Android\data\com.Microsoft.AzureRemoteRenderingShowcase\files` folder.
+
+
+The file should only contain the settings you want to override.
+
+The schema for [`arr.account.xml`](.samples/arr.account.xml) and [`arr.overrides.xml`](.samples/arr.overrides.xml) can be found [here](.schemas/arr.overrides.schema.xds).
 
 ## Sharing Service Extension (aka Collaboration Service)
 
@@ -104,13 +116,13 @@ The [`SharingService`](#sharing-service-extension-aka-collaboration-service) obj
 
 ### Configuring Sharing Service with XML File
 
-The [`SharingService`](#sharing-service-extension-aka-collaboration-service) may also be configured using the [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file. The [`arr.account.xml`](../App/Assets/StreamingAssets) file can be placed under Unity's [`StreamingAssets`](../App/Assets/StreamingAssets) directory. If this file exists, the app will use the file's settings, instead of those within the configuration profiles.
+The [`SharingService`](#sharing-service-extension-aka-collaboration-service) may also be configured using the [`arr.account.xml`](.samples/arr.account.xml) file. The [`arr.account.xml`](.samples/arr.account.xml) file can be placed under Unity's `StreamingAssets` directory. If this file exists, the app will use the file's settings, instead of those within the configuration profiles.
 
-The [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file is not tracked by *Git*, as defined in the repository's [`.gitignore`](../.gitignore),, preventing accidental commits of private/secret information. So it is preferred to use [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the service extension's configuration profile.
+The [`arr.account.xml`](.samples/arr.account.xml) file is not tracked by *Git*, as defined in the repository's [`.gitignore`](../../../.gitignore),, preventing accidental commits of private/secret information. So it is preferred to use [`arr.account.xml`](.samples/arr.account.xml) instead of adding your private account settings to the service extension's configuration profile.
 
-Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor and Desktop overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the [%USERPROFILE%/AppData/LocalLow/Microsoft/ARR Showcase]() folder. For HoloLens overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
+Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor and Desktop overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the `%USERPROFILE%/AppData/LocalLow/Microsoft/Azure Remote Rendering Showcase` folder. For HoloLens overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
 
-The schema for [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) and [`arr.overrides.xml`](.samples/arr.overrides.xml) can be found at [arr.account.overrides.schema.xsd](.schemas/arr.account.overrides.schema.xsd).
+The schema for [`arr.account.xml`](.samples/arr.account.xml) and [`arr.overrides.xml`](.samples/arr.overrides.xml) can be found at [arr.account.overrides.schema.xsd](.schemas/arr.account.overrides.schema.xsd).
 
 ### Using Photon Voice 2 for Collaboration
 
@@ -119,7 +131,7 @@ The application can be configured to share app state and voice using [Photon Voi
 The Photon Voice 2 asset package is not included by default. To install the Photon Voice 2 assets, go to the Unity Asset Store and search for *Photon Voice 2*.  Once Photon Voice 2 is found, click through to download and add the assets to your application. At the time of writing this document, this involved selecting *Add To My Assets*, signing in with a Unity Account, selecting *Open in Unity*, and importing assets into the Azure Remote Rendering Showcase Unity project.
 
 > The Photon Voice 2 binaries from the Unity Asset Store do not support ARM64. If Photon voice communications on ARM64 is needed, contact [Exit Games](https://www.photonengine.com/) for an ARM64 version of Photon Voice.
-> 
+>
 > State sharing will work on all platforms, even on ARM64. So if voice communication is not required, ARM64 will be functional. Errors will be logged when the application attempts to start voice communication. Nevertheless, these errors can be ignored if the application does not require voice communication.
 
 Once the Photon Voice 2 assets have been added to the project, ensure that you have also created a Photon Realtime (PUN) ID and Photon Voice ID. These IDs can be created on your [Photon Engine Dashboard](https://www.photonengine.com/) from Exit Games. Once you have created these IDs, you can configure the [Sharing Service](#sharing-service-extension-aka-collaboration-service). Photon might display a dialog, prompting for Photon to be configured. If Photon has been configured via the [Sharing Service](#sharing-service-extension-aka-collaboration-service), these Photon dialogs can be safely ignored.
@@ -130,15 +142,15 @@ After the Photon Voice 2 plug-in has been added and configured, the application 
 
 ## Azure Spatial Anchor Service Extension
 
-This application uses [Azure Spatial Anchors](https://azure.microsoft.com/en-us/services/spatial-anchors/) to ensure multiple users in the same space see holograms in the same position. We call this co-localization. 
+This application uses [Azure Spatial Anchors](https://azure.microsoft.com/en-us/services/spatial-anchors/) to ensure multiple users in the same space see holograms in the same position. We call this co-localization.
 
-The [`AnchoringService`](#azure-spatial-anchor-service-extension) is a custom Mixed Reality Toolkit [extension service](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/extensions/extension-services?view=mrtkunity-2021-05) that wraps the [Azure Spatial Anchor Unity SDK](https://docs.microsoft.com/en-us/azure/spatial-anchors/tutorials/tutorial-new-unity-hololens-app?tabs=azure-portal). The [`AnchoringService`](#azure-spatial-anchor-service-extension) helps ensure multiple users in the same physical space see holograms at same position. This is called co-localization. This [`AnchoringService`](#azure-spatial-anchor-service-extension) is used to co-locate user in the same physical space, who are also in the same collaboration session (or sharing room). If the application has been configured to use the [`SharingService`](#sharing-service-extension-aka-collaboration-service), then the [`AnchoringService`](#azure-spatial-anchor-service-extension) should also be configured. If the application does not require the [`SharingService`](#sharing-service-extension-aka-collaboration-service) or does not require users to be co-located, then the [`AnchoringService`](#azure-spatial-anchor-service-extension) does not need to be configured. 
+The [`AnchoringService`](#azure-spatial-anchor-service-extension) is a custom Mixed Reality Toolkit [extension service](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/extensions/extension-services?view=mrtkunity-2021-05) that wraps the [Azure Spatial Anchor Unity SDK](https://docs.microsoft.com/en-us/azure/spatial-anchors/tutorials/tutorial-new-unity-hololens-app?tabs=azure-portal). The [`AnchoringService`](#azure-spatial-anchor-service-extension) helps ensure multiple users in the same physical space see holograms at same position. This is called co-localization. This [`AnchoringService`](#azure-spatial-anchor-service-extension) is used to co-locate user in the same physical space, who are also in the same collaboration session (or sharing room). If the application has been configured to use the [`SharingService`](#sharing-service-extension-aka-collaboration-service), then the [`AnchoringService`](#azure-spatial-anchor-service-extension) should also be configured. If the application does not require the [`SharingService`](#sharing-service-extension-aka-collaboration-service) or does not require users to be co-located, then the [`AnchoringService`](#azure-spatial-anchor-service-extension) does not need to be configured.
 
 >Note, that the [`SharingService`](#sharing-service-extension-aka-collaboration-service) also uses local spatial anchors, in addition to Azure Spatial Anchors. The [`SharingService`](#sharing-service-extension-aka-collaboration-service) saves local spatial anchors to the device, so to recall the user's previous stage placement, when not in a collaboration session.
 
 The Azure Spatial Anchor packages are not included in the Showcase project by default. To install the Azure Spatial Anchor packages, open the *Unity Package Manager* window, then select *Add package from tarball...* from the *+* menu. Now navigate to [`Unity\MRPackages`](../../MRPackages/) and add the [`Azure Spatial Anchor SDK Core`](../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.core-2.12.0.tgz) package. Repeat the steps again for the [`Azure Spatial Anchor SDK for Windows`](../../MRPackages/com.microsoft.azure.spatial-anchors-sdk.windows-2.12.0.tgz) package.
 
-To configured the [`AnchoringService`](#azure-spatial-anchor-service-extension) an `AnchoringServiceProfile` must to edited and applied. For anchors to be shared with other users, the `AnchorAccountID` and `AnchorAccountKey` must be set. 
+To configured the [`AnchoringService`](#azure-spatial-anchor-service-extension) an `AnchoringServiceProfile` must to edited and applied. For anchors to be shared with other users, the `AnchorAccountID` and `AnchorAccountKey` must be set.
 
 ![Anchoring Service Configuration](.images/editor-anchoring-service-config.png)
 
@@ -153,17 +165,20 @@ To configured the [`AnchoringService`](#azure-spatial-anchor-service-extension) 
 
 ### Configuring Azure Spatial Anchor Service with XML File
 
-The `Anchor Account ID` and `Anchor Account Key` profiles settings are optional if these values are set in the [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file. The [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file can be placed under Unity's [`StreamingAssets`](../App/Assets/StreamingAssets) directory. If this file exists, the app will use the file's settings, instead of those within the configuration profiles.
- 
+The `Anchor Account ID` and `Anchor Account Key` profiles settings are optional if these values are set in the [`arr.account.xml`](.samples/arr.account.xml) file. The [`arr.account.xml`](.samples/arr.account.xml) file can be placed under Unity's `StreamingAssets` directory. If this file exists, the app will use the file's settings, instead of those within the configuration profiles.
+
 The [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) file is not tracked by *Git*, as defined in the repository's [`.gitignore`](../.gitignore), preventing accidental commits of private/secret information. So it is preferred to use [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) instead of adding your private account settings to the service extension's configuration profile.
 
-Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the [%USERPROFILE%/AppData/LocalLow/Microsoft/ARR Showcase]() folder. For HoloLens overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
+Also, the [`arr.overrides.xml`](.samples/arr.overrides.xml) can be used to override settings even if the app has already been packaged and deployed. For Unity editor overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the `%USERPROFILE%/AppData/LocalLow/Microsoft/Azure Remote Rendering Showcase` folder. For HoloLens overrides, [`arr.overrides.xml`](.samples/arr.overrides.xml) needs to be placed in the app's [LocalState](https://docs.microsoft.com/en-us/windows/mixed-reality/using-the-windows-device-portal#file-explorer) folder. The file should only contain the settings you want to override.
 
-The schema for [`arr.account.xml`](../App/Assets/StreamingAssets/arr.account.xml) and [`arr.overrides.xml`](.samples/arr.overrides.xml) can be found at [arr.account.overrides.schema.xsd](.schemas/arr.account.overrides.schema.xsd).
+The schema for `arr.account.xml` and `arr.overrides.xml` can be found at [`arr.account.overrides.schema.xsd`](.schemas/arr.account.overrides.schema.xsd).
 
 ## Custom Input Handling
-The application uses the [Mixed Reality Toolkit's input system](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/input/overview?view=mrtkunity-2021-05) for interacting with remote rendered entities, without relying on Unity colliders. This was accomplished by creating a custom [Mixed Reality Toolkit focus provider](https://docs.microsoft.com/en-us/dotnet/api/microsoft.mixedreality.toolkit.input.focusprovider?view=mixed-reality-toolkit-unity-2020-dotnet-2.7.0), [`RemoteFocusProviderNoCollider`](../App/Assets/App/Focus/RemoteFocusProviderNoColliders.cs). This focus provider executes remote ray casts for each of the active Mixed Reality Toolkit pointers, at a rate of 30 Hz, and determines if a remote or local object should receive a pointer's focus.
 
-For the [`RemoteFocusProviderNoCollider`](../App/Assets/App/Focus/RemoteFocusProviderNoColliders.cs)  focus provider to work with hand grabs, a custom [sphere pointer](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/input/pointers?view=mrtkunity-2021-05#spherepointer) was also created. This custom sphere pointer is called [`RemoteSpherePointer`](../App/Assets/App/Focus/RemoteSpherePointer.cs), and performs ray-casts a bit differently than the default [`SpherePointer`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.mixedreality.toolkit.input.spherepointer?view=mixed-reality-toolkit-unity-2020-dotnet-2.7.0). The default [`SpherePointer`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.mixedreality.toolkit.input.spherepointer?view=mixed-reality-toolkit-unity-2020-dotnet-2.7.0) performs a sphere cast to determine which Unity colliders are within focus of the hands (i.e. can be grabbed). The Azure Remote Rendering service does not support sphere casts, so instead the [`RemoteSpherePointer`](../App/Assets/App/Focus/RemoteSpherePointer.cs) casts linear rays between each fingertip and the corresponding thumb tip, capped at some max length. The [`RemoteSpherePointer`](../App/Assets/App/Focus/RemoteSpherePointer.cs) might also cast a linear ray between the thumb tip and the last known focus point of the [`RemoteSpherePointer`](../App/Assets/App/Focus/RemoteSpherePointer.cs). If any of these linear rays intersect with remote or local geometry, the closest hit point becomes the [`RemoteSpherePointer's`](../App/Assets/App/Focus/RemoteSpherePointer.cs) focus point.
+The application uses the [Mixed Reality Toolkit's input system](https://learn.microsoft.com/windows/mixed-reality/mrtk-unity/mrtk2/features/input/overview?view=mrtkunity-2021-05) for interacting with remote rendered entities, without relying on Unity colliders. This was accomplished by creating custom pointers implementing [IMixedRealityQueryablePointer](https://learn.microsoft.com/dotnet/api/microsoft.mixedreality.toolkit.input.imixedrealityqueryablepointer?view=mixed-reality-toolkit-unity-2020-dotnet-2.8.0) for each pointer capable of interacting with remote rendered entities. These custom pointers are forwarding scene queries to  [RemotePointerCaster](../App/Assets/App/Pointers/Scripts/RemotePointerCaster.cs) to execute remote spatial queries and merge the results with the local query result.
 
-The [Mixed Reality Toolkit's input system](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/input/overview?view=mrtkunity-2021-05) is also used to limit the number of game objects needed for interacting with remote entities. This is accomplished by dynamically creating game objects for remote entities when they receive [pointer focus](https://docs.microsoft.com/en-us/windows/mixed-reality/mrtk-unity/features/input/pointers?view=mrtkunity-2021-05). Once a remote entity loses focus, its associated game objects are destroyed. For more information about this behavior see summary comment section of the [`RemoteObjectExpander.cs`](../App/Assets/App/RemoteObject/RemoteObjectExpander.cs) file. 
+The [RemotePointerCaster](../App/Assets/App/Pointers/Scripts/RemotePointerCaster.cs) sends out remote queries for each of the active Mixed Reality Toolkit pointers, at a rate of 30 Hz (or 24Hz in case of Quest). It works with near and far pointers and smooths the results across multiple frames. To determine if a remote object has been hit, use [IRemotePointer.FocusEntityTarget](../App/Assets/App/Pointers/Scripts/IRemotePointer.cs) to retrieve a reference to the hit [Entity](https://learn.microsoft.com/dotnet/api/microsoft.azure.remoterendering.entity?view=remoterendering).
+
+Because `InternalGazePointer` is an internal type of [GazeProvider](https://learn.microsoft.com/dotnet/api/microsoft.mixedreality.toolkit.input.gazeprovider?view=mixed-reality-toolkit-unity-2020-dotnet-2.8.0) and there's no option to extend it, a custom [RemoteGazeProvider](../App/Assets/App/Pointers/Scripts/RemoteGazeProvider.cs) was created to extend the gaze pointer with remote casting capabilities.
+
+The [Mixed Reality Toolkit's input system](https://docs.microsoft.com/windows/mixed-reality/mrtk-unity/features/input/overview?view=mrtkunity-2021-05) is also used to limit the number of game objects needed for interacting with remote entities. This is accomplished by dynamically creating game objects for remote entities when they receive [pointer focus](https://docs.microsoft.com/windows/mixed-reality/mrtk-unity/features/input/pointers?view=mrtkunity-2021-05). Once a remote entity loses focus, its associated game objects are destroyed. For more information about this behavior see summary comment section of the [`RemoteObjectExpander.cs`](../App/Assets/App/RemoteObject/RemoteObjectExpander.cs) file.

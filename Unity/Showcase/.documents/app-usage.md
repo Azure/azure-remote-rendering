@@ -1,7 +1,8 @@
 # App Usage
 
 ## Starting & configuring sessions in the app
-To use this application, you'll have to start a new Azure Remote Rendering session. To start a session click the *session* button, and then click *start session*. Starting a session will take a few minutes. However once the session is ready, the app will automatically connect to it. The app will also remember the created last session, and will automatically connect to this session at start-up.
+
+To use this application, you'll have to start a new Azure Remote Rendering session. To start a session click the **Session** button, and then click **Start session**. Starting a session will take a few minutes. However once the session is ready, the app will automatically connect to it. The app will also remember the created last session, and will automatically connect to this session at start-up.
 
 ![Menu Image](.images/starting-session.gif)
 
@@ -9,6 +10,7 @@ Within the app, you can also change the [session's size](https://docs.microsoft.
  (*Standard* or *Premium*) and [region](https://docs.microsoft.com/azure/remote-rendering/reference/regions). Before starting a session, click the *configure* button. You'll be presented with size and region options. After selecting the desired configuration, click *back* and start a new session.
 
 ## App features
+
 This sample app has the following features:
 
 ### HoloLens
@@ -56,7 +58,7 @@ This sample app has the following features:
 | Showcase, Erase All | Deletes all models from the scene |
 | Showcase, Show Hands | Shows hand mesh |
 | Showcase, Hide Hands | Hides hand mesh |
-| Showcase, Show Local Stats | Shows the MRTK diag window| 
+| Showcase, Show Local Stats | Shows the MRTK diag window|
 | Showcase, Hide Local Stats | Hides the MRTK diag window |
 | Showcase, Show Stage | Show and move the local stage visual. Once visible, all new models will be loaded on the stage. |
 | Showcase, Hide Stage | Hides the local stage visual. Once hidden, all new models will have to be placed individually. |
@@ -64,7 +66,7 @@ This sample app has the following features:
 | Showcase, Show Ruler | Show a debugging ruler at the center of the stage. This will also show the stage. |
 | Showcase, Hide Ruler | Hide the debugging ruler. |
 | Showcase, Show Menu | Show the main menu |
-| Showcase, Hide Menu | Hide the main menu | 
+| Showcase, Hide Menu | Hide the main menu |
 | Showcase, Quit | Quits the application |
 | Showcase, Toggle Profiler | Show or hide the Mixed Reality Toolkit performance profiler window. |
 | Showcase, Tools | Show or hide the tools menu. |
@@ -73,9 +75,8 @@ This sample app has the following features:
 | Showcase, Stats | Show or hide the stats menu. |
 | Showcase, Show Anchors | Show all the currently created spatial anchor on the HoloLens device. This is useful when debugging anchor placement. |
 | Showcase, Hide Anchors | Hide all the visible spatial anchors. |
-| Showcase, Set Pose Mode | Shows a dialog for controlling how local content should be stabilized, either using the local or remote pose space. This is known as remote rendering's [Pose Mode](https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.remoterendering.posemode?view=remoterendering). The default pose mode is set to use the local pose space, which consumes slightly more CPU cycles. | 
+| Showcase, Set Pose Mode | Shows a dialog for controlling how local content should be stabilized, either using the local or remote pose space. This is known as remote rendering's [Pose Mode](https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.remoterendering.posemode?view=remoterendering). The default pose mode is set to use the local pose space, which consumes slightly more CPU cycles. |
 | Showcase, Change Pose Mode | See *Showcase, Set Pose Mode* |
-
 
 ### Pointer Tool Voice Commands
 
@@ -97,7 +98,6 @@ Here are all the tool 'mode' voice commands supported by the app. These change t
 
 These commands are available when in a collaboration sharing session (or room).
 
-
 | <div style="width:190px">Command</div> | Description |
 | :------------------------- | :------------------------- |
 | Showcase, Start Presenting | Make the local user a presenter, if there no an active presentation. The app menu is hidden for all non-presenters, and all non-presenters cannot interact with the app's models. |
@@ -117,6 +117,7 @@ These commands are available when in a collaboration sharing session (or room).
 | Showcase, Hide Names | Hide all avatar names above users' heads. |
 
 ## ARR session control in play mode
+
 When in 'play' mode, the inspector view of the RemoteRenderingSessionInfo game object shows various buttons to interact with the session, including extend, stop, and forget the current session. Note that "forget" won't stop the remote session, but it'll prevent the app from using this session again.
 
 ![Inspector buttons in play mode](.images/editor-arr-service.png)

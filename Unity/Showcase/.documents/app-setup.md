@@ -3,22 +3,22 @@
 ## Setup your dev environment
 
 * Be sure all required software is installed
-  * [Visual Studio 2019 or 2022](https://developer.microsoft.com/)
+  * [Visual Studio 2022](https://visualstudio.microsoft.com/vs/)
   * [Windows SDK 18362+](https://developer.microsoft.com/windows/downloads/windows-10-sdk)
-  * [Unity 2020.3.x](https://unity3d.com/get-unity/download/archive)
+  * [Latest Unity 2020.3.x LTS](https://unity.com/releases/editor/qa/lts-releases?version=2020.3)
 * Open the `App` directory with Unity 2020.3
 * Switch Unity's platform to `Universal Windows Platform` by using the *File > Build Settings...* menu item.
 
 ## Setup remote rendering cloud services
 
-* Ensure you have created an Azure Remote Rendering account. If you do not already have an account, create one using the [Create an Azure Remote Rendering account](https://docs.microsoft.com/azure/remote-rendering/how-tos/create-an-account#:~:text=%20The%20following%20steps%20are%20needed%20to%20create,the%20%22Create%22%20button.%20A%20form%20opens...%20See%20More.) manual.
+* Ensure you have created an Azure Remote Rendering account. If you do not already have an account, create one using the [Create an Azure Remote Rendering account](https://learn.microsoft.com/azure/remote-rendering/how-tos/create-an-account#create-an-account) manual.
 * Ensure you have an Azure Storage account, with models store in a Azure blob container.  To set that up a new storage account, see the [Convert a model for rendering](https://docs.microsoft.com/azure/remote-rendering/quickstarts/convert-model) manual.
 
 ## Setup collaboration cloud services
 
-* Ensure you have created an Azure Spatial Anchors account.  If you do not already have an account, see the [Create an Azure Spatial Anchors account](https://docs.microsoft.com/azure/spatial-anchors/how-tos/create-asa-account?tabs=azure-portal) manual.
-* Ensure you have added the Azure Spatial Anchors packages to your project. To add the packages, follow the [Azure Spatial Anchor Service Extension](implementation-notes.md#azure-spatial-anchor-service-extension) instructions within this repository.
 * Ensure you have added ExitGame's Photon Voice 2 assets into your project. To add this plug-in, follow the [Using Photon Voice 2 for Collaboration](implementation-notes.md#using-photon-voice-2-for-collaboration) instructions within this repository.
+* Showcase can be optionally built with Azure Spatial Anchors enabled. In that case you need to have an Azure Spatial Anchors account. However, you can't create new accounts as Azure Spatial Anchors will be retired on November 20, 2024. More information can be found [here](https://azure.microsoft.com/updates/azure-spatial-anchors-retirement.).
+* To use ASA, ensure you have added the Azure Spatial Anchors packages to your project. To add the packages, follow the [Azure Spatial Anchor Service Extension](implementation-notes.md#azure-spatial-anchor-service-extension) instructions within this repository.
 
 ## Configure application
 
@@ -26,11 +26,11 @@ Choose if you want to configure the application using a [configuration file](#co
   
 ## Configure application with a configuration file
 
-* Create a [`StreamingAssets`](../App/Assets/StreamingAssets) directory under [`App\Assets`](../App/Assets)
-* Copy the sample [`arr.account.xml`](samples/../.samples/arr.account.xml) file from [`.documents\samples\arr.account.xml`](samples/../.samples/arr.account.xml) into the [`App\Assets\StreamingAssets`](../App/Assets/StreamingAssets) directory
+* Create a `StreamingAssets` directory under [`App\Assets`](../App/Assets)
+* Copy the sample [`arr.account.xml`](samples/../.samples/arr.account.xml) file from [`.documents\samples\arr.account.xml`](samples/../.samples/arr.account.xml) into the `App\Assets\StreamingAssets` directory
 * Fill in each section with the corresponding account details
   
-The [`.gitignore`](../.gitignore) file in the project excludes the [`arr.account.xml`](samples/../.samples/arr.account.xml) file.  This prevents accidental commits of private/secret information. It is preferred to use [`arr.account.xml`](samples/../.samples/arr.account.xml) instead of configuring your services through the Unity Editor.
+The `.gitignore` file in the project excludes the [`arr.account.xml`](samples/../.samples/arr.account.xml) file.  This prevents accidental commits of private/secret information. It is preferred to use [`arr.account.xml`](samples/../.samples/arr.account.xml) instead of configuring your services through the Unity Editor.
 
 ## Configure application's remote rendering in Unity Editor
 

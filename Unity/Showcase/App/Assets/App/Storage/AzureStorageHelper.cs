@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -334,6 +334,21 @@ namespace Microsoft.Azure.Storage
             }
 
             return containerUri;
+        }
+
+        /// <summary>
+        /// Extract the storage account name from an absolute url for a blob.
+        /// </summary>
+        public static string GetStorageAccount(string absoluteUrl)
+        {
+            var blobUri = new Uri(absoluteUrl);
+            string storageName = blobUri.Host;
+            int dotIndex = storageName.IndexOf('.');
+            if (dotIndex >= 0)
+            {
+                storageName = storageName.Substring(0, dotIndex);
+            }
+            return storageName;
         }
 
         /// <summary>

@@ -971,6 +971,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             private IRemoteRenderingStorageAccountData _storageAccountData;
             private const string _modelExtension = ".arrAsset";
             private const string _imageExtension = ".png";
+            private const string _thumbnailExtension = ".thumbnail.png";
             private const string _modelIndexName = "models.xml";
             private static readonly Vector3 _minModelSize = new Vector3(0.5f, 0.5f, 0.5f);
             private static readonly Vector3 _maxModelSize = new Vector3(1.0f, 1.0f, 1.0f);
@@ -985,20 +986,12 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// <summary>
             /// Query an Azure container for all Azure Remote Rendering models. This uses the configured storage account id and key.
             /// </summary>
-            /// <param name="containerName">
-            /// The name of the container to query. If null or empty, the default container name is used.
-            /// </param>
             /// <returns>
             /// A list of remote model containers that represent the ARR models within the given container.
             /// </returns>
-            public async Task<RemoteContainer[]> QueryModels(string containerName = null)
+            public async Task<RemoteContainer[]> QueryModels()
             {
                 await _initialized.Task;
-
-                if (string.IsNullOrEmpty(containerName))
-                {
-                    containerName = _storageAccountData.DefaultContainer;
-                }
 
                 if (!_storageAccountData.IsValid())
                 {
@@ -1011,8 +1004,53 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 });
             }
 
+            /// <inheritdoc />
+            public async Task<byte[]> LoadBlob(string blobUrl)
+            {
+                if (!_storageAccountData.IsValid())
+                {
+                    return null;
+                }
+
+                return await Task.Run(() =>
+                {
+                    return LoadBlobBackgroundWorker(_storageAccountData, blobUrl);
+                });
+            }
+
             /// <summary>
-            /// Query an Azure container for all Azure Remote Rendering models. This uses the configured storage account id and key.
+            /// Downloads an Azure blob from the default storage account / container / credentials configured in the passed in storageAccountData.
+            /// </summary>
+            /// <param name="storageAccountData">The account data used to retrieve models from storage</param>
+            /// <param name="blobUrl">Absolute URL to the file in the storage container.</param>
+            /// <returns></returns>
+            private static async Task<byte[]> LoadBlobBackgroundWorker(IRemoteRenderingStorageAccountData storageAccountData, string blobUrl)
+            {
+                string authData = await storageAccountData.GetAuthData();
+                StorageCredentials storageCredentials;
+                if (storageAccountData.AuthType == AuthenticationType.AccessToken)
+                {
+                    storageCredentials = new StorageCredentials(new TokenCredential(authData));
+                }
+                else
+                {
+                    storageCredentials = new StorageCredentials(storageAccountData.StorageAccountName, authData);
+                }
+
+                var storageAccount = new CloudStorageAccount(storageCredentials, storageAccountData.StorageAccountName, null, true);
+                var blobClient = storageAccount.CreateCloudBlobClient();
+                CloudBlobContainer cloudBlobContainer = blobClient.GetContainerReference(storageAccountData.DefaultContainer);
+
+                CloudBlob file = cloudBlobContainer.GetBlobReference(AzureStorageHelper.GetBlobName(blobUrl));
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.DownloadToStreamAsync(memoryStream);
+                    return memoryStream.ToArray();
+                }
+            }
+
+            /// <summary>
+            /// Query an Azure container for all Azure Remote Rendering models. This uses the configured storage credentials.
             /// </summary>
             /// <param name="storageAccountData">
             /// The account data used to retrieve models from storage
@@ -1022,7 +1060,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
             /// </returns>
             private static async Task<RemoteContainer[]> QueryModelsBackgroundWorker(IRemoteRenderingStorageAccountData storageAccountData)
             {
-                HashSet<string> remoteModelUrls  = new HashSet<string>();
+                HashSet<string> remoteModelUrls = new HashSet<string>();
                 List<RemoteContainer> remoteModelContainers = new List<RemoteContainer>();
                 Dictionary<string, string> remoteModelImageUrls = new Dictionary<string, string>();
                 string nextMarker = null;
@@ -1071,13 +1109,28 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                         // Step 1. Find all the PNG thumbnail images, and cache their blobIndex. These will be applied to model entries.
                         foreach (var blob in enumerationResults.Blobs)
                         {
-                            if (string.Equals(Path.GetExtension(blob.Name), _imageExtension, System.StringComparison.OrdinalIgnoreCase))
+                            if (blob.Name.EndsWith(_thumbnailExtension, System.StringComparison.OrdinalIgnoreCase))
                             {
-                                // Assume all images will be used, so create a SAS url for all images
-                                // The Azure Blob Storage file system uses case sensitive names, so using the raw blob name is fine.
-                                remoteModelImageUrls.Add(
-                                    Path.ChangeExtension(blob.Name, _modelExtension), 
-                                    CreateSasUrl(blob, cloudBlobContainer, oneDayReadOnlyPolicy));
+                                int start = blob.Name.LastIndexOf(_thumbnailExtension, System.StringComparison.OrdinalIgnoreCase);
+                                string correspondingModel = blob.Name.Remove(start) + _modelExtension;
+                                if (!remoteModelImageUrls.ContainsKey(correspondingModel))
+                                {
+                                    // If there is no image for the model, we add a thumbnail
+                                    remoteModelImageUrls.Add(
+                                        correspondingModel,
+                                        cloudBlobContainer.GetBlockBlobReference(blob.Name).Uri.AbsoluteUri);
+                                }
+                            }
+                            else if (string.Equals(Path.GetExtension(blob.Name), _imageExtension, System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                string correspondingModel = Path.ChangeExtension(blob.Name, _modelExtension);
+                                if (!remoteModelImageUrls.ContainsKey(correspondingModel))
+                                {
+                                    // The Azure Blob Storage file system uses case sensitive names, so using the raw blob name is fine.
+                                    remoteModelImageUrls.Add(
+                                        correspondingModel,
+                                        cloudBlobContainer.GetBlockBlobReference(blob.Name).Uri.AbsoluteUri);
+                                }
                             }
                         }
 
@@ -1114,17 +1167,10 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                     }
                 } while (!string.IsNullOrEmpty(nextMarker));
 
-                // Step 4. Create SAS urls for set image urls, or apply found images to model containers.
+                // Step 4. Apply found images to model containers.
                 foreach (var modelContainer in remoteModelContainers)
                 {
-                    if (!string.IsNullOrEmpty(modelContainer.ImageUrl))
-                    {
-                        if (AzureStorageHelper.InContainer(modelContainer.ImageUrl, cloudBlobContainer))
-                        {
-                            modelContainer.ImageUrl = CreateSasUrl(AzureStorageHelper.GetBlobName(modelContainer.ImageUrl), cloudBlobContainer, oneDayReadOnlyPolicy);
-                        }
-                    }
-                    else
+                    if (string.IsNullOrEmpty(modelContainer.ImageUrl))
                     {
                         foreach (var model in modelContainer.Items)
                         {
@@ -1140,25 +1186,6 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 }
 
                 return remoteModelContainers.ToArray();
-            }
-
-            /// <summary>
-            /// Create a sas url for the given blob.
-            /// </summary>
-            private static string CreateSasUrl(Blob blob, CloudBlobContainer container, SharedAccessBlobPolicy policy)
-            {
-                return CreateSasUrl(blob.Name, container, policy);
-            }
-
-            /// <summary>
-            /// Create a sas url for the given blob name
-            /// </summary>
-            private static string CreateSasUrl(string blobName, CloudBlobContainer container, SharedAccessBlobPolicy policy)
-            {
-                CloudBlockBlob blockBlob = container.GetBlockBlobReference(blobName);
-                string sasBlobToken = blockBlob.GetSharedAccessSignature(policy);
-                string sasUrl = blockBlob.Uri.AbsoluteUri + sasBlobToken;
-                return sasUrl;
             }
 
             /// <summary>
@@ -1384,7 +1411,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 catch (InvalidOperationException)
                 {
                     _log.LogWarning("Couldn't update service stats.");
-                }             
+                }
 
                 _arrSession.Connection?.Update();
             }
@@ -1509,7 +1536,7 @@ namespace Microsoft.MixedReality.Toolkit.Extensions
                 Connection = connection ?? throw new ArgumentNullException("Connection object can't be null.");
 
                 string[] domainParts = null;
-				var config = _arrSession.Client.Configuration;
+                var config = _arrSession.Client.Configuration;
                 if (config.RemoteRenderingDomain != null)
                 {
                     domainParts = config.RemoteRenderingDomain.Split('.');

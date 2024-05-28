@@ -5,6 +5,7 @@ using Microsoft.MixedReality.Toolkit;
 using Microsoft.MixedReality.Toolkit.Extensions;
 using Microsoft.MixedReality.Toolkit.Rendering;
 using System.Collections;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -98,7 +99,7 @@ public class RemoteObjectListItem : ListItemEventHandler
     private void OnDisable()
     {
         loadingTextureUrl = null;
-        DestoryRequest(loadingTextureRequest);
+        DestroyRequest(loadingTextureRequest);
     }
 
     private void OnDestroy()
@@ -206,38 +207,56 @@ public class RemoteObjectListItem : ListItemEventHandler
         // And set loaded url to avoid double loads
         loadingTextureUrl = imageUrl;
 
-        DestoryRequest(loadingTextureRequest);
+        DestroyRequest(loadingTextureRequest);
         if (!string.IsNullOrEmpty(loadingTextureUrl))
         {
-            var www = loadingTextureRequest = UnityWebRequestTexture.GetTexture(loadingTextureUrl);
-            yield return www.SendWebRequest();
-
-            DownloadHandlerTexture downloadedTexture = null;
-            if (www.result != UnityWebRequest.Result.Success)
+            string defaultStorageAccount = AppServices.RemoteRendering?.LoadedProfile?.StorageAccountData?.StorageAccountName;
+            if (string.Equals(defaultStorageAccount, Microsoft.Azure.Storage.AzureStorageHelper.GetStorageAccount(loadingTextureUrl), System.StringComparison.OrdinalIgnoreCase))
             {
-                Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Failed to load image '{imageUrl}' ({www.error}) ({www.result})");
+                // URL is a blob in our storage account, load via Azure Storage SDK:
+                Task<byte[]> imageBytes = AppServices.RemoteRendering.Storage.LoadBlob(imageUrl);
+                yield return new WaitUntil(() => imageBytes.IsCompleted);
+
+                if (imageBytes.IsFaulted)
+                {
+                    yield break;
+                }
+
+                newLoadedTexture = new Texture2D(8, 8);
+                newLoadedTexture.LoadImage(imageBytes.Result);
             }
             else
             {
-                downloadedTexture = www.downloadHandler as DownloadHandlerTexture;
+                var www = loadingTextureRequest = UnityWebRequestTexture.GetTexture(loadingTextureUrl);
+                yield return www.SendWebRequest();
+                
+                if (www.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogFormat(LogType.Warning, LogOption.NoStacktrace, null, "{0}", $"Failed to load image '{imageUrl}' ({www.error}) ({www.result})");
+                }
+                else
+                {
+                    DownloadHandlerTexture downloadedTexture = www.downloadHandler as DownloadHandlerTexture;
+                    newLoadedTexture = downloadedTexture?.texture;
+                }
+                DestroyRequest(www);
             }
 
-            if (downloadedTexture != null && downloadedTexture.texture != null)
+            if (newLoadedTexture != null)
             {
                 // The downloaded texture comes without mipmaps, but we want mipmaps especially for VR platforms.
                 // Unity can generate mipmaps during runtime, but not in an already created texture without initial mipmaps.
                 // Therefore create a new texture with mipmaps enabled...
-                newLoadedTexture = new Texture2D(downloadedTexture.texture.width, downloadedTexture.texture.height, downloadedTexture.texture.format, true);
-                newLoadedTexture.filterMode = FilterMode.Trilinear;
+                Texture2D newLoadedTextureWithMips = new Texture2D(newLoadedTexture.width, newLoadedTexture.height, newLoadedTexture.format, true);
+                newLoadedTextureWithMips.filterMode = FilterMode.Trilinear;
 
                 // Copy over the full res texture..
-                Graphics.CopyTexture(downloadedTexture.texture, 0, 0, newLoadedTexture, 0, 0);
+                Graphics.CopyTexture(newLoadedTexture, 0, 0, newLoadedTextureWithMips, 0, 0);
 
                 // And finally apply and let Unity generate the mipmap levels.
-                newLoadedTexture.Apply(true, true);
+                newLoadedTextureWithMips.Apply(true, true);
+                newLoadedTexture = newLoadedTextureWithMips;
             }
-
-            DestoryRequest(www);
         }
 
         // Verify things are still active, and texture is still being loaded
@@ -275,7 +294,7 @@ public class RemoteObjectListItem : ListItemEventHandler
         }
     }
 
-    private void DestoryRequest(UnityWebRequest request)
+    private void DestroyRequest(UnityWebRequest request)
     {
         if (request != null)
         {

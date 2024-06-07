@@ -1,7 +1,7 @@
 {
   "scopedRegistries": [],
   "dependencies": {
-    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.2.28.tgz",
+    "com.microsoft.azure.remote-rendering": "file:../../../MRPackages/com.microsoft.azure.remote-rendering-1.2.29.tgz",
     "com.microsoft.mixedreality.openxr": "file:../../../MRPackages/com.microsoft.mixedreality.openxr-1.8.1.tgz",
     "com.microsoft.mixedreality.toolkit.extensions": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.extensions-2.8.3.tgz",
     "com.microsoft.mixedreality.toolkit.foundation": "file:../../../MRPackages/com.microsoft.mixedreality.toolkit.foundation-2.8.3.tgz",

@@ -566,6 +566,7 @@ namespace Microsoft.Showcase.App.Pointers
                 RayStep step = raySteps[i];
                 SpatialQuerySphere sphere;
                 sphere.MaxResults = 0;
+                sphere.OverlapTestMode = OverlapTestMode.Primitives;
                 sphere.Sphere.Center = step.Origin.toRemotePos();
                 sphere.Sphere.Radius = step.Terminus.z; // Terminus = Vector3.forward * SphereCastRadius
 

@@ -1,5 +1,8 @@
 # Azure Remote Rendering
 
+> [!NOTE]
+> Please note that Azure Remote Rendering (ARR) will be retired on **September 30, 2025**. More details [here](https://azure.microsoft.com/en-us/updates/v2/azure-remote-rendering-retirement).
+
 Welcome to [Azure Remote Rendering](https://azure.microsoft.com/services/remote-rendering/).
 This service enables you to render highly complex 3D models in real time on devices such as HoloLens 2.
 
@@ -8,7 +11,7 @@ Full documentation for Azure Remote Rendering can be found here:
 
 This repository contains the following folders:
 
-* Unity - This folder contains sample projects for use in the Unity game engine. 
+* Unity - This folder contains sample projects for use in the Unity game engine.
    - Please note that you have to run a [script](https://docs.microsoft.com/azure/remote-rendering/quickstarts/render-model#clone-the-sample-app) before these projects can be opened in Unity.
 * NativeCpp - This folder contains sample projects using Remote Rendering with native C++
 * Scripts - This folder contains PowerShell scripts for interacting with the service (e.g. converting assets or launching rendering servers).

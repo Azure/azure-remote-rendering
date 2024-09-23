@@ -11,6 +11,10 @@
 
 ## Setup remote rendering cloud services
 
+> [!NOTE]
+> Please note that Azure Remote Rendering (ARR) will be retired on **September 30, 2025**. It is no longer possible to create new accounts if your subscription did not have an active ARR account previously.
+> More details [here](https://azure.microsoft.com/en-us/updates/v2/azure-remote-rendering-retirement).
+
 * Ensure you have created an Azure Remote Rendering account. If you do not already have an account, create one using the [Create an Azure Remote Rendering account](https://learn.microsoft.com/azure/remote-rendering/how-tos/create-an-account#create-an-account) manual.
 * Ensure you have an Azure Storage account, with models store in a Azure blob container.  To set that up a new storage account, see the [Convert a model for rendering](https://docs.microsoft.com/azure/remote-rendering/quickstarts/convert-model) manual.
 
@@ -23,13 +27,13 @@
 ## Configure application
 
 Choose if you want to configure the application using a [configuration file](#configure-application-with-a-configuration-file) or directly in the [Unity Editor](#configure-applications-remote-rendering-in-unity-editor).  Configuring in the Unity Editor is the most expedient option but risks exposing credentials through source control causing a security breach.  A configuration file keeps all credentials in one place and reduces the likelihood credentials will be leaked publicly.
-  
+
 ## Configure application with a configuration file
 
 * Create a `StreamingAssets` directory under [`App\Assets`](../App/Assets)
 * Copy the sample [`arr.account.xml`](samples/../.samples/arr.account.xml) file from [`.documents\samples\arr.account.xml`](samples/../.samples/arr.account.xml) into the `App\Assets\StreamingAssets` directory
 * Fill in each section with the corresponding account details
-  
+
 The `.gitignore` file in the project excludes the [`arr.account.xml`](samples/../.samples/arr.account.xml) file.  This prevents accidental commits of private/secret information. It is preferred to use [`arr.account.xml`](samples/../.samples/arr.account.xml) instead of configuring your services through the Unity Editor.
 
 ## Configure application's remote rendering in Unity Editor
